@@ -120,6 +120,21 @@ func (h *Hub) socket(w http.ResponseWriter, r *http.Request) {
 		go old.conn.Close(4000, "Connected from another tab")
 	}
 	h.peers[p.id] = p
+	// Navigation from the menu to play.html closes the old WebSocket before
+	// the next page opens one. Recover membership from the retained lobby.
+	if p.room == "" {
+		for code, room := range h.rooms {
+			for _, pl := range room.Players {
+				if pl.ID == p.id {
+					p.room = code
+					break
+				}
+			}
+			if p.room != "" {
+				break
+			}
+		}
+	}
 	if room := h.rooms[p.room]; room != nil {
 		for _, pl := range room.Players {
 			if pl.ID == p.id {

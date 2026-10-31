@@ -272,3 +272,29 @@ func TestPasswordLoginSessionRevocationAndHash(t *testing.T) {
 		t.Fatal("login after restart", rr.Body.String())
 	}
 }
+
+func TestLobbyReconnectAcrossPageNavigation(t *testing.T) {
+	_, s, client := newTest(t)
+	login(t, client, s.URL, "Reconnect Driver")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	dial := func() *websocket.Conn {
+		conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(s.URL, "http")+"/api/lobby", &websocket.DialOptions{HTTPClient: client})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { conn.CloseNow() })
+		return conn
+	}
+	first := dial()
+	wsSend(t, ctx, first, map[string]any{"t": "create"})
+	created := wsRead(t, ctx, first, "lobby")
+	code := created["lobby"].(map[string]any)["code"]
+	first.Close(websocket.StatusNormalClosure, "Page navigation")
+	second := dial()
+	wsSend(t, ctx, second, map[string]any{"t": "hello"})
+	resumed := wsRead(t, ctx, second, "lobby")
+	if resumed["lobby"].(map[string]any)["code"] != code || resumed["you"] != created["you"] {
+		t.Fatal("room membership lost across navigation")
+	}
+}
