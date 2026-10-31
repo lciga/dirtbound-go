@@ -21,3 +21,4 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run test:parity
       - run: npm run test:assets
+      - run: npm run test:race-start

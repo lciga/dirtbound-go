@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -157,6 +158,16 @@ func (a *App) accountLocked(r *http.Request) *Account {
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "same-origin")
+	if path.Clean(r.URL.Path) == "/play.html" {
+		a.mu.Lock()
+		signedIn := a.accountLocked(r) != nil
+		a.mu.Unlock()
+		w.Header().Set("Cache-Control", "no-store")
+		if !signedIn {
+			http.Redirect(w, r, "/login.html?next="+url.QueryEscape(r.URL.RequestURI()), http.StatusSeeOther)
+			return
+		}
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		w.Header().Set("Cache-Control", "no-store")
 		if r.Method != "GET" && r.Method != "HEAD" {

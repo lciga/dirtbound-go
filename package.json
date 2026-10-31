@@ -1,1 +1,12 @@
-{"private":true,"type":"module","scripts":{"test:parity":"node tools/parity.mjs","test:assets":"node tools/check-assets.mjs"},"devDependencies":{"three":"0.185.1"}}
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:parity": "node tools/parity.mjs",
+    "test:assets": "node tools/check-assets.mjs",
+    "test:race-start": "node --test tools/race-start.test.mjs"
+  },
+  "devDependencies": {
+    "three": "0.185.1"
+  }
+}

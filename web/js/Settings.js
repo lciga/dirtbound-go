@@ -73,6 +73,7 @@ export function loadSettings() {
 	return {
 		...DEFAULT_SETTINGS,
 		...stored,
+		view: stored.view === 'chase' ? 'chase' : 'iso',
 		graphics,
 		performance: graphics === 'low',
 		volume: { ...DEFAULT_SETTINGS.volume, ...stored.volume },

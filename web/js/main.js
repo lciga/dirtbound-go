@@ -31,6 +31,7 @@ import { listenKonami, isBoostUnlocked, COUNT_BOOSTED } from './Boost.js';
 import { fetchPublished } from './Circuits.js';
 import { applyAtmosphere, setFogRange } from './Atmosphere.js';
 import { GameUI } from './GameUI.js';
+import { RaceStart } from './RaceStart.js';
 import { AdaptiveResolution } from './AdaptiveResolution.js';
 import { FrameMonitor } from './FrameMonitor.js';
 import { PageLoading, leavePage } from './PageTransition.js';
@@ -572,6 +573,7 @@ async function init() {
 
 	const vehicleGroup = vehicle.init( carModel );
 	scene.add( vehicleGroup );
+	vehicle.respawn( vehicle.spawnPosition.toArray(), vehicle.spawnAngle );
 
 	dirLight.target = vehicleGroup;
 
@@ -596,14 +598,15 @@ async function init() {
 	// rally fog closes in before the terrain tiles end (TILE_BUILD_RADIUS 80 m)
 	const isoFar = cam.camera.far;
 	const raceCamera = multi ? multi.race.camera || 'iso' : 'both';
-	const chaseAllowed = raceCamera !== 'iso';
+	let refreshCameraUI = () => {};
 	const viewLocked = raceCamera !== 'both';
 	let view = raceCamera === 'both' ? settings.view : raceCamera;
 	let sky = null; // blue sky and a few clouds, built the first time the view goes behind the car
 	const applyView = ( next ) => {
 
-		view = chaseAllowed ? next : 'iso';
+		view = viewLocked ? raceCamera : next === 'chase' ? 'chase' : 'iso';
 		cam.setView( view );
+		refreshCameraUI();
 		const chase = view === 'chase';
 		// Ultra sees twice as far behind the car: far plane, rally fog, terrain
 		// tiles and chunks streamed around the car, the sky pushed back with it
@@ -621,6 +624,17 @@ async function init() {
 
 	};
 	applyView( view );
+	const selectView = ( next ) => {
+		if ( viewLocked ) return;
+		applyView( next );
+		cam.update( 0, vehicle.spherePos, vehicle.modelVelocity, {
+			quaternion: vehicle.container.quaternion, speed: Math.abs( vehicle.linearSpeed ) / MAX_SPEED, groundAt: cameraGround,
+		} );
+		if ( sky ) sky.follow( cam.camera );
+		if ( bridges ) bridges.update( vehicle.spherePos, cam.camera, 1 );
+		pausedFrameDrawn = false;
+		saveSettings( { ...loadSettings(), view } );
+	};
 	let viewHeld = false;
 	const viewKey = ( raw ) => {
 
@@ -628,8 +642,7 @@ async function init() {
 		if ( raw.touchActive && view === 'chase' ) applyView( 'iso' );
 		if ( raw.view && ! viewHeld && ! raw.touchActive && ! viewLocked ) {
 
-			applyView( view === 'chase' ? 'iso' : 'chase' );
-			saveSettings( { ...loadSettings(), view } );
+			selectView( view === 'chase' ? 'iso' : 'chase' );
 
 		}
 
@@ -709,6 +722,7 @@ async function init() {
 
 	// Pause menu and arrival screen
 	const ui = new GameUI( {
+		camera: { mode: () => view, select: selectView, locked: () => viewLocked, multiplayer: !!multi },
 		onPause: ( paused ) => {
 
 			audio.setPaused( paused );
@@ -744,6 +758,8 @@ async function init() {
 
 		} : null,
 	} );
+
+	refreshCameraUI = () => ui.updateCameraControls();
 
 	// Secret accelerator (Konami code → Shift), solo only. Unless COUNT_BOOSTED,
 	// a lap counts only if the boost was not used during it (flag cleared at each line)
@@ -895,6 +911,8 @@ async function init() {
 
 	if ( params.has( 'debug' ) || pageParams.has( 'debug' ) ) window.game = { vehicle, controls, stage, world, cam, ui, lapTimer, online, renderer, bloomPass, ultraEffects, driftMarks, dofPass, sync, bonus, bench, flying: () => flying };
 
+	let sceneReady = false;
+	const start = !sync ? new RaceStart() : null;
 	const timer = new THREE.Timer();
 	const noInput = { x: 0, z: 0, handbrake: false, touchActive: false };
 
@@ -1049,7 +1067,7 @@ async function init() {
 	const resetKeys = settings.keys.reset;
 	window.addEventListener( 'keydown', ( e ) => {
 
-		if ( stage && ! ui.paused && resetKeys.includes( e.code ) ) backOnRoad( t( 'game.backOnRoad' ) );
+		if ( stage && ! ui.paused && sceneReady && !start?.blocked && resetKeys.includes( e.code ) ) backOnRoad( t( 'game.backOnRoad' ) );
 
 	} );
 
@@ -1063,7 +1081,7 @@ async function init() {
 
 	function quickRestart() {
 
-		if ( flying && ! ui.paused ) restartDue = true;
+		if ( flying && ! ui.paused && sceneReady && !start?.blocked ) restartDue = true;
 
 	}
 
@@ -1108,6 +1126,7 @@ async function init() {
 		buttons: {
 			[ PAD.START ]: () => window.dispatchEvent( new KeyboardEvent( 'keydown', { key: 'Escape', code: 'Escape', bubbles: true } ) ),
 			[ PAD.BACK ]: () => {
+				if ( !sceneReady || start?.blocked ) return;
 
 				if ( stage && ! ui.paused ) backOnRoad( t( 'game.backOnRoad' ) );
 				else if ( flying ) quickRestart();
@@ -1125,6 +1144,10 @@ async function init() {
 		const frameTime = timer.getDelta();
 		const frameStart = monitor ? performance.now() : 0;
 		const dt = Math.min( frameTime, 1 / 30 ); // visual effects only
+		if ( start ) {
+			start.update( frameTime, { paused: ui.paused, visible: !document.hidden } );
+			ui.setCountdown( start.label === 'go' ? t( 'race.go' ) : start.label );
+		}
 
 		// Paused: the world stands still, the picture stays (drawn once)
 		// Multiplayer: the race goes on under the pause menu (the car just gets no input)
@@ -1148,7 +1171,7 @@ async function init() {
 
 			const raw = controls.update();
 			viewKey( raw );
-			input = stage && stage.finished ? noInput : raw;
+			input = !sceneReady || start?.blocked || ( stage && stage.finished ) ? noInput : raw;
 			if ( sync ) input = ui.paused ? noInput : sync.gate( input );
 			held = input;
 			if ( bonus ) input = bonus.gate( input );
@@ -1171,6 +1194,7 @@ async function init() {
 		let steps = 0;
 		const simulate = () => {
 
+			if ( !sceneReady || start?.blocked ) accumulator = 0;
 			while ( accumulator >= PHYSICS_STEP ) {
 
 				physicsStep( input );
@@ -1248,9 +1272,13 @@ async function init() {
 	// the first time each one shows up, which made the first lap stutter
 	await loading.compile( 'shaders', renderer, scene, cam.camera ).catch( ( e ) => console.warn( 'Shader precompile failed: ' + e.message ) );
 
-	if ( sync ) sync.loaded();
-	animate(); // the first frame is drawn right away
-	Promise.resolve( loading.reveal() ).then( () => hint.show() );
+	animate(); // Draw the held car while the loading curtain opens.
+	Promise.resolve( loading.reveal() ).then( () => {
+		sceneReady = true;
+		if ( start ) start.begin();
+		if ( sync ) sync.loaded();
+		hint.show();
+	} );
 	trackRace( raceMode );
 
 	// Hidden objects (the ghost until the lap starts) are skipped by compile:

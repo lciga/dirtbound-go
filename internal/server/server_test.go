@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -296,5 +297,51 @@ func TestLobbyReconnectAcrossPageNavigation(t *testing.T) {
 	resumed := wsRead(t, ctx, second, "lobby")
 	if resumed["lobby"].(map[string]any)["code"] != code || resumed["you"] != created["you"] {
 		t.Fatal("room membership lost across navigation")
+	}
+}
+
+func TestRaceRequiresSessionAndPreservesDestination(t *testing.T) {
+	a, err := New(fstest.MapFS{"play.html": &fstest.MapFile{Data: []byte("signed-in race")}}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{"/play.html?rally=123", "//play.html", "/unused/../play.html", "/%70lay.html"} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest("GET", target, nil)
+		a.ServeHTTP(response, request)
+		if response.Code != http.StatusSeeOther {
+			t.Fatalf("guest race %s: status %d", target, response.Code)
+		}
+		location, err := url.Parse(response.Header().Get("Location"))
+		if err != nil || location.Path != "/login.html" || location.Query().Get("next") != request.URL.RequestURI() {
+			t.Fatalf("destination lost: %s", response.Header().Get("Location"))
+		}
+	}
+	service := httptest.NewServer(a)
+	defer service.Close()
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+	destination := "/play.html?circuit=test#track=encoded-course"
+	result := call(t, client, "POST", service.URL+"/api/auth/register", map[string]string{"username": "Race_Driver", "password": "Test-only-password-123", "next": destination})
+	if result["success"] != true || result["data"].(map[string]any)["url"] != destination {
+		t.Fatal("race destination lost during registration")
+	}
+	response, err := client.Get(service.URL + "/play.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 200 || response.Header.Get("Cache-Control") != "no-store" {
+		t.Fatal("signed-in race unavailable")
+	}
+	call(t, client, "POST", service.URL+"/api/auth/sign-out", nil)
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
+	response, err = client.Get(service.URL + "/play.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusSeeOther {
+		t.Fatal("race remains accessible after logout")
 	}
 }

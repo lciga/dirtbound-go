@@ -184,7 +184,8 @@ function play( query ) {
 
 	// A drawn circuit (track=, map=) goes after the #, never sent to the server: no size limit
 	const sep = /^(track|map)=/.test( query ) ? '#' : '?';
-	leave( 'play.html' + ( query ? sep + query : '' ) );
+	const target = 'play.html' + ( query ? sep + query : '' );
+	leave( player.signedIn ? target : 'login.html?next=' + encodeURIComponent( '/' + target ) );
 
 }
 
@@ -920,6 +921,9 @@ const SETTINGS_BODIES = {
 		`<p class="note">${ t( 'settings.soundNote' ) }</p>`,
 
 	controls: () =>
+		`<label class="field">${ t( 'lobby.camera' ) }</label>` +
+		`<div role="group" aria-label="${ t( 'lobby.camera' ) }">` +
+		segmented( 'view', [ [ 'iso', t( 'lobby.cameras.iso' ) ], [ 'chase', t( 'lobby.cameras.chase' ) ] ], settings.view ) + '</div>' +
 		`<label class="field">${ t( 'settings.keyboard' ) }</label>` +
 		'<div class="binds">' + ACTIONS.map( ( [ action, label ] ) => {
 
@@ -1385,6 +1389,7 @@ document.addEventListener( 'click', ( e ) => {
 		} else if ( set === 'color' ) settings.color = Number( value );
 		else if ( set === 'ghost' ) settings.ghost = ghostMode( value );
 		else if ( set === 'graphics' ) setGraphics( value );
+		else if ( set === 'view' ) settings.view = value === 'chase' ? 'chase' : 'iso';
 		else if ( set === 'length' ) { endIntroRally(); settings.rally.length = Number( value ); }
 		else if ( set === 'landscape' ) { endIntroRally(); settings.rally.landscape = landscapeOf( value ); }
 		else if ( set === 'season' ) {

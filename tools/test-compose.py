@@ -79,6 +79,8 @@ def main():
         for path in ['/', '/login.html', '/editor.html']:
             _, raw = request(path)
             assert b'DirtBound' in raw, f'Missing page: {path}'
+        _, guest_page = request('/play.html?rally=smoke')
+        assert b'id="auth"' in guest_page, 'Guest race did not require sign-in'
         headers, wasm = request('/wasm/physics.wasm')
         assert headers.get_content_type() == 'application/wasm'
         assert wasm[:4] == b'\0asm' and len(wasm) > 100000
@@ -96,6 +98,8 @@ def main():
         password = secrets.token_urlsafe(24)
         account = api('/api/auth/register', {'username': username, 'password': password})['account']
         assert api('/api/me')['id'] == account['id']
+        _, race_page = request('/play.html?rally=smoke')
+        assert b'src="js/main.js"' in race_page, 'Signed-in player cannot load race'
         websocket()
         print('Registration, session and WebSocket upgrade: OK', flush=True)
         run(*compose, 'up', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '90')

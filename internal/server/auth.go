@@ -139,6 +139,9 @@ func (a *App) authenticate(w http.ResponseWriter, r *http.Request, action string
 	next := "/index.html"
 	if u, e := url.Parse(body.Next); e == nil && u.Host == "" && u.Scheme == "" && strings.HasPrefix(u.Path, "/") && !strings.HasPrefix(u.Path, "//") {
 		next = u.RequestURI()
+		if u.Fragment != "" {
+			next += "#" + u.EscapedFragment()
+		}
 	}
 	success(w, map[string]any{"account": account, "url": next})
 }

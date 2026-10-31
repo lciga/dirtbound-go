@@ -306,12 +306,32 @@ export function bridgeMaterial() {
 const FADE_OPACITY = 1 / 3;
 const FADE_RATE = 8;       // 1/s, how fast it fades in and out
 const UNDER = 1.5;         // m: a deck at least this much above the car can hide it
-// Depth only, drawn just before a faded bridge (transparent too, to come after the car)
-const PREPASS = new THREE.MeshBasicMaterial( { colorWrite: false, transparent: true, side: THREE.DoubleSide } );
+// Keep the road supporting the car in the opaque pass. Only geometry above
+// the car moves into the transparent pass; a late depth pre-pass then selects
+// the nearest face without erasing the road or the car already drawn below.
+function bridgeLayerMaterial( material, carHeight, fade, upperOnly ) {
+	const previousCompile = material.onBeforeCompile;
+	const previousKey = material.customProgramCacheKey();
+	material.onBeforeCompile = function ( shader, renderer ) {
+		previousCompile.call( this, shader, renderer );
+		shader.uniforms.bridgeCarHeight = carHeight;
+		shader.uniforms.bridgeFade = fade;
+		shader.vertexShader = 'varying float vBridgeHeight;\n' + shader.vertexShader;
+		shader.vertexShader = shader.vertexShader.replace( '#include <begin_vertex>',
+			'#include <begin_vertex>\nvBridgeHeight = (modelMatrix * vec4(transformed, 1.0)).y;' );
+		shader.fragmentShader = 'uniform float bridgeCarHeight;\nuniform float bridgeFade;\nvarying float vBridgeHeight;\n' + shader.fragmentShader;
+		shader.fragmentShader = shader.fragmentShader.replace( '#include <clipping_planes_fragment>',
+			'#include <clipping_planes_fragment>\n' + ( upperOnly
+				? 'if (bridgeFade >= 1.0 || vBridgeHeight <= bridgeCarHeight + 1.5) discard;'
+				: 'if (bridgeFade < 1.0 && vBridgeHeight > bridgeCarHeight + 1.5) discard;' ) );
+	};
+	material.customProgramCacheKey = () => previousKey + '|bridge-height-layer-v2-' + upperOnly;
+	return material;
+}
 
 // Splits the bridges out of the scenery so each can fade on its own: the road
 // mesh loses its triangles on bridge decks (into one mesh per bridge, sharing
-// its vertices, with a transparent copy of its material), decks and piers are
+// its vertices, with a fade-capable copy of its material), decks and piers are
 // built per bridge. Returns { group (static decks + the bridges), update( car,
 // camera, dt ) }, or null when the road never passes over itself.
 export function fadingBridges( path, terrain, road ) {
@@ -379,41 +399,39 @@ export function fadingBridges( path, terrain, road ) {
 
 	for ( const br of bridges ) {
 
-		const roadMaterial = road.material.clone();
+		const carHeight = { value: 0 };
+		const fade = { value: 1 };
+		br.carHeight = carHeight;
+		br.fade = fade;
 		const part = new THREE.BufferGeometry();
 		for ( const name in geometry.attributes ) part.setAttribute( name, geometry.attributes[ name ] );
 		part.setIndex( br.indices );
-		const mesh = new THREE.Mesh( part, roadMaterial );
+		const mesh = new THREE.Mesh( part, road.material.clone() );
 		mesh.castShadow = mesh.receiveShadow = true;
-
-		const deckMaterial = bridgeMaterial();
-		const deck = buildBridges( path, terrain, deckMaterial, [ [ br.k0, br.k1 ] ] );
-		br.materials = [ roadMaterial, deckMaterial ];
+		const deck = buildBridges( path, terrain, bridgeMaterial(), [ [ br.k0, br.k1 ] ] );
+		br.materials = [];
+		br.layers = [];
 		br.indices = null;
-		// Transparent from the start: three compiles an opaque material with
-		// its alpha forced to 1, and turning transparent on later would need a
-		// recompile (a stutter right as the car goes under)
-		for ( const m of br.materials ) m.transparent = true;
-
-		// Faded, the bridge is several layers deep (road, deck top, underside,
-		// sides): each at 1/3 they added up to nearly opaque. A depth pre-pass
-		// (shown only while fading) keeps just the nearest surface, blended once
-		br.prepass = [];
-
-		// Drawn first among the transparent objects (renderOrder < 0): drawn
-		// after them (sorted by its centre, far off), a bridge — opaque at full
-		// opacity, but in the transparent list — painted over the ghost or the
-		// tyre marks on it (they don't write depth): the ghost vanished on bridges
-		for ( const m of deck ? [ mesh, deck ] : [ mesh ] ) {
-
-			m.renderOrder = - 1;
-			group.add( m );
-			const depth = new THREE.Mesh( m.geometry, PREPASS );
-			depth.renderOrder = - 2;
-			depth.visible = false;
-			group.add( depth );
-			br.prepass.push( depth );
-
+		for ( const opaque of deck ? [ mesh, deck ] : [ mesh ] ) {
+			const translucent = opaque.material.clone();
+			translucent.transparent = true;
+			translucent.depthWrite = false;
+			bridgeLayerMaterial( translucent, carHeight, fade, true );
+			bridgeLayerMaterial( opaque.material, carHeight, fade, false );
+			opaque.material.transparent = false;
+			opaque.material.opacity = 1;
+			group.add( opaque );
+			const overlay = new THREE.Mesh( opaque.geometry, translucent );
+			overlay.renderOrder = 101;
+			overlay.receiveShadow = true;
+			const depthMaterial = bridgeLayerMaterial( new THREE.MeshBasicMaterial( {
+				colorWrite: false, transparent: true, depthWrite: true, side: THREE.DoubleSide,
+			} ), carHeight, fade, true );
+			const depth = new THREE.Mesh( opaque.geometry, depthMaterial );
+			depth.renderOrder = 100;
+			group.add( depth, overlay );
+			br.materials.push( translucent );
+			br.layers.push( depth, overlay );
 		}
 
 	}
@@ -431,6 +449,7 @@ export function fadingBridges( path, terrain, road ) {
 
 			for ( const br of bridges ) {
 
+				br.carHeight.value = car.y;
 				const B = br.box;
 				let hides = false;
 
@@ -450,13 +469,17 @@ export function fadingBridges( path, terrain, road ) {
 				}
 
 				const target = hides ? FADE_OPACITY : 1;
-				if ( br.opacity === target ) continue;
+				if ( br.opacity === target ) {
+					for ( const layer of br.layers ) layer.visible = br.opacity < 1;
+					continue;
+				}
 				br.opacity += ( target - br.opacity ) * ( 1 - Math.exp( - dt * FADE_RATE ) );
 				if ( Math.abs( br.opacity - target ) < 0.01 ) br.opacity = target;
 
+				br.fade.value = br.opacity;
 				for ( const m of br.materials ) m.opacity = br.opacity;
+				for ( const layer of br.layers ) layer.visible = br.opacity < 1;
 
-				for ( const d of br.prepass ) d.visible = br.opacity < 1;
 
 			}
 

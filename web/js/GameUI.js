@@ -6,6 +6,7 @@ import { t } from './i18n.js';
 import { useHudTheme } from './HudTheme.js';
 
 const GHOST_LABELS = { off: t( 'pause.ghostOff' ), record: t( 'pause.ghostRecord' ), tas: 'TAS' };
+const CAMERA_VIEWS = [ 'iso', 'chase' ];
 
 const CSS = `
 	.ui-corner {
@@ -17,6 +18,20 @@ const CSS = `
 	.ui-corner:hover { background: #fff; }
 	@media (pointer: fine) { .ui-corner { display: none; } } /* a touch screen has no Escape key */
 	.ui-corner span { display: block; width: 5px; height: 16px; background: var(--ink); border-radius: 2px; box-shadow: 8px 0 0 var(--ink); margin-left: -8px; }
+	.ui-camera-switch { position: absolute; top: 24px; right: 24px; z-index: 21; max-width: calc(100vw - 250px);
+		border: 0; border-radius: 14px; padding: 12px 16px; background: var(--card); color: var(--ink); box-shadow: var(--shadow-small); font: 900 14px var(--text); cursor: pointer; }
+	.ui-camera-switch.multiplayer { top: 130px; }
+	.ui-camera-switch:disabled { cursor: default; }
+	.ui-camera-switch:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+	@media (pointer: coarse) { .ui-camera-switch { right: 84px; } }
+	.ui-start-countdown { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; pointer-events: none;
+		color: var(--accent-light); font: clamp(64px, 14vw, 150px)/1 var(--brand); text-shadow: var(--lift); text-transform: uppercase; }
+	.ui-start-countdown[hidden] { display: none; }
+	.ui-camera-label { margin-top: 8px; font-size: 13px; color: var(--muted); }
+	.ui-camera-options { display: flex; gap: 6px; }
+	.ui-card .ui-camera-options button { flex: 1; padding: 12px 8px; font-size: 14px; text-align: center; }
+	.ui-card .ui-camera-options button[aria-pressed=true] { background: var(--ink); color: #fff; }
+	.ui-card .ui-camera-options button:disabled { cursor: default; opacity: 0.6; }
 	.ui-overlay {
 		position: absolute; inset: 0; z-index: 30; display: none;
 		align-items: center; justify-content: center;
@@ -65,16 +80,35 @@ export class GameUI {
 		corner.addEventListener( 'click', () => this.setPaused( ! this.paused ) );
 		document.body.appendChild( corner );
 		this.corner = corner;
+		if ( actions.camera ) {
+			this.cameraSwitch = document.createElement( 'button' );
+			this.cameraSwitch.className = 'ui-camera-switch' + ( actions.camera.multiplayer ? ' multiplayer' : '' );
+			this.cameraSwitch.addEventListener( 'click', () => {
+				actions.camera.select( actions.camera.mode() === 'iso' ? 'chase' : 'iso' );
+				this.updateCameraControls();
+				this.cameraSwitch.blur();
+			} );
+			document.body.appendChild( this.cameraSwitch );
+		}
+		this.countdown = document.createElement( 'div' );
+		this.countdown.className = 'ui-start-countdown';
+		this.countdown.setAttribute( 'role', 'status' );
+		this.countdown.setAttribute( 'aria-live', 'assertive' );
+		this.countdown.hidden = true;
+		document.body.appendChild( this.countdown );
 
 		this.pauseEl = this.overlay(
 			`<h2>${ t( 'pause.title' ) }</h2>` +
 			`<button class="primary" data-a="resume">${ t( 'pause.resume' ) }</button>` +
+			( actions.camera ? `<b class="ui-camera-label">${ t( 'lobby.camera' ) }</b><div class="ui-camera-options" role="group" aria-label="${ t( 'lobby.camera' ) }">` +
+				CAMERA_VIEWS.map( ( view ) => `<button data-camera="${ view }">${ t( 'lobby.cameras.' + view ) }</button>` ).join( '' ) + '</div>' : '' ) +
 			( actions.ghost ? '<button data-a="ghost"></button>' : '' ) +
 			( actions.performance ? `<button data-a="performance">${ t( actions.performance.enabled() ? 'pause.performanceOn' : 'pause.performanceOff' ) }</button>` : '' ) +
 			( actions.onRestart ? `<button data-a="restart">${ t( 'pause.restart' ) }</button>` : '' ) +
 			`<button data-a="menu">${ t( 'pause.menu' ) }</button>`
 		);
 		this.updateGhostButton();
+		this.updateCameraControls();
 
 		this.resultEl = this.overlay( '' );
 
@@ -99,6 +133,12 @@ export class GameUI {
 		el.className = 'ui-overlay';
 		el.innerHTML = `<div class="ui-card">${ html }</div>`;
 		el.addEventListener( 'click', ( e ) => {
+			const cameraView = e.target.closest( 'button[data-camera]' )?.dataset.camera;
+			if ( cameraView && this.actions.camera ) {
+				this.actions.camera.select( cameraView );
+				this.updateCameraControls();
+				return;
+			}
 
 			const a = e.target.closest( 'button' )?.dataset.a;
 			if ( a ) this.act( a );
@@ -130,6 +170,23 @@ export class GameUI {
 		const button = this.pauseEl.querySelector( '[data-a="ghost"]' );
 		if ( button ) button.textContent = t( 'pause.ghost', { mode: GHOST_LABELS[ this.actions.ghost.mode() ] } );
 
+	}
+
+	updateCameraControls() {
+		const camera = this.actions.camera;
+		if ( !camera ) return;
+		this.cameraSwitch.textContent = t( 'lobby.camera' ) + ': ' + t( 'lobby.cameras.' + camera.mode() );
+		this.cameraSwitch.disabled = camera.locked();
+		this.cameraSwitch.title = camera.locked() ? t( 'lobby.hostOnly' ) : this.cameraSwitch.textContent;
+		for ( const button of this.pauseEl.querySelectorAll( '[data-camera]' ) ) {
+			button.setAttribute( 'aria-pressed', String( button.dataset.camera === camera.mode() ) );
+			button.disabled = camera.locked();
+		}
+	}
+
+	setCountdown( label ) {
+		if ( this.countdown.textContent !== label ) this.countdown.textContent = label;
+		this.countdown.hidden = !label;
 	}
 
 	setPaused( paused ) {
