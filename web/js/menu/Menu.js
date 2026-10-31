@@ -1,4 +1,5 @@
 import { Showroom, SLIDE } from './Showroom.js';
+import { setThemeSeason } from '../Theme.js';
 import { GARAGE_CARS, findCar, TRUCK_COLORS } from '../Cars.js';
 import { loadSettings, saveSettings, loadBest, formatTime, DEFAULT_KEYS, hasPlayedRally, markRallyPlayed } from '../Settings.js';
 import { isValidName, circuitId, fetchLeaderboard, fetchOnline, dailyBoardId } from '../Leaderboard.js';
@@ -842,6 +843,7 @@ function creditsBody() {
 		credit( t( 'legal.physics' ), t( 'legal.physicsText', { crashcat: link( 'https://github.com/isaac-mason/crashcat', 'crashcat' ) } ), 'MIT' ) +
 		credit( t( 'legal.music' ), t( 'legal.musicText', { andriig: 'andriig', pixabay: link( 'https://pixabay.com/music/', 'Pixabay' ) } ) ) +
 		credit( t( 'legal.sounds' ), t( 'legal.soundsText', { zapsplat: link( 'https://www.zapsplat.com', 'zapsplat.com' ), soundsnap: link( 'https://www.soundsnap.com', 'soundsnap.com' ) } ) ) +
+		credit( t( 'legal.backfires' ), `${ link( 'https://freesound.org/people/Jonas_Jocys/sounds/457733/', 'Audi R8 — Jonas Jocys' ) } · ${ link( 'https://creativecommons.org/licenses/by/4.0/', 'CC BY 4.0' ) } · ${ link( 'audio/backfire/NOTICE.txt', t( 'legal.backfireEdits' ) ) }` ) +
 		credit( t( 'legal.libraries' ), `${ link( 'https://threejs.org/', 'three.js' ) } · ${ link( 'https://gsap.com/', 'GSAP' ) } · ${ link( 'https://fonts.google.com/specimen/Figtree', 'Figtree' ) }` ) +
 		'</div>';
 
@@ -1236,7 +1238,7 @@ function act( a ) {
 	else if ( a === 'editor' ) leave( 'editor.html' );
 	else if ( a.startsWith( 'theme:' ) ) {
 
-		settings.rally.season = a.slice( 6 );
+		setThemeSeason( settings, a.slice( 6 ) );
 		save();
 		showroom.setSeason( settings.rally.season ); // the stages are dressed that way too
 		render(); // the outline moves, the photo on the left fades to it
@@ -1255,14 +1257,13 @@ function act( a ) {
 	}
 	else if ( a === 'profile' ) profileEl.click(); // the home's account card and music icon:
 	else if ( a === 'music' ) musicEl.click(); // the top bar's buttons, hidden there
-	else if ( a === 'season' ) showroom.nextHomeSeason().then( ( id ) => {
+	else if ( a === 'season' ) {
 
-		// The home's season (its own, not the stages'): the next one spreads from under the car
-		if ( ! id ) return;
-		settings.homeSeason = id;
+		showroom.nextHomeSeason();
+		setThemeSeason( settings, showroom.seasonId );
 		save();
 
-	} );
+	}
 	else if ( a === 'new-circuit' ) leave( 'editor.html?new' );
 	else if ( a === 'play' ) {
 
@@ -1394,7 +1395,7 @@ document.addEventListener( 'click', ( e ) => {
 		else if ( set === 'landscape' ) { endIntroRally(); settings.rally.landscape = landscapeOf( value ); }
 		else if ( set === 'season' ) {
 
-			settings.rally.season = value;
+			setThemeSeason( settings, value );
 			showroom.setSeason( value ); // the backdrop turns to that season
 
 		}

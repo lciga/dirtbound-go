@@ -194,6 +194,20 @@ export class HomeSet {
 
 	}
 
+	// Theme selected away from the home: prepare it for the next visit.
+	setSeason( id, showroom ) {
+
+		if ( id === this.seasonId ) return;
+		this.endFlow();
+		this.group.remove( this.world );
+		this.seasonId = id;
+		this.world = this.worldOf( id );
+		foldify( this.world, showroom.setChannel );
+		this.group.add( this.world );
+		this.fitLogo();
+
+	}
+
 	// A world of that season not on screen in the pile (the first one by default)
 	worldOf( id, free = false ) {
 

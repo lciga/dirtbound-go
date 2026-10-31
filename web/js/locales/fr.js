@@ -153,6 +153,8 @@ export default {
 		music: 'Musique',
 		musicText: 'Morceaux de guitare par {andriig} ({pixabay})',
 		sounds: 'Effets sonores',
+		backfires: 'Détonations d’échappement',
+		backfireEdits: 'Modifications de l’enregistrement',
 		soundsText: 'Lancements de roquettes : {zapsplat} · Explosions, éclairs, turbo et interface : {soundsnap}',
 		libraries: 'Bibliothèques',
 		licence: 'Licence {name}',

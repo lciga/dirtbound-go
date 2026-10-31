@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TrackPath, ROAD_HALF, ROAD_Y, roadPieces, finishWithoutArch } from './SplineTrack.js';
 import { CELL_RAW, GRID_SCALE, ORIENT_DEG, TRACK_CELLS } from './Track.js';
 import { plantForest } from './Forest.js';
+import { season, seasonScenery } from './Seasons.js';
 import { KitBatch, KIT_SCALE, BUILDING_SCALE, ARCHES, buildArch, NATURE_TREES, NATURE_TREE_SCALE, NATURE_BUSHES, NATURE_SCALE } from './Kit.js';
 
 // What stands around a circuit, with the Kenney racing kit (Kit.js): an arch
@@ -126,18 +127,18 @@ export function gridTrackModels( models, cells ) {
 
 // The trees of a GridMap circuit's forest cells (Track.js layout.forestCells),
 // planted one by one on their grass tiles (Forest.js)
-export function gridForest( models, layout ) {
+export function gridForest( models, layout, seasonId = 'summer' ) {
 
 	const CELL = CELL_RAW * GRID_SCALE;
 	const cells = layout.forestCells.map( ( [ gx, gz ] ) => ( { gx, gz, x: ( gx + 0.5 ) * CELL, y: ROAD_Y, z: ( gz + 0.5 ) * CELL } ) );
-	return plantForest( models, cells, CELL );
+	return plantForest( models, cells, CELL, { seasonId } );
 
 }
 
 // A GridMap circuit's dressing (Track.js buildTrack's layout), added to the
 // scene; performance mode keeps to plain tiles. Nothing if the pieces do not
 // make a loop.
-export function dressGridTrack( scene, models, layout ) {
+export function dressGridTrack( scene, models, layout, seasonId = 'summer' ) {
 
 	const path = models.kit && layout?.tiles ? pathFromCells( layout.cells ) : null;
 	if ( ! path ) return;
@@ -150,7 +151,7 @@ export function dressGridTrack( scene, models, layout ) {
 		return type ? { y: 0, type: plain ? 'decoration-empty' : type } : null;
 
 	};
-	scene.add( dressCircuit( models.kit, path, { heightAt: () => 0 }, tileAt, { startS: 0, avoid: layout.avoid, nature: models.nature } ) );
+	scene.add( seasonScenery( dressCircuit( models.kit, path, { heightAt: () => 0 }, tileAt, { startS: 0, avoid: layout.avoid, nature: models.nature, leaves: season( seasonId ).leaves } ), seasonId ) );
 
 }
 

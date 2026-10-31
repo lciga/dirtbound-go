@@ -25,13 +25,16 @@ import { loadCar, findCar } from './Cars.js';
 import { loadSettings, saveSettings, saveBest, loadBest } from './Settings.js';
 import { MenuMusic } from './menu/MenuMusic.js';
 import { createUltraEffects, createDofPass, setDof, setFocus } from './Ultra.js';
-import { season, applySeasonLight, SEASONS } from './Seasons.js';
+import { season, applySeasonLight, seasonScenery, SEASONS } from './Seasons.js';
 import { CircuitOnline } from './CircuitOnline.js';
 import { listenKonami, isBoostUnlocked, COUNT_BOOSTED } from './Boost.js';
 import { fetchPublished } from './Circuits.js';
 import { applyAtmosphere, setFogRange } from './Atmosphere.js';
 import { GameUI } from './GameUI.js';
 import { RaceStart } from './RaceStart.js';
+import { LaunchBurnout } from './LaunchBurnout.js';
+import { themeSeason } from './Theme.js';
+import { addCarDecal } from './CarDecal.js';
 import { AdaptiveResolution } from './AdaptiveResolution.js';
 import { FrameMonitor } from './FrameMonitor.js';
 import { PageLoading, leavePage } from './PageTransition.js';
@@ -190,6 +193,7 @@ async function loadModels() {
 
 				}
 
+				if ( name.startsWith( 'vehicle-' ) ) addCarDecal( models[ name ] );
 				resolve();
 
 			}, undefined, reject );
@@ -215,7 +219,9 @@ async function init() {
 
 	trackView( 'play' );
 	registerAll();
-	await loadModels();
+	// Load the environment alongside the selected car and room/track data.
+	// Capture failures immediately, including when an invalid lobby exits early.
+	const modelsRequest = loadModels().then( () => ( {} ), ( error ) => ( { error } ) );
 
 	// Circuits drawn in an editor (track=, map=) come after the # (play.html#track=…):
 	// the fragment never reaches the server, so no "URI too large" however big the
@@ -276,7 +282,7 @@ async function init() {
 	const mapParam = params.get( 'map' );
 	const rallyParam = params.get( 'rally' );
 	let rallySeed = null;
-	const rallySeason = Object.hasOwn( SEASONS, params.get( 'season' ) ) ? params.get( 'season' ) : 'summer'; // ?season=spring|autumn|winter
+	const rallySeason = themeSeason( settings, params.get( 'season' ) );
 	const rallyLandscape = landscapeOf( params.get( 'landscape' ) ); // ?landscape=low|high (old ?style= links: ignored)
 	let customCells = null;
 	let path = null;
@@ -391,16 +397,20 @@ async function init() {
 
 	// Performance mode: decoration tiles become plain grass (no trees, no tents)
 	// Test mode: the bare ground, no decoration tiles (their trees) and no dressing
+	const modelsResult = await modelsRequest;
+	if ( modelsResult.error ) throw modelsResult.error;
+	applySeasonLight( rallySeason, dirLight, hemiLight );
 	const sceneModels = testMode ? { ...models, kit: null, nature: null, 'decoration-forest': null, 'decoration-empty': null }
 		: lowSpec ? { ...models, 'decoration-forest': models[ 'decoration-empty' ] } : models;
 	let bridges = null; // spline circuits: they fade while the car is under them
-	if ( path ) bridges = buildSplineTrack( scene, sceneModels, path, terrain ).userData.bridges;
+	if ( path ) bridges = buildSplineTrack( scene, sceneModels, path, terrain, rallySeason ).userData.bridges;
 	else if ( rallySeed === null ) {
 
 		const gridModels = gridTrackModels( sceneModels, customCells ); // the kit's arch replaces the finish tile's
 		const layout = buildTrack( scene, gridModels, customCells );
-		scene.add( gridForest( gridModels, layout ) );
-		dressGridTrack( scene, gridModels, layout );
+		seasonScenery( layout.group, rallySeason );
+		scene.add( gridForest( gridModels, layout, rallySeason ) );
+		dressGridTrack( scene, gridModels, layout, rallySeason );
 
 	}
 
@@ -431,7 +441,6 @@ async function init() {
 		// ?landscape=low|high (RallyBiomes.js), varied otherwise;
 		// ?length=<m> for a limited stage (endless without it)
 		stage = new RallyStage( scene, world, models, rallySeed, rallyLandscape, Number( params.get( 'length' ) ) || 0, { props: ! lowSpec, ultra, seasonId: rallySeason, forest: ultra && ! multi ? 2 : 1 } ); // Ultra, solo: twice the trees
-		applySeasonLight( rallySeason, dirLight, hemiLight );
 		stage.autoStream = false; // streamed once per frame in animate(), not every physics step
 		spawn = stage.spawn();
 
@@ -571,7 +580,7 @@ async function init() {
 
 	} else console.warn( car.error.message + ', using the truck' );
 
-	const vehicleGroup = vehicle.init( carModel );
+	const vehicleGroup = vehicle.init( addCarDecal( carModel ) );
 	scene.add( vehicleGroup );
 	vehicle.respawn( vehicle.spawnPosition.toArray(), vehicle.spawnAngle );
 
@@ -693,7 +702,6 @@ async function init() {
 	// recording + submission lives here (fed in the loop below, finished in stage.onFinish)
 	const dailyRally = dailyMode && stage ? new GhostRecorder() : null;
 
-	const _forward = new THREE.Vector3();
 	const _camLead = new THREE.Vector3();
 
 	const spectatorHits = [];
@@ -704,18 +712,11 @@ async function init() {
 		onContactAdded( bodyA, bodyB ) {
 
 			if ( bodyA !== sphereBody && bodyB !== sphereBody ) return;
-			if ( bodyA === groundBody || bodyB === groundBody ) return; // only walls make impact sounds
+			if ( bodyA === groundBody || bodyB === groundBody ) return;
 
 			// A spectator: handled after the step (it removes the body)
 			const other = bodyA === sphereBody ? bodyB : bodyA;
 			if ( stage && stage.isSpectator( other ) ) spectatorHits.push( other );
-
-			_forward.set( 0, 0, 1 ).applyQuaternion( vehicle.container.quaternion );
-			_forward.y = 0;
-			_forward.normalize();
-
-			const impactVelocity = Math.abs( vehicle.modelVelocity.dot( _forward ) );
-			audio.playImpact( impactVelocity );
 
 		}
 	};
@@ -913,6 +914,7 @@ async function init() {
 
 	let sceneReady = false;
 	const start = !sync ? new RaceStart() : null;
+	const launchBurnout = new LaunchBurnout();
 	const timer = new THREE.Timer();
 	const noInput = { x: 0, z: 0, handbrake: false, touchActive: false };
 
@@ -1043,6 +1045,7 @@ async function init() {
 	function backOnRoad( reason, penalty = RESET_PENALTY, shown = penalty ) {
 
 		if ( ! stage || resetting || stage.finished ) return;
+		launchBurnout.cancel();
 		resetting = true;
 		offTrackTime = stuckTime = 0;
 		showToast( `${ reason } · <b>+${ shown } s</b>`, 1550 );
@@ -1087,6 +1090,7 @@ async function init() {
 
 	function restartLap() {
 
+		launchBurnout.cancel();
 		restartDue = false;
 		const start = flying.start;
 
@@ -1229,12 +1233,14 @@ async function init() {
 		_camLead.set( 0, 0, 1 ).applyQuaternion( vehicle.container.quaternion ).multiplyScalar( Math.sqrt( mv.x * mv.x + mv.z * mv.z ) );
 		const effects = () => {
 
+			const burnout = launchBurnout.update( frameTime, sceneReady && ( sync ? sync.started : ! start.blocked ), input.z, sync ? sync.raceTime : null );
+			if ( burnout ) for ( const wheel of vehicle.wheels ) wheel.rotation.x += dt * 40 * burnout;
 			cam.update( dt, _renderSphere, _camLead, { quaternion: vehicle.container.quaternion, speed: Math.abs( vehicle.linearSpeed ) / MAX_SPEED, groundAt: cameraGround } );
 			if ( sky ) sky.follow( cam.camera );
 			if ( bridges ) bridges.update( _renderSphere, cam.camera, dt );
-			if ( particles ) particles.update( dt, vehicle );
-			driftMarks.update( dt, vehicle );
-			audio.update( dt, vehicle.linearSpeed / MAX_SPEED, input.z, vehicle.driftIntensity );
+			if ( particles ) particles.update( dt, vehicle, burnout );
+			driftMarks.update( dt, vehicle, burnout );
+			audio.update( dt, vehicle.linearSpeed / MAX_SPEED, input.z, Math.max( vehicle.driftIntensity, burnout * 1.7 ) );
 			if ( online ) online.render( alpha * PHYSICS_STEP );
 			if ( sync ) sync.render();
 			if ( bench ) bench.frame();

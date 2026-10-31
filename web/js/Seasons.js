@@ -207,3 +207,25 @@ export function seasonMaterial( material, id, { snow = false, perObject = false,
 	return m;
 
 }
+
+// Circuit scenery shares materials across hundreds of meshes. Recolour
+// once per source material, retaining batching and the original geometry.
+export function seasonScenery( object, id ) {
+
+	if ( id === 'summer' ) return object;
+	const materials = new Map();
+	const themed = ( m ) => {
+
+		if ( ! m.isMeshStandardMaterial ) return m;
+		if ( ! materials.has( m ) ) materials.set( m, seasonMaterial( m, id ) );
+		return materials.get( m );
+
+	};
+	object.traverse( ( o ) => {
+
+		if ( o.isMesh ) o.material = Array.isArray( o.material ) ? o.material.map( themed ) : themed( o.material );
+
+	} );
+	return object;
+
+}

@@ -125,7 +125,7 @@ export function buildTrack( scene, models, customCells ) {
 	// forestCells: [ gx, gz ] drawn as grass, for CircuitDressing.gridForest
 	// to plant trees one by one (not in performance mode, where forest tiles
 	// are already plain ones)
-	const layout = { cells: customCells || TRACK_CELLS, tiles: null, avoid: customCells ? [] : NPC_TRUCKS.map( ( t ) => [ t[ 1 ], t[ 3 ], 1.6 ] ), forestCells: [] };
+	const layout = { group: trackGroup, cells: customCells || TRACK_CELLS, tiles: null, avoid: customCells ? [] : NPC_TRUCKS.map( ( t ) => [ t[ 1 ], t[ 3 ], 1.6 ] ), forestCells: [] };
 	const plantTrees = models[ 'decoration-forest' ] !== models[ 'decoration-empty' ];
 
 	const trackPieceGroup = new THREE.Group();

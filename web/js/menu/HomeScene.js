@@ -320,7 +320,7 @@ function dropDegenerate( geometry ) {
 export async function buildLogo( spec = LOGO ) {
 
 	const font = new FontLoader().parse( await ( await fetch( LOGO_FONT ) ).json() );
-	const text = 'DIRTBOUND';
+	const text = '1sk4nd3r';
 	const options = { font, size: 1, depth: 1, curveSegments: 8, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.015, bevelSegments: 2 };
 
 	// Laid out like TextGeometry would: each glyph at the sum of the advances before it

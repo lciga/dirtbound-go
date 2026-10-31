@@ -142,6 +142,8 @@ export default {
 		music: 'Музыка',
 		musicText: 'Гитарные треки: {andriig} ({pixabay})',
 		sounds: 'Звуковые эффекты',
+		backfires: 'Отстрелы выхлопа',
+		backfireEdits: 'Обработка записи',
 		soundsText: 'Запуски ракет: {zapsplat} · Взрывы, молнии, турбо и интерфейс: {soundsnap}',
 		libraries: 'Библиотеки',
 		licence: 'Лицензия {name}',

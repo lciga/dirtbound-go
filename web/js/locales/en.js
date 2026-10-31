@@ -149,6 +149,8 @@ export default {
 		music: 'Music',
 		musicText: 'Guitar tracks by {andriig} ({pixabay})',
 		sounds: 'Sound effects',
+		backfires: 'Exhaust backfires',
+		backfireEdits: 'Recording edits',
 		soundsText: 'Rocket launches: {zapsplat} · Explosions, lightning, turbo and interface: {soundsnap}',
 		libraries: 'Libraries',
 		licence: '{name} licence',

@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { createImpactBuffer } from './ImpactSound.js';
 import { EngineSound } from './EngineSound.js';
 import { onAudioFocus, isAway } from './AudioFocus.js';
 import { Gearbox } from './Gearbox.js';
@@ -9,11 +8,6 @@ function remap( value, inMin, inMax, outMin, outMax ) {
 	return outMin + ( outMax - outMin ) * ( ( value - inMin ) / ( inMax - inMin ) );
 
 }
-
-// Collisions below this velocity use the dull-knock buffer set, above it the
-// crunch set; velocity also drives per-hit volume and tone up to the ceiling.
-const IMPACT_HARD_VELOCITY = 2.5;
-const IMPACT_MAX_VELOCITY = 6;
 
 // Camera follows at ~16 units. refDistance well below that puts a source
 // ~7 dB down at nominal distance — the environment should sound "over there".
@@ -94,16 +88,12 @@ export class GameAudio {
 		this.listener = null;
 		this.target = null;
 		this.reverbSend = null;
-		this.impactReverbSend = null;
 		this.engineReverbSend = null;
 		this.engineGain = null;
 		this.engine = null;
 		this.gearbox = new Gearbox();
 		this.skidSound = null;
 		this.skidTone = null;
-		this.impactBuffers = [];
-		this.impactPlayers = [];
-		this.impactIndex = 0;
 		this.distanceFilters = [];
 		this.unlocked = false;
 
@@ -124,9 +114,7 @@ export class GameAudio {
 
 		this.target = target;
 
-		// Shared outdoor reverb: sources send into one convolver. Impacts get
-		// a hotter send — a crash reads as "in the world" mainly through its
-		// environmental tail, which a brief transient otherwise barely excites.
+		// Shared outdoor reverb for the engine and tyres.
 		const ctx = this.listener.context;
 		const convolver = ctx.createConvolver();
 		convolver.buffer = createOutdoorIR( ctx );
@@ -135,10 +123,6 @@ export class GameAudio {
 		this.reverbSend = ctx.createGain();
 		this.reverbSend.gain.value = 0.15;
 		this.reverbSend.connect( convolver );
-
-		this.impactReverbSend = ctx.createGain();
-		this.impactReverbSend.gain.value = 0.35;
-		this.impactReverbSend.connect( convolver );
 
 		this.engineReverbSend = ctx.createGain();
 		this.engineReverbSend.gain.value = 0.11;
@@ -155,13 +139,6 @@ export class GameAudio {
 		const skid = this.createSampleSource( this.reverbSend );
 		this.skidSound = skid.sound;
 		this.skidTone = skid.tone;
-
-		// Collision one-shots: two hardness sets of three seeded variations
-		// each (soft knocks dully, hard crunches). Three shared players swap
-		// in a random buffer per hit and add rate/tone variation on top.
-		for ( let i = 0; i < 3; i ++ ) this.impactBuffers.push( createImpactBuffer( ctx, i + 1, 0.4 ) );
-		for ( let i = 0; i < 3; i ++ ) this.impactBuffers.push( createImpactBuffer( ctx, i + 4, 1.0 ) );
-		for ( let i = 0; i < 3; i ++ ) this.impactPlayers.push( this.createSampleSource( this.impactReverbSend ) );
 
 		const loader = new THREE.AudioLoader();
 
@@ -348,41 +325,6 @@ export class GameAudio {
 			this.skidTone.frequency.setTargetAtTime( 2500 + intensity01 * 7500, now, 0.1 );
 
 		}
-
-	}
-
-	playImpact( impactVelocity ) {
-
-		if ( ! this.unlocked ) return;
-
-		// Round-robin a player; swap in a random buffer from the soft or hard
-		// set so repeated hits of the same strength still differ.
-		const { sound, tone } = this.impactPlayers[ this.impactIndex % this.impactPlayers.length ];
-		this.impactIndex ++;
-
-		const set = impactVelocity < IMPACT_HARD_VELOCITY ? 0 : 3;
-		const buffer = this.impactBuffers[ set + ( Math.random() * 3 | 0 ) ];
-
-		if ( sound.isPlaying ) sound.stop();
-		sound.setBuffer( buffer );
-
-		const volume = THREE.MathUtils.clamp(
-			remap( impactVelocity, 0, IMPACT_MAX_VELOCITY, 0.01, 1.0 ), 0.01, 1.0 );
-		sound.setVolume( volume );
-
-		// Variation on top of the seeded buffers: pitch jitter per hit,
-		// tone tracks hit strength
-		sound.setPlaybackRate( 0.9 + Math.random() * 0.2 );
-
-		const brightness = THREE.MathUtils.clamp( impactVelocity / IMPACT_MAX_VELOCITY, 0, 1 );
-		tone.frequency.value = ( 2500 + brightness * 9000 ) * ( 0.8 + Math.random() * 0.4 );
-
-		sound.play();
-
-		// PositionalAudio only tracks the panner while playing, so a one-shot
-		// otherwise starts at a stale position. Snap it to the car now that
-		// it's playing, so the crash attack is localised from the first sample.
-		sound.updateMatrixWorld( true );
 
 	}
 

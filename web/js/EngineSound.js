@@ -1,3 +1,6 @@
+import { ExhaustBackfire } from './Backfire.js';
+import { TurboSound } from './TurboSound.js';
+
 // Sample-based engine, ported from Overtake (js/audio/engineSound.js).
 //
 // Real recorded loops, one per rpm step (audio/nsx/<rpm>.wav), crossfaded and
@@ -143,7 +146,11 @@ export class EngineSound {
 		this.rasp.gain.value = 0;
 
 		this.output = ctx.createGain();
-		this.output.gain.value = 0.5;
+		this.combustion = ctx.createGain();
+		this.combustion.gain.value = 0.5;
+		this.combustion.connect( this.output );
+		this.backfire = new ExhaustBackfire( ctx, this.output );
+		this.turbo = new TurboSound( ctx, this.output );
 
 		// One shared wobble source on every loop's playbackRate: same engine,
 		// same tremor, coherent during crossfades.
@@ -160,16 +167,17 @@ export class EngineSound {
 		limiterChop.frequency.value = LIMITER_CHOP_HZ;
 		this.limiterDepth = ctx.createGain();
 		this.limiterDepth.gain.value = 0;
-		limiterChop.connect( this.limiterDepth ).connect( this.output.gain );
+		limiterChop.connect( this.limiterDepth ).connect( this.combustion.gain );
 		limiterChop.start();
 
-		this.bus.connect( this.tone ).connect( this.rasp ).connect( this.output );
+		this.bus.connect( this.tone ).connect( this.rasp ).connect( this.combustion );
 
 	}
 
 	async load() {
 
 		const ctx = this.ctx;
+		const backfireReady = this.backfire.load().catch( ( e ) => console.warn( 'Backfire samples unavailable:', e ) );
 
 		const loaded = await Promise.all( BANK_RPMS.map( async ( rpm ) => {
 
@@ -196,6 +204,7 @@ export class EngineSound {
 				return { rpm, logRpm: Math.log( rpm ), norm, source, gain };
 
 			} );
+		await backfireReady;
 
 	}
 
@@ -242,7 +251,7 @@ export class EngineSound {
 		this.tone.frequency.setTargetAtTime( offCutoff + ( 18000 - offCutoff ) * load, t, 0.06 );
 
 		const baseGain = 0.38 + 0.42 * load + 0.20 * rpmNorm;
-		this.output.gain.setTargetAtTime( baseGain, t, baseGain > this.prevBaseGain ? 0.02 : 0.07 );
+		this.combustion.gain.setTargetAtTime( baseGain, t, baseGain > this.prevBaseGain ? 0.02 : 0.07 );
 		this.prevBaseGain = baseGain;
 
 		// Up to +7 dB above 1.8 kHz while revving up on throttle
@@ -253,6 +262,8 @@ export class EngineSound {
 
 		const atLimiter = state.rpm >= state.redline - 60 && load > 0.5;
 		this.limiterDepth.gain.setTargetAtTime( atLimiter ? baseGain * 0.55 : 0, t, 0.02 );
+		this.backfire.update( state );
+		this.turbo.update( dtA, state );
 
 	}
 

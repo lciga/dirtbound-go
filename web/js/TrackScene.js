@@ -5,6 +5,7 @@ import { TERRAIN_LIMIT, buildGroundGeometry, rockGroundMaterial } from './Terrai
 import { dressCircuit, circuitArch } from './CircuitDressing.js';
 import { plantForest } from './Forest.js';
 import { fadingBridges, headroom } from './Bridges.js';
+import { season, seasonMaterial, seasonScenery } from './Seasons.js';
 
 // Visuals for a spline track: bent road, sculpted ground, decoration grid,
 // and with the racing kit loaded (models.kit) the circuit's dressing
@@ -94,7 +95,7 @@ function reachMap( path, reach ) {
 
 }
 
-export function buildSplineTrack( scene, models, path, terrain ) {
+export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summer' ) {
 
 	const group = new THREE.Group();
 
@@ -114,7 +115,8 @@ export function buildSplineTrack( scene, models, path, terrain ) {
 
 	// Grass, grey rock where the ground is too steep (cliffs, as on the rally
 	// stages) with a ragged edge, flat grass out to the horizon around the relief
-	const ground = new THREE.Mesh( buildGroundGeometry( terrain, { grass: GRASS_UV, yOffset: TERRAIN_SINK, centre: [ bounds.centerX, bounds.centerZ ] } ), rockGroundMaterial( straight.material, ROCK_UV ) );
+	const groundMaterial = seasonId === 'summer' ? rockGroundMaterial( straight.material, ROCK_UV ) : seasonMaterial( straight.material, seasonId, { rock: ROCK_UV } );
+	const ground = new THREE.Mesh( buildGroundGeometry( terrain, { grass: GRASS_UV, yOffset: TERRAIN_SINK, centre: [ bounds.centerX, bounds.centerZ ] } ), groundMaterial );
 	ground.castShadow = true;
 	ground.receiveShadow = true;
 	group.add( ground );
@@ -218,7 +220,7 @@ export function buildSplineTrack( scene, models, path, terrain ) {
 
 			}
 
-			group.add( inst );
+			group.add( seasonScenery( inst, seasonId ) );
 
 		} );
 
@@ -234,7 +236,7 @@ export function buildSplineTrack( scene, models, path, terrain ) {
 
 	};
 	const canGrow = ( x, z, top, r ) => top < headroom( path, terrain, x, z, r ) - 0.2;
-	group.add( plantForest( models, forestCells, CELL, { ground: plantGround, canGrow } ) );
+	group.add( plantForest( models, forestCells, CELL, { ground: plantGround, canGrow, seasonId } ) );
 
 	// The dressing keeps off the forest tiles (in performance mode they are
 	// all plain grass)
@@ -247,7 +249,7 @@ export function buildSplineTrack( scene, models, path, terrain ) {
 			return t && plain ? { y: t.y, type: 'decoration-empty' } : t || null;
 
 		};
-		group.add( dressCircuit( models.kit, path, terrain, tileAt, { nature: models.nature, plantGround, canGrow } ) );
+		group.add( seasonScenery( dressCircuit( models.kit, path, terrain, tileAt, { nature: models.nature, plantGround, canGrow, leaves: season( seasonId ).leaves } ), seasonId ) );
 
 	}
 

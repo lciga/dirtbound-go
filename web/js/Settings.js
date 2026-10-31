@@ -3,6 +3,7 @@
 
 import { purgeBoostedBests } from './BoostPurge.js';
 import { landscapeOf } from './RallyBiomes.js';
+import { themeSeason } from './Theme.js';
 
 // Before any best time is read, by the menu or the game (once per browser)
 purgeBoostedBests();
@@ -65,6 +66,7 @@ export function loadSettings() {
 
 	// The graphics preset wins; older saves only had the performance flag
 	const graphics = GRAPHICS.includes( stored.graphics ) ? stored.graphics : stored.performance ? 'low' : 'normal';
+	const season = themeSeason( stored );
 	const keys = {};
 	for ( const action in DEFAULT_KEYS ) keys[ action ] = Array.isArray( stored.keys?.[ action ] ) ? stored.keys[ action ].slice( 0, 2 ) : [ ...DEFAULT_KEYS[ action ] ];
 	// The restart key was Retour arrière for a morning (2026-10-14): saved as such, it becomes R
@@ -74,12 +76,14 @@ export function loadSettings() {
 		...DEFAULT_SETTINGS,
 		...stored,
 		view: stored.view === 'chase' ? 'chase' : 'iso',
+		season,
+		homeSeason: season,
 		graphics,
 		performance: graphics === 'low',
 		volume: { ...DEFAULT_SETTINGS.volume, ...stored.volume },
 		dof: { ...DEFAULT_SETTINGS.dof, ...stored.dof },
 		keys,
-		rally: rallySettings( stored.rally ),
+		rally: { ...rallySettings( stored.rally ), season },
 	};
 
 }

@@ -264,14 +264,14 @@ export class DriftMarks {
 
 	}
 
-	update( dt, vehicle ) {
+	update( dt, vehicle, burnout = 0 ) {
 
-		const emit = vehicle.driftIntensity > 0.5 && Math.abs( vehicle.linearSpeed ) > 0.15;
+		const intensity = Math.max( vehicle.driftIntensity, burnout * 2 );
+		const emit = intensity > 0.5 && Math.abs( vehicle.linearSpeed ) > 0.15;
 
 		if ( ! emit && ! this.trails[ 0 ].active && ! this.trails[ 1 ].active ) return;
 
 		const groundY = vehicle.container.position.y + Y_OFFSET;
-		const intensity = vehicle.driftIntensity;
 
 		this.trails[ 0 ].track( vehicle.wheelBL, groundY, intensity, emit );
 		this.trails[ 1 ].track( vehicle.wheelBR, groundY, intensity, emit );

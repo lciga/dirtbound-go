@@ -837,7 +837,12 @@ export class Showroom {
 
 		const home = this.sets.home;
 		if ( ! home || this.active !== home || this.move ) return null;
-		return home.nextSeason( this );
+		const changed = home.nextSeason( this );
+		// nextSeason selects its world before asynchronously compiling shaders.
+		// Keep rapid clicks and a race launched during the transition in sync.
+		this.setSeason( home.seasonId );
+		await changed;
+		return home.seasonId;
 
 	}
 
@@ -848,7 +853,7 @@ export class Showroom {
 
 		if ( id === this.seasonId ) return;
 		this.seasonId = id;
-		for ( const set of Object.values( this.sets ) ) set.setSeason?.( id );
+		for ( const set of Object.values( this.sets ) ) set.setSeason?.( id, this );
 		if ( this.active && this.active.stale && ! this.move ) this.changePlace( this.place, this.showWalls );
 
 	}

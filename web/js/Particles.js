@@ -122,9 +122,9 @@ export class SmokeTrails {
 
 	}
 
-	update( dt, vehicle ) {
+	update( dt, vehicle, burnout = 0 ) {
 
-		const drift = vehicle.driftIntensity;
+		const drift = Math.max( vehicle.driftIntensity, burnout * 2 );
 		const shouldEmit = drift > 0.7;
 
 		if ( shouldEmit ) {

@@ -47,7 +47,7 @@ const _m = new THREE.Object3D();
 // instead (relief: trees on slopes, sunk by them; null = nothing grows
 // there, rock); options.canGrow( x, z, top, r ): false keeps a plant whose
 // top would reach a bridge deck from growing under it. Returns a Group.
-export function plantForest( models, cells, cell, { ground = null, canGrow = null } = {} ) {
+export function plantForest( models, cells, cell, { ground = null, canGrow = null, seasonId = 'summer' } = {} ) {
 
 	const group = new THREE.Group();
 	if ( ! cells.length ) return group;
@@ -150,8 +150,8 @@ export function plantForest( models, cells, cell, { ground = null, canGrow = nul
 	}
 
 	const materials = [
-		seasonMaterial( props.material, 'summer' ),
-		nature ? seasonMaterial( new THREE.MeshStandardMaterial( { vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true } ), 'summer' ) : null,
+		seasonMaterial( props.material, seasonId ),
+		nature ? seasonMaterial( new THREE.MeshStandardMaterial( { vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true } ), seasonId ) : null,
 	];
 
 	for ( const natureKit of [ false, true ] ) {

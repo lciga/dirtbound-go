@@ -4,7 +4,8 @@
   "scripts": {
     "test:parity": "node tools/parity.mjs",
     "test:assets": "node tools/check-assets.mjs",
-    "test:race-start": "node --test tools/race-start.test.mjs"
+    "test:race-start": "node --test tools/race-start.test.mjs",
+    "test:customization": "node --test tools/customization.test.mjs"
   },
   "devDependencies": {
     "three": "0.185.1"

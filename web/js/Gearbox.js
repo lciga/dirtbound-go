@@ -31,10 +31,10 @@ const MIN_SHIFT_INTERVAL = 0.45; // s between two automatic shifts
 const CLUTCH_ENGAGE_RATE = 6; // 1/s
 
 // Normalized speed (|linearSpeed| / MAX_SPEED) at which each gear reaches
-// SHIFT_UP. Full throttle levels off at ~0.94 (lerp to MAX_SPEED at 1.5/s vs
-// LINEAR_DAMP 0.1), so top gear cruises just under the shift point, like
-// Overtake's 6th at top speed. Short low gears, long top one.
-const GEAR_TOP_SPEED = [ 0.3, 0.5, 0.72, 0.97 ];
+// SHIFT_UP. Full throttle levels off at ~0.94. The cosmetic top gear now
+// reaches the limiter near 0.925, making its chop/backfire audible at full
+// speed. This changes sound only; Vehicle.js still controls acceleration.
+const GEAR_TOP_SPEED = [ 0.3, 0.5, 0.72, 0.86 ];
 
 // The gearbox reads a lagged copy of the speed: the car itself levels off in
 // ~1.5 s, far too short to hear four gears. Rising follows slowly (each gear

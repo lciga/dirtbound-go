@@ -1,0 +1,11 @@
+Audi R8 Idling Reving Backfire.wav — Jonas Jocys (2019).
+Source: https://freesound.org/people/Jonas_Jocys/sounds/457733/
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Derived from the public HQ MP3 preview of the original recording.
+Edits: rear microphone, short excerpts at 71.725s (0.16s), 72.002s (0.14s),
+and 79.565s (0.14s); high-pass at 180 Hz to remove underlying engine rumble;
+peak normalization and edge fades; mono PCM16, 48 kHz WAV.
+Processed for the private DirtBound Go adaptation by lciga.
+No endorsement by the original author is implied.
