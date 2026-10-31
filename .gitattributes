@@ -1,0 +1,7 @@
+web/vendor/** -whitespace linguist-vendored
+web/js/vendor/** -whitespace linguist-vendored
+tools/reference/** linguist-vendored
+*.wasm binary
+*.car binary
+*.bin binary
+*.glb binary

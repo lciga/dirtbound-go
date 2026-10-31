@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr" data-ui="wait">
+<head>
+	<meta charset="utf-8">
+	<script>
+		// One address for the site: www and the old domain go to dirtbound.fr (the Google
+		// sign-in only trusts it, and the session cookie is its own)
+		if ( /^(www\.dirtbound\.fr|dirtbound\.victorboutros\.fr)$/.test( location.hostname ) ) location.replace( 'https://dirtbound.fr' + location.pathname + location.search + location.hash );
+	</script>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>DirtBound</title>
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<link rel="icon" href="favicon.ico" sizes="48x48">
+	<!-- Share preview (images/og.jpg: made with the photo lab, now lab/studio.html, format Partage 1200 × 630) -->
+	<meta name="description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
+	<meta name="theme-color" content="#e8590c">
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="DirtBound">
+	<meta property="og:title" content="DirtBound">
+	<meta property="og:description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
+	<meta property="og:url" content="https://dirtbound.fr/">
+	<meta property="og:image" content="https://dirtbound.fr/images/og.jpg">
+	<meta property="og:image:width" content="1200">
+	<meta property="og:image:height" content="630">
+	<meta property="og:image:alt" content="Des voitures de rallye en glisse sur une spéciale de terre, dans un nuage de poussière">
+	<meta property="og:locale" content="fr_FR">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="DirtBound">
+	<meta name="twitter:description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
+	<meta name="twitter:image" content="https://dirtbound.fr/images/og.jpg">
+	<style>
+		body { margin: 0; overflow: hidden; background: #000; }
+		canvas { display: block; touch-action: none; }
+	</style>
+	<script>
+		// Dev only (?capture, the trailer's gameplay; lab/Capture.js): the game's
+		// clock and frames handed over to the capture, the window 1920 × 1080 at ratio 1
+		if ( /[?&]capture\b/.test( location.search ) ) {
+
+			const q = new URLSearchParams( location.search ), size = ( q.get( 'size' ) || '1920x1080' ).split( 'x' ).map( Number );
+			const realNow = performance.now.bind( performance ), realRAF = window.requestAnimationFrame.bind( window );
+			let now = realNow(), callbacks = [];
+			const capture = window.__capture = { manual: false, fps: Number( q.get( 'fps' ) ) || 60, realNow, realRAF };
+			performance.now = () => now;
+			window.requestAnimationFrame = ( cb ) => callbacks.push( cb );
+			// One frame of the game, exactly 1 / fps later
+			capture.step = () => {
+
+				const due = callbacks;
+				callbacks = [];
+				now += 1000 / capture.fps;
+				for ( const cb of due ) cb( now );
+
+			};
+			// Until the capture takes over: frames in real time (loading); then an empty loop
+			// keeps the page drawing (a canvas toBlob waits for a drawn frame)
+			const pump = () => {
+
+				if ( ! capture.manual ) {
+
+					const due = callbacks;
+					callbacks = [];
+					now = realNow();
+					for ( const cb of due ) cb( now );
+
+				}
+
+				realRAF( pump );
+
+			};
+			realRAF( pump );
+			Object.defineProperty( window, 'innerWidth', { get: () => size[ 0 ] } );
+			Object.defineProperty( window, 'innerHeight', { get: () => size[ 1 ] } );
+			Object.defineProperty( window, 'devicePixelRatio', { get: () => 1 } );
+
+		}
+	</script>
+	<script type="importmap">
+	{
+		"imports": {
+			"three": "./vendor/three/build/three.module.js",
+			"three/addons/": "./vendor/three/examples/jsm/",
+			"crashcat": "./js/vendor/crashcat.js"
+		}
+	}
+	</script>
+	<style>
+		/* Page transition (js/PageTransition.js): white frame, 16:9 window, the loading bar */
+		#page-loader { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; pointer-events: none; }
+		#page-loader div { --w: min(56vw, 99.5vh); position: relative; width: var(--w); height: calc(var(--w) * 9 / 16); background: #f2f2f2; box-shadow: 0 0 0 100vmax #fff; transition: width 0.9s cubic-bezier(0.92, 0, 0.48, 1), height 0.9s cubic-bezier(0.92, 0, 0.48, 1); }
+		#page-loader i { position: absolute; inset: 0; background: #000; transform: scaleX(0); transform-origin: left; will-change: transform; transition: opacity 0.45s ease; }
+		#page-loader[data-state=fade] div, #page-loader[data-state=open] div { background: transparent; }
+		#page-loader[data-state=fade] i, #page-loader[data-state=open] i { opacity: 0; }
+		#page-loader[data-state=open] div { width: 100vw; height: 100vh; }
+		/* The HUD waits for the window to be open (PageLoading slides it in) */
+		html[data-ui=wait] body > :not(canvas, #page-loader) { visibility: hidden; }
+	</style>
+</head>
+<body>
+	<div id="page-loader" aria-hidden="true"><div><i></i></div></div>
+	<script type="module" src="js/main.js"></script>
+</body>
+</html>

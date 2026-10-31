@@ -1,0 +1,7 @@
+/bin/
+/data/
+*.tmp
+.DS_Store
+
+/node_modules/
+/tools/.parity-vehicle.mjs

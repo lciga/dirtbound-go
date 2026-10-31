@@ -1,0 +1,3089 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<script>
+		// One address for the site: www and the old domain go to dirtbound.fr (the Google
+		// sign-in only trusts it, and the session cookie is its own)
+		if ( /^(www\.dirtbound\.fr|dirtbound\.victorboutros\.fr)$/.test( location.hostname ) ) location.replace( 'https://dirtbound.fr' + location.pathname + location.search + location.hash );
+	</script>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>DirtBound · Éditeur de circuit</title>
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<link rel="icon" href="favicon.ico" sizes="48x48">
+	<style>
+		* { box-sizing: border-box; }
+		body { margin: 0; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+		canvas { display: block; touch-action: none; }
+
+		.panel {
+			background: rgba(255, 255, 255, 0.92);
+			backdrop-filter: blur(12px);
+			-webkit-backdrop-filter: blur(12px);
+			border: 1px solid rgba(0, 0, 0, 0.06);
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+		}
+
+		#toolbar {
+			position: absolute;
+			bottom: 20px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 8px 10px;
+			border-radius: 999px;
+			z-index: 10;
+		}
+
+		button.icon {
+			padding: 9px;
+			border: none;
+			border-radius: 999px;
+			background: transparent;
+			color: #4a5260;
+			cursor: pointer;
+			transition: all 0.15s;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		button.icon svg { width: 20px; height: 20px; display: block; }
+		button.icon:hover { background: rgba(0, 0, 0, 0.05); color: #1f2430; }
+		button.icon.active { background: #1f2430; color: #fff; box-shadow: 0 2px 6px rgba(31, 36, 48, 0.25); }
+		button.icon.toggle.active { background: #4a7fd6; box-shadow: 0 2px 6px rgba(74, 127, 214, 0.35); }
+		button.icon:disabled { opacity: 0.35; cursor: default; background: transparent; color: #4a5260; }
+		button.icon.action { background: #4caf6a; color: #fff; box-shadow: 0 2px 6px rgba(76, 175, 106, 0.3); }
+		button.icon.action:hover { background: #3f9a5a; color: #fff; }
+		button.icon.danger { color: #b3603a; }
+		button.icon.danger:hover { background: rgba(220, 100, 60, 0.12); color: #a64b25; }
+
+		.separator { width: 1px; height: 24px; background: rgba(0, 0, 0, 0.1); margin: 0 2px; flex-shrink: 0; }
+
+		/* Sub-panels above the toolbar */
+		.subpanel {
+			position: absolute;
+			bottom: 84px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: none;
+			align-items: center;
+			gap: 10px;
+			padding: 8px 12px;
+			border-radius: 16px;
+			z-index: 10;
+			font-size: 13px;
+			color: #1f2430;
+			white-space: nowrap;
+		}
+		.subpanel.show { display: flex; }
+		.subpanel label { display: flex; align-items: center; gap: 6px; color: #4a5260; }
+		.subpanel input[type=range] { width: 90px; accent-color: #4a7fd6; }
+		.subpanel .value { min-width: 44px; font-variant-numeric: tabular-nums; font-weight: 600; color: #1f2430; text-align: center; }
+		.chip {
+			border: none;
+			padding: 6px 11px;
+			border-radius: 999px;
+			background: rgba(0, 0, 0, 0.05);
+			color: #1f2430;
+			font: 500 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			cursor: pointer;
+		}
+		.chip:hover { background: rgba(0, 0, 0, 0.1); }
+		.chip.active { background: #1f2430; color: #fff; }
+		.chip.small { padding: 4px 10px; font-weight: 700; }
+		.subpanel .support { display: contents; }
+		.subpanel .support[hidden] { display: none; }
+
+		#hud {
+			position: absolute;
+			top: 12px;
+			left: 12px;
+			max-width: min(480px, calc(100vw - 80px));
+			padding: 12px 16px;
+			border-radius: 14px;
+			color: #1f2430;
+			font-size: 13px;
+			line-height: 1.45;
+			z-index: 10;
+			pointer-events: none;
+		}
+		#hud .title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+		#hud #hint { color: #4a5260; }
+		#hud #stats { margin-top: 8px; font-variant-numeric: tabular-nums; }
+		#hud #stats:empty { display: none; }
+		#hud .warn { color: #c0392b; font-weight: 600; }
+		#hud .caution { color: #c77c12; font-weight: 600; }
+		#hud .ok { color: #2e8b4e; font-weight: 600; }
+		kbd {
+			font: 600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			padding: 1px 5px;
+			border-radius: 4px;
+			background: rgba(0, 0, 0, 0.07);
+		}
+
+		#toast {
+			position: absolute;
+			top: 20px;
+			left: 50%;
+			transform: translateX(-50%);
+			padding: 10px 24px;
+			color: #1f2430;
+			border-radius: 999px;
+			font-size: 13px;
+			opacity: 0;
+			transition: opacity 0.3s;
+			pointer-events: none;
+			z-index: 20;
+			white-space: nowrap;
+		}
+		#toast.show { opacity: 1; }
+
+		#corner {
+			position: absolute;
+			top: 12px;
+			right: 12px;
+			display: flex;
+			gap: 8px;
+			z-index: 10;
+		}
+		#corner a, #corner button {
+			color: #1f2430;
+			font: 500 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			text-decoration: none;
+			padding: 9px 16px;
+			border-radius: 999px;
+			cursor: pointer;
+		}
+		#corner button.active { background: #1f2430; color: #fff; }
+
+		/* Drawing modes (toolbar) */
+		.modes { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, 0.05); }
+		.modes .chip { background: transparent; padding: 6px 10px; }
+		.modes .chip:hover { background: rgba(0, 0, 0, 0.07); }
+		.modes .chip.active { background: #1f2430; color: #fff; }
+
+		/* "Mes circuits" dialog */
+		.dialog { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 24, 32, 0.35); z-index: 30; }
+		.dialog.show { display: flex; }
+		.dialog .box { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px; border-radius: 18px; color: #1f2430; font-size: 13px; }
+		.dialog h2 { margin: 0 0 12px; font-size: 16px; }
+		.dialog .row { display: flex; gap: 8px; align-items: center; }
+		.dialog input { flex: 1; min-width: 0; font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.15); }
+		.dialog .note { color: #4a5260; margin: 8px 2px 0; line-height: 1.4; }
+		.dialog .note.error { color: #c0392b; font-weight: 600; }
+		.dialog .note.ok { color: #2e8b4e; font-weight: 600; }
+		.dialog .section { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7185; }
+		.dialog .primary { background: #4caf6a; color: #fff; }
+		.dialog .primary:hover { background: #3f9a5a; }
+		.dialog .actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+		#lib-list { display: flex; flex-direction: column; gap: 4px; }
+		#lib-list .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.04); }
+		#lib-list .item.current { outline: 2px solid #4a7fd6; }
+		#lib-list .item .name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		#lib-list .item .meta { color: #6b7185; font-size: 12px; }
+		#lib-list .badge { font-size: 11px; font-weight: 700; color: #2e8b4e; }
+		#lib-list:empty::before { content: attr(data-empty); color: #6b7185; }
+
+		/* SVG import dialog */
+		#svg-dialog {
+			position: absolute;
+			inset: 0;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			background: rgba(20, 24, 32, 0.35);
+			z-index: 30;
+		}
+		#svg-dialog.show { display: flex; }
+		#svg-dialog .box {
+			width: min(560px, calc(100vw - 32px));
+			max-height: calc(100vh - 32px);
+			overflow: auto;
+			padding: 18px 20px;
+			border-radius: 18px;
+			color: #1f2430;
+			font-size: 13px;
+		}
+		#svg-dialog h2 { margin: 0 0 2px; font-size: 16px; }
+		#svg-dialog .file { color: #4a5260; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		#svg-preview { width: 100%; height: 280px; border-radius: 12px; display: block; }
+		#svg-dialog .grid { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 10px; align-items: center; margin-top: 14px; }
+		#svg-dialog .grid input[type=range] { width: 100%; accent-color: #4a7fd6; }
+		#svg-dialog .grid select { font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.15); grid-column: 2 / 4; }
+		#svg-dialog .value { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 52px; text-align: right; }
+		#svg-dialog .value input[type=number] { width: 64px; font: inherit; text-align: right; padding: 2px 4px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); }
+		#svg-dialog .checks { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; color: #4a5260; }
+		#svg-dialog .checks label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+		#svg-stats { margin-top: 12px; font-variant-numeric: tabular-nums; }
+		#svg-stats .warn { color: #c0392b; font-weight: 600; }
+		#svg-stats .ok { color: #2e8b4e; font-weight: 600; }
+		#svg-dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+		#svg-dialog .actions .primary { background: #4caf6a; color: #fff; }
+		#svg-dialog .actions .primary:hover { background: #3f9a5a; }
+	</style>
+	<script type="importmap">
+	{
+		"imports": {
+			"three": "./vendor/three/build/three.module.js",
+			"three/addons/": "./vendor/three/examples/jsm/"
+		}
+	}
+	</script>
+	<style>
+		/* Page transition (js/PageTransition.js): white frame, 16:9 window, the loading bar */
+		#page-loader { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; pointer-events: none; }
+		#page-loader div { --w: min(56vw, 99.5vh); position: relative; width: var(--w); height: calc(var(--w) * 9 / 16); background: #f2f2f2; box-shadow: 0 0 0 100vmax #fff; transition: width 0.9s cubic-bezier(0.92, 0, 0.48, 1), height 0.9s cubic-bezier(0.92, 0, 0.48, 1); }
+		#page-loader i { position: absolute; inset: 0; background: #000; transform: scaleX(0); transform-origin: left; will-change: transform; transition: opacity 0.45s ease; }
+		#page-loader[data-state=fade] div, #page-loader[data-state=open] div { background: transparent; }
+		#page-loader[data-state=fade] i, #page-loader[data-state=open] i { opacity: 0; }
+		#page-loader[data-state=open] div { width: 100vw; height: 100vh; }
+	</style>
+</head>
+<body>
+	<div id="page-loader" aria-hidden="true"><div><i></i></div></div>
+	<div id="corner">
+		<a class="panel" href="index.html" data-i18n="editor.menu">Menu</a>
+		<button id="btn-library" class="panel" title="Enregistrer, ouvrir, publier" data-i18n="editor.library" data-i18n-title="editor.libraryTitle">Mes circuits</button>
+		<button id="btn-view" class="panel" title="Basculer vue de dessus / 3D (V)" data-i18n="editor.view3d" data-i18n-title="editor.viewTitle">Vue 3D</button>
+	</div>
+
+	<div id="hud" class="panel">
+		<div class="title" id="circuit-title" data-i18n="editor.title">Éditeur de circuit</div>
+		<div id="hint"></div>
+		<div id="stats"></div>
+	</div>
+
+	<div id="relief-panel" class="subpanel panel">
+		<button class="chip" data-mode="raise" title="Monter (Maj : creuser)" data-i18n="editor.raise" data-i18n-title="editor.raiseTitle">Monter</button>
+		<button class="chip" data-mode="lower" title="Creuser (Maj : monter)" data-i18n="editor.lower" data-i18n-title="editor.lowerTitle">Creuser</button>
+		<button class="chip" data-mode="smooth" data-i18n="editor.smooth">Lisser</button>
+		<button class="chip" data-mode="flatten" title="Aplanit à la hauteur du point de départ du coup de pinceau" data-i18n="editor.flatten" data-i18n-title="editor.flattenTitle">Aplanir</button>
+		<div class="separator"></div>
+		<label><span data-i18n="editor.radius">Rayon</span> <input id="brush-radius" type="range" min="3" max="40" step="1" value="12"><span id="brush-radius-value" class="value"></span></label>
+		<label><span data-i18n="editor.strength">Force</span> <input id="brush-strength" type="range" min="0.1" max="1" step="0.05" value="0.5"><span id="brush-strength-value" class="value"></span></label>
+		<div class="separator"></div>
+		<button id="btn-terrain-reset" class="chip" data-i18n="editor.flattenAll">Tout aplanir</button>
+	</div>
+
+	<div id="node-panel" class="subpanel panel">
+		<span id="node-title"></span>
+		<label><span data-i18n="editor.height">Hauteur</span>
+			<button id="node-down" class="chip small" title="Descendre (Q)" data-i18n-title="editor.downTitle">−</button>
+			<span id="node-height" class="value"></span>
+			<button id="node-up" class="chip small" title="Monter (E)" data-i18n-title="editor.upTitle">+</button>
+		</label>
+		<button id="node-ground" class="chip" title="Poser le point sur le terrain (T)" data-i18n="editor.onGround" data-i18n-title="editor.onGroundTitle">Sur le terrain</button>
+		<span id="seg-support" class="support">
+			<div class="separator"></div>
+		<label><span data-i18n="editor.nextSegment">Tronçon suivant</span>
+			<button id="seg-terrain" class="chip" title="Le terrain monte ou descend jusqu'à la route : remblais et tranchées (P)" data-i18n="editor.terrain" data-i18n-title="editor.terrainTitle">Terrain</button>
+			<button id="seg-piers" class="chip" title="La route passe sur un tablier porté par des piliers, le terrain ne bouge pas (P)" data-i18n="editor.piers" data-i18n-title="editor.piersTitle">Piliers</button>
+		</label>
+		</span>
+		<button id="node-delete" class="chip" title="Supprimer (Suppr)" data-i18n="editor.delete" data-i18n-title="editor.deleteTitle">Supprimer</button>
+	</div>
+
+	<div id="build-panel" class="subpanel panel">
+		<label><span data-i18n="editor.rise">Dénivelé du prochain tronçon</span>
+			<button id="rise-down" class="chip small" title="Q">−</button>
+			<span id="rise-value" class="value"></span>
+			<button id="rise-up" class="chip small" title="E">+</button>
+		</label>
+		<button id="rise-follow" class="chip" title="Les nouveaux points suivent la hauteur du terrain (T)" data-i18n="editor.follow" data-i18n-title="editor.followTitle">Suivre le terrain</button>
+		<div class="separator"></div>
+		<label><span data-i18n="editor.underRoad">Sous la route</span>
+			<button id="build-terrain" class="chip" title="Le terrain monte ou descend jusqu'à la route : remblais et tranchées (P)" data-i18n="editor.terrain" data-i18n-title="editor.terrainTitle">Terrain</button>
+			<button id="build-piers" class="chip" title="La route passe sur un tablier porté par des piliers, le terrain ne bouge pas (P)" data-i18n="editor.piers" data-i18n-title="editor.piersTitle">Piliers</button>
+		</label>
+	</div>
+
+	<div id="toolbar" class="panel">
+		<button id="btn-build" class="icon active" title="Construire (1)" aria-label="Construire" data-i18n-title="editor.buildTitle" data-i18n-aria-label="editor.build">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c0-7 5-8 8-8s8-1 8-8"/><circle cx="4" cy="20" r="1.5" fill="currentColor"/><circle cx="20" cy="4" r="1.5" fill="currentColor"/></svg>
+		</button>
+		<button id="btn-edit" class="icon" title="Éditer les points (2)" aria-label="Éditer" data-i18n-title="editor.editTitle" data-i18n-aria-label="editor.edit">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg>
+		</button>
+		<button id="btn-relief" class="icon" title="Relief (3)" aria-label="Relief" data-i18n-title="editor.reliefTitle" data-i18n-aria-label="editor.relief">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20l6-10 4 6 3-4 7 8z"/><circle cx="17" cy="6" r="2"/></svg>
+		</button>
+		<button id="btn-pan" class="icon" title="Déplacer la vue (4)" aria-label="Vue" data-i18n-title="editor.panTitle" data-i18n-aria-label="editor.pan">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+		</button>
+		<div class="separator"></div>
+		<div id="draw-modes" class="modes" title="Mode de tracé (G pour changer)" data-i18n-title="editor.drawModesTitle">
+			<button class="chip" data-draw="free" title="Libre : arcs de cercle où vous voulez" data-i18n="editor.free" data-i18n-title="editor.freeTitle">Libre</button>
+			<button class="chip" data-draw="snap" title="Aimanté : angles de 15°, longueurs en demi-tuiles" data-i18n="editor.snap" data-i18n-title="editor.snapTitle">Aimanté</button>
+			<button class="chip" data-draw="grid" title="Grille : lignes droites et quarts de virage alignés sur les tuiles" data-i18n="editor.grid" data-i18n-title="editor.gridTitle">Grille</button>
+		</div>
+		<button id="btn-flip" class="icon" title="Inverser le sens (F)" aria-label="Inverser le sens" data-i18n-title="editor.flipTitle" data-i18n-aria-label="editor.flip">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+		</button>
+		<button id="btn-undo" class="icon" title="Annuler (Ctrl+Z)" aria-label="Annuler" data-i18n-title="editor.undoTitle" data-i18n-aria-label="editor.undo">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+		</button>
+		<button id="btn-redo" class="icon" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" data-i18n-title="editor.redoTitle" data-i18n-aria-label="editor.redo">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+		</button>
+		<button id="btn-svg" class="icon" title="Importer un SVG (ou glissez un fichier .svg sur la page)" aria-label="Importer un SVG" data-i18n-title="editor.svgTitle" data-i18n-aria-label="editor.svg">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+		</button>
+		<div class="separator"></div>
+		<button id="btn-play" class="icon action" title="Jouer le circuit" aria-label="Jouer le circuit" data-i18n-title="editor.play" data-i18n-aria-label="editor.play">
+			<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+		</button>
+		<div class="separator"></div>
+		<button id="btn-clear" class="icon danger" title="Effacer le circuit" aria-label="Effacer le circuit" data-i18n-title="editor.clear" data-i18n-aria-label="editor.clear">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+		</button>
+	</div>
+
+	<div id="toast" class="panel"></div>
+
+	<input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden>
+
+	<div id="lib-dialog" class="dialog">
+		<div class="box panel">
+			<h2 data-i18n="editor.library">Mes circuits</h2>
+			<div class="row">
+				<input id="lib-name" maxlength="40" placeholder="Nom du circuit" data-i18n-placeholder="editor.name">
+				<button id="lib-save" class="chip primary" data-i18n="editor.save">Enregistrer</button>
+			</div>
+			<div id="lib-status" class="note"></div>
+			<div class="section" data-i18n="editor.publication">Publication</div>
+			<div class="row">
+				<input id="lib-pseudo" maxlength="20" autocomplete="nickname" placeholder="Ton pseudo" data-i18n-placeholder="account.pseudoPlaceholder">
+				<button id="lib-publish" class="chip primary" data-i18n="editor.publish">Publier</button>
+				<button id="lib-unpublish" class="chip" data-i18n="editor.unpublish">Retirer</button>
+			</div>
+			<div id="lib-publish-status" class="note" data-i18n="editor.publishNote">Un circuit publié est visible par tous dans le menu, où chacun peut lui donner une étoile.</div>
+			<div class="section"><span data-i18n="circuits.local">Sur cet appareil</span> <button id="lib-new" class="chip small" data-i18n="circuits.new">Nouveau circuit</button></div>
+			<div id="lib-list" data-empty="Aucun circuit enregistré pour l’instant." data-i18n-data-empty="editor.libEmpty"></div>
+			<div class="actions"><button id="lib-close" class="chip" data-i18n="editor.close">Fermer</button></div>
+		</div>
+	</div>
+
+	<div id="svg-dialog">
+		<div class="box panel">
+			<h2 data-i18n="editor.svgDialog">Importer un tracé SVG</h2>
+			<div id="svg-name" class="file"></div>
+			<canvas id="svg-preview"></canvas>
+			<div class="grid">
+				<label id="svg-shape-label" for="svg-shape" data-i18n="editor.svgShape">Tracé</label><select id="svg-shape"></select>
+				<label for="svg-size" data-i18n="editor.svgSize">Taille</label><input id="svg-size" type="range" min="0" max="1000" step="1" value="315"><span class="value"><input id="svg-size-number" type="number" min="30" max="5000" step="5" value="150" aria-label="Taille en mètres" data-i18n-aria-label="editor.svgSizeMeters"> m</span>
+				<label for="svg-rotation" data-i18n="editor.svgRotation">Rotation</label><input id="svg-rotation" type="range" min="-180" max="180" step="5" value="0"><span id="svg-rotation-value" class="value"></span>
+				<label for="svg-smoothing" data-i18n="editor.svgSmoothing">Lissage</label><input id="svg-smoothing" type="range" min="0" max="15" step="0.5" value="2"><span id="svg-smoothing-value" class="value"></span>
+				<label for="svg-start" data-i18n="editor.svgStart">Départ</label><input id="svg-start" type="range" min="0" max="99" step="1" value="0"><span id="svg-start-value" class="value"></span>
+			</div>
+			<div class="checks">
+				<label><input id="svg-closed" type="checkbox"> <span data-i18n="editor.svgClosed">Boucle fermée</span></label>
+				<label><input id="svg-flip" type="checkbox"> <span data-i18n="editor.flip">Inverser le sens</span></label>
+				<label><input id="svg-relief" type="checkbox" checked> <span data-i18n="editor.svgRelief">Suivre le relief existant</span></label>
+			</div>
+			<div id="svg-stats"></div>
+			<div class="actions">
+				<button id="svg-auto" class="chip" title="Augmente le lissage jusqu'à ce que tous les virages soient praticables" data-i18n="editor.svgAuto" data-i18n-title="editor.svgAutoTitle">Adoucir automatiquement</button>
+				<button id="svg-cancel" class="chip" data-i18n="common.cancel">Annuler</button>
+				<button id="svg-apply" class="chip primary" data-i18n="editor.svgApply">Importer</button>
+			</div>
+		</div>
+	</div>
+
+	<script type="module">
+	import * as THREE from 'three';
+	import { ColorMapGLTFLoader } from './js/Loader.js';
+	import { trackView } from './js/Stats.js';
+	import {
+		TrackPath, arcTo, encodeTrack, decodeTrack, buildRoadGeometry, extractTileGeometry, extractCornerGeometry,
+		MIN_RADIUS, MIN_SEGMENT, MAX_GRADE, ROAD_HALF, ROAD_Y, TILE_LEN, SNAP_ANGLE, CORNER_RADIUS,
+	} from './js/SplineTrack.js';
+	import {
+		Terrain, TerrainMeshes,
+		TERRAIN_LIMIT, HEIGHT_MIN, HEIGHT_MAX,
+	} from './js/Terrain.js';
+	import { sampleSvg, polylineToTrack } from './js/SvgImport.js';
+	import { listLocal, getLocal, saveLocal, deleteLocal, newLocalId, publishCircuit, unpublishCircuit, fetchPublished } from './js/Circuits.js';
+	import { circuitId } from './js/Leaderboard.js';
+	import { getAccount } from './js/Account.js';
+	import { applyAtmosphere } from './js/Atmosphere.js';
+	import { PageLoading, leaveOnLinks } from './js/PageTransition.js';
+	import { roadCrossings, buildBridges, bridgeMaterial, BRIDGE_CLEARANCE } from './js/Bridges.js';
+	import { t, lang, translatePage } from './js/i18n.js';
+
+	translatePage(); // this page's own words (data-i18n)
+	document.title = 'DirtBound · ' + t( 'editor.title' );
+
+	trackView( 'editor' );
+	// The loading bar of the page transition; links to the menu leave through it
+	const loading = new PageLoading( { files: 60, build: 20, shaders: 20 } );
+	leaveOnLinks();
+
+	const STORAGE_KEY = 'racing-editor-track'; // autosave of whatever is on screen
+	const CURRENT_KEY = 'dirtbound.editor.current'; // library id of the circuit last edited
+	const MARKER = 0.7;             // node marker radius at unit scale
+	const HANDLE_DIST = 3.2;        // heading arrow distance at unit scale
+	const PICK_PX = 16;             // screen-space pick radius
+	const GRID_SNAP = TILE_LEN / 4;
+	const HEIGHT_STEP = 0.5;
+	const DEFAULT_HEADING = Math.PI; // towards the top of the screen
+	const AREA = TERRAIN_LIMIT - 12; // nodes must stay inside the terrain (endless, but not to the float limits)
+	const ZOOM_MIN = 0.02;          // top view: ~3 km across
+	const ORBIT_MAX = 4000;         // 3D view: farthest from the target
+	const TERRAIN_SINK = - 0.08;
+	const MARKER_LIFT = 0.9;        // overlay height above the road
+	const PERSP_UNIT = 72;          // perspective distance that matches ortho zoom 1
+	const PUBLISH_MAX = 400 * 1024; // characters of encoded circuit the server takes (circuits.mjs MAX_DATA)
+
+	// ─── State ────────────────────────────────────────────────
+
+	let nodes = [];                 // { x, z, a, y }
+	let closed = false;
+	let path = new TrackPath( nodes );
+	let terrain = new Terrain();
+	let sculptCommitted = terrain.snapshot();
+
+	let tool = 'build';             // 'build', 'edit', 'relief', 'pan'
+	let view = 'top';               // 'top', '3d'
+	let snap = false;               // 'Aimanté' drawing mode
+	let grid = false;               // 'Grille' drawing mode
+	let current = { id: null, name: '', published: null }; // library entry being edited (id null = not saved yet)
+	let shiftDown = false;
+	let spaceDown = false;
+	let selected = - 1;
+	let hover = null;               // { type: 'node' | 'handle', index }
+	let cursor = null;              // world { x, z } under the pointer
+	let pointerScreen = null;       // { x, y } last pointer position
+	let candidate = null;           // next segment preview while building
+	let gesture = null;
+
+	let buildRise = 0;              // height change applied to the next node
+	let followTerrain = false;      // new nodes take the terrain height
+	let buildPiers = false;         // new segments stand on piers (node.p) instead of reshaping the terrain
+
+	const brush = { mode: 'raise', radius: 12, strength: 0.5 };
+
+	const undoStack = [];
+	const redoStack = [];
+
+	// ─── Renderer & scene ─────────────────────────────────────
+
+	const renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.shadowMap.enabled = true;
+	renderer.toneMapping = THREE.ACESFilmicToneMapping;
+	document.body.appendChild( renderer.domElement );
+
+	const scene = new THREE.Scene();
+	const dirLight = new THREE.DirectionalLight();
+	dirLight.castShadow = true;
+	dirLight.shadow.mapSize.setScalar( 4096 );
+	dirLight.shadow.camera.near = 0.5;
+	dirLight.shadow.bias = - 0.0005;
+	scene.add( dirLight );
+	scene.add( dirLight.target );
+
+	const ambientLight = new THREE.HemisphereLight();
+	scene.add( ambientLight );
+
+	// Colours and brightness of config/atmosphere.js; the editor keeps its
+	// brighter balance (sun 5 / ambient 1.5 for the default 3 / 2) and no fog
+	applyAtmosphere( { scene, renderer, sun: dirLight, ambient: ambientLight }, { sun: 5 / 3, ambient: 0.75, fog: false } );
+
+	// Terrain with a tile grid and 1 m contour lines drawn in the shader
+	const terrainMaterial = new THREE.MeshStandardMaterial( { color: 0x3a8c5e, roughness: 0.95 } );
+	terrainMaterial.onBeforeCompile = ( shader ) => {
+
+		shader.uniforms.uGrid = { value: TILE_LEN };
+		shader.uniforms.uBaseY = { value: ROAD_Y + TERRAIN_SINK };
+		shader.vertexShader = shader.vertexShader
+			.replace( '#include <common>', '#include <common>\nvarying vec3 vWPos;' )
+			.replace( '#include <begin_vertex>', '#include <begin_vertex>\nvWPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;' );
+		shader.fragmentShader = shader.fragmentShader
+			.replace( '#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uGrid;\nuniform float uBaseY;' )
+			.replace( '#include <color_fragment>', `#include <color_fragment>
+				vec2 gp = vWPos.xz / uGrid;
+				vec2 gd = abs( fract( gp - 0.5 ) - 0.5 ) / max( fwidth( gp ), vec2( 1e-4 ) );
+				float gridLine = 1.0 - min( min( gd.x, gd.y ), 1.0 );
+				float hc = vWPos.y - uBaseY - 0.01; // flat ground at 0 sits just off a line (it flickered)
+				float cd = abs( fract( hc ) - 0.5 ) / max( fwidth( hc ), 1e-4 );
+				float contour = 1.0 - min( cd, 1.0 );
+				float major = step( 0.5, abs( mod( floor( hc ) + 0.5, 5.0 ) - 0.5 ) );
+				diffuseColor.rgb *= 1.0 - gridLine * 0.22;
+				diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.93, 0.95, 0.85 ), contour * ( major > 0.5 ? 0.28 : 0.55 ) );
+			` );
+
+	};
+
+	// Endless: a mesh per 64 m chunk with relief, flat ground out to the horizon
+	const terrainView = new TerrainMeshes( terrainMaterial, { yOffset: TERRAIN_SINK } );
+	scene.add( terrainView.group );
+
+	const roadMesh = new THREE.Mesh( new THREE.BufferGeometry() );
+	roadMesh.castShadow = true;
+	roadMesh.receiveShadow = true;
+	scene.add( roadMesh );
+
+	// Decks and piers where the road passes over itself (rebuilt with the terrain)
+	const bridgeMat = bridgeMaterial();
+	let bridgeMesh = null;
+
+	const previewMesh = new THREE.Mesh( new THREE.BufferGeometry() );
+	previewMesh.renderOrder = 2;
+	scene.add( previewMesh );
+
+	const overlay = new THREE.Group();
+	scene.add( overlay );
+
+	const previewOverlay = new THREE.Group();
+	scene.add( previewOverlay );
+
+	const brushRing = new THREE.LineLoop(
+		new THREE.BufferGeometry().setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( 64 * 3 ), 3 ) ),
+		new THREE.LineBasicMaterial( { color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false } )
+	);
+	brushRing.renderOrder = 30;
+	brushRing.frustumCulled = false;
+	brushRing.visible = false;
+	scene.add( brushRing );
+
+	// ─── Cameras ──────────────────────────────────────────────
+	// Top: orthographic, screen up = -Z. 3D: perspective orbit around camTarget.
+
+	const frustum = 30;
+	const orthoCam = new THREE.OrthographicCamera( - 1, 1, frustum, - frustum, 0.1, 400 );
+	orthoCam.up.set( 0, 0, - 1 );
+	const perspCam = new THREE.PerspectiveCamera( 50, 1, 0.5, 12000 );
+	const camTarget = new THREE.Vector3();
+	const orbit = { yaw: Math.PI / 4, pitch: 0.75, dist: PERSP_UNIT };
+
+	function cam() {
+
+		return view === 'top' ? orthoCam : perspCam;
+
+	}
+
+	function applyCamera() {
+
+		const aspect = window.innerWidth / window.innerHeight;
+		camTarget.y = terrain.heightAt( camTarget.x, camTarget.z ) + ROAD_Y;
+
+		orthoCam.left = - frustum * aspect;
+		orthoCam.right = frustum * aspect;
+		orthoCam.updateProjectionMatrix();
+		orthoCam.position.set( camTarget.x, 150, camTarget.z );
+		orthoCam.lookAt( camTarget.x, 0, camTarget.z );
+		orthoCam.updateMatrixWorld();
+
+		perspCam.aspect = aspect;
+		perspCam.updateProjectionMatrix();
+		const cp = Math.cos( orbit.pitch );
+		perspCam.position.set(
+			camTarget.x + Math.sin( orbit.yaw ) * cp * orbit.dist,
+			camTarget.y + Math.sin( orbit.pitch ) * orbit.dist,
+			camTarget.z + Math.cos( orbit.yaw ) * cp * orbit.dist
+		);
+		perspCam.lookAt( camTarget );
+		perspCam.updateMatrixWorld();
+
+		// Shadow frustum follows the visible area
+		const visible = view === 'top' ? frustum * aspect / orthoCam.zoom : orbit.dist * 1.2;
+		const ext = Math.min( 220, visible * 1.15 );
+		const sh = dirLight.shadow.camera;
+		sh.left = sh.bottom = - ext;
+		sh.right = sh.top = ext;
+		sh.far = 120 + ext * 2;
+		sh.updateProjectionMatrix();
+		dirLight.position.set( camTarget.x + 22.8, camTarget.y + 60, camTarget.z - 10.6 );
+		dirLight.target.position.copy( camTarget );
+
+		layoutOverlay();
+
+	}
+
+	window.addEventListener( 'resize', () => {
+
+		renderer.setSize( window.innerWidth, window.innerHeight );
+		applyCamera();
+
+	} );
+
+	function setView( v ) {
+
+		if ( v === view ) return;
+
+		// Keep roughly the same framing across views
+		if ( v === '3d' ) orbit.dist = THREE.MathUtils.clamp( PERSP_UNIT / orthoCam.zoom, 12, ORBIT_MAX );
+		else orthoCam.zoom = THREE.MathUtils.clamp( PERSP_UNIT / orbit.dist, ZOOM_MIN, 6 );
+
+		view = v;
+		document.getElementById( 'btn-view' ).textContent = v === 'top' ? t( 'editor.view3d' ) : t( 'editor.viewTop' );
+		applyCamera();
+		updateCandidate();
+		refreshOverlay();
+
+	}
+
+	// World-units-per-marker at a point, so markers keep a constant screen size
+	function scaleAt( x, y, z ) {
+
+		if ( view === 'top' ) return 1 / orthoCam.zoom;
+		return perspCam.position.distanceTo( _v.set( x, y, z ) ) / PERSP_UNIT;
+
+	}
+
+	const raycaster = new THREE.Raycaster();
+	const ndc = new THREE.Vector2();
+	const _v = new THREE.Vector3();
+	const _p = new THREE.Vector3();
+
+	// Pointer → terrain point (ray marched against the heightmap)
+	function toWorld( clientX, clientY ) {
+
+		ndc.set( ( clientX / window.innerWidth ) * 2 - 1, - ( clientY / window.innerHeight ) * 2 + 1 );
+		raycaster.setFromCamera( ndc, cam() );
+		const { origin, direction } = raycaster.ray;
+
+		const above = ( t ) => {
+
+			_p.copy( origin ).addScaledVector( direction, t );
+			return _p.y - ( terrain.heightAt( _p.x, _p.z ) + ROAD_Y );
+
+		};
+
+		let prev = 0;
+		const maxT = 30000;
+
+		// 1 m steps near the camera, longer far away (zoomed out)
+		for ( let t = 1; t < maxT; t += Math.max( 1, t / 300 ) ) {
+
+			if ( above( t ) <= 0 ) {
+
+				let lo = prev, hi = t;
+				for ( let k = 0; k < 12; k ++ ) {
+
+					const mid = ( lo + hi ) / 2;
+					if ( above( mid ) > 0 ) lo = mid;
+					else hi = mid;
+
+				}
+
+				_p.copy( origin ).addScaledVector( direction, hi );
+				return { x: _p.x, z: _p.z };
+
+			}
+
+			prev = t;
+
+		}
+
+		return null;
+
+	}
+
+	function toScreen( x, y, z ) {
+
+		_v.set( x, y, z ).project( cam() );
+		return { x: ( _v.x + 1 ) / 2 * window.innerWidth, y: ( 1 - _v.y ) / 2 * window.innerHeight, visible: _v.z < 1 };
+
+	}
+
+	function zoomAt( clientX, clientY, factor ) {
+
+		const before = toWorld( clientX, clientY );
+
+		if ( view === 'top' ) {
+
+			orthoCam.zoom = THREE.MathUtils.clamp( orthoCam.zoom * factor, ZOOM_MIN, 6 );
+			applyCamera();
+			const after = toWorld( clientX, clientY );
+
+			if ( before && after ) {
+
+				camTarget.x += before.x - after.x;
+				camTarget.z += before.z - after.z;
+
+			}
+
+		} else {
+
+			const next = THREE.MathUtils.clamp( orbit.dist / factor, 8, ORBIT_MAX );
+			const k = 1 - next / orbit.dist;
+			orbit.dist = next;
+
+			if ( before ) {
+
+				camTarget.x += ( before.x - camTarget.x ) * k;
+				camTarget.z += ( before.z - camTarget.z ) * k;
+
+			}
+
+		}
+
+		clampTarget();
+		applyCamera();
+
+	}
+
+	function panBy( dxPixels, dyPixels ) {
+
+		if ( view === 'top' ) {
+
+			const wpp = frustum * 2 / window.innerHeight / orthoCam.zoom;
+			camTarget.x -= dxPixels * wpp;
+			camTarget.z -= dyPixels * wpp;
+
+		} else {
+
+			const wpp = 2 * orbit.dist * Math.tan( THREE.MathUtils.degToRad( perspCam.fov / 2 ) ) / window.innerHeight;
+			const s = Math.sin( orbit.yaw ), c = Math.cos( orbit.yaw );
+			// Screen right = ( c, -s ), screen up projected on the ground = ( -s, -c )
+			camTarget.x -= ( dxPixels * c - dyPixels * s ) * wpp;
+			camTarget.z -= ( - dxPixels * s - dyPixels * c ) * wpp;
+
+		}
+
+		clampTarget();
+		applyCamera();
+
+	}
+
+	function orbitBy( dxPixels, dyPixels ) {
+
+		orbit.yaw -= dxPixels * 0.006;
+		orbit.pitch = THREE.MathUtils.clamp( orbit.pitch + dyPixels * 0.005, 0.12, 1.5 );
+		applyCamera();
+
+	}
+
+	function clampTarget() {
+
+		camTarget.x = THREE.MathUtils.clamp( camTarget.x, - TERRAIN_LIMIT, TERRAIN_LIMIT );
+		camTarget.z = THREE.MathUtils.clamp( camTarget.z, - TERRAIN_LIMIT, TERRAIN_LIMIT );
+
+	}
+
+	function fitCamera() {
+
+		if ( nodes.length === 0 ) {
+
+			applyCamera();
+			return;
+
+		}
+
+		let minX = Infinity, maxX = - Infinity, minZ = Infinity, maxZ = - Infinity;
+		const xs = path.sampleCount > 1 ? path.px : nodes.map( ( n ) => n.x );
+		const zs = path.sampleCount > 1 ? path.pz : nodes.map( ( n ) => n.z );
+
+		for ( let i = 0; i < xs.length; i ++ ) {
+
+			minX = Math.min( minX, xs[ i ] ); maxX = Math.max( maxX, xs[ i ] );
+			minZ = Math.min( minZ, zs[ i ] ); maxZ = Math.max( maxZ, zs[ i ] );
+
+		}
+
+		const aspect = window.innerWidth / window.innerHeight;
+		camTarget.set( ( minX + maxX ) / 2, 0, ( minZ + maxZ ) / 2 + 4 );
+		orthoCam.zoom = THREE.MathUtils.clamp( Math.min(
+			frustum * 2 * aspect / ( maxX - minX + 30 ),
+			frustum * 2 / ( maxZ - minZ + 40 )
+		), ZOOM_MIN, 2 );
+		orbit.dist = THREE.MathUtils.clamp( PERSP_UNIT / orthoCam.zoom, 12, ORBIT_MAX );
+		applyCamera();
+
+	}
+
+	// ─── Road tiles ───────────────────────────────────────────
+
+	let tiles = null;
+	let ghostMaterial = null;
+
+	async function loadTiles() {
+
+		const loader = new ColorMapGLTFLoader();
+		const load = ( name, extract = extractTileGeometry ) => loader.loadAsync( `models/${ name }.glb` ).then( ( gltf ) => extract( gltf.scene ) );
+		const [ straight, finish, corner ] = await Promise.all( [ load( 'track-straight' ), load( 'track-finish' ), load( 'track-corner', extractCornerGeometry ) ] );
+
+		straight.material.side = THREE.FrontSide;
+		tiles = { straight: straight.geometry, finish: finish.geometry, corner: corner.geometry, material: straight.material };
+
+		roadMesh.material = tiles.material;
+
+		ghostMaterial = tiles.material.clone();
+		ghostMaterial.transparent = true;
+		ghostMaterial.opacity = 0.6;
+		ghostMaterial.depthWrite = false;
+		previewMesh.material = ghostMaterial;
+
+	}
+
+	function setGeometry( mesh, geometry ) {
+
+		mesh.geometry.dispose();
+		mesh.geometry = geometry || new THREE.BufferGeometry();
+
+	}
+
+	function rebuildRoad() {
+
+		path = new TrackPath( nodes, closed );
+		const geo = nodes.length >= 2 ? buildRoadGeometry( path, tiles.straight, closed ? tiles.finish : null, false, tiles.corner ) : null;
+		setGeometry( roadMesh, geo );
+		rebuildTerrain();
+
+	}
+
+	function rebuildTerrain() {
+
+		terrain.conform( path );
+		terrainView.update( terrain, [ camTarget.x, camTarget.z ] );
+
+		if ( bridgeMesh ) {
+
+			scene.remove( bridgeMesh );
+			bridgeMesh.geometry.dispose();
+
+		}
+
+		bridgeMesh = buildBridges( path, terrain, bridgeMat );
+		if ( bridgeMesh ) scene.add( bridgeMesh );
+
+	}
+
+	// ─── Overlay (nodes, arrows, labels, warnings) ────────────
+
+	const materials = {};
+
+	function flatMaterial( color, opacity = 1 ) {
+
+		const key = color + ':' + opacity;
+		if ( ! materials[ key ] ) {
+
+			materials[ key ] = new THREE.MeshBasicMaterial( {
+				color, opacity, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+			} );
+
+		}
+
+		return materials[ key ];
+
+	}
+
+	function lineMaterial( color, opacity = 1 ) {
+
+		const key = 'line:' + color + ':' + opacity;
+		if ( ! materials[ key ] ) {
+
+			materials[ key ] = new THREE.LineBasicMaterial( { color, opacity, transparent: true, depthTest: false } );
+
+		}
+
+		return materials[ key ];
+
+	}
+
+	const geoDisc = new THREE.CircleGeometry( 1, 32 ).rotateX( - Math.PI / 2 );
+	const geoRing = new THREE.RingGeometry( 1, 1.35, 32 ).rotateX( - Math.PI / 2 );
+	const geoArrow = new THREE.BufferGeometry();
+	geoArrow.setAttribute( 'position', new THREE.Float32BufferAttribute( [ - 0.75, 0, - 0.5, 0.75, 0, - 0.5, 0, 0, 0.95 ], 3 ) );
+	const sharedGeometries = new Set( [ geoDisc, geoRing, geoArrow ] );
+
+	const COLORS = {
+		node: 0xffffff,
+		outline: 0x1f2430,
+		start: 0x4caf6a,
+		selected: 0xffc940,
+		handle: 0x4a7fd6,
+		valid: 0x7dffa0,
+		invalid: 0xff5a5a,
+		steep: 0xffa726,
+	};
+
+	// Text labels (node heights) rendered once per distinct string
+	const labelCache = new Map();
+
+	function labelMaterial( text ) {
+
+		if ( labelCache.has( text ) ) return labelCache.get( text );
+
+		const canvas = document.createElement( 'canvas' );
+		const ctx = canvas.getContext( '2d' );
+		const font = '600 36px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+		ctx.font = font;
+		const w = Math.ceil( ctx.measureText( text ).width ) + 28;
+		canvas.width = w;
+		canvas.height = 52;
+		ctx.font = font;
+		ctx.fillStyle = 'rgba(31,36,48,0.85)';
+		ctx.beginPath();
+		ctx.roundRect( 0, 0, w, 52, 26 );
+		ctx.fill();
+		ctx.fillStyle = '#fff';
+		ctx.textBaseline = 'middle';
+		ctx.fillText( text, 14, 28 );
+
+		const texture = new THREE.CanvasTexture( canvas );
+		texture.colorSpace = THREE.SRGBColorSpace;
+		const material = new THREE.SpriteMaterial( { map: texture, depthTest: false, transparent: true } );
+		material.userData.aspect = w / 52;
+		labelCache.set( text, material );
+		return material;
+
+	}
+
+	const scaled = []; // objects whose size stays constant on screen
+
+	function nodeY( n ) {
+
+		return ( n.y || 0 ) + ROAD_Y + MARKER_LIFT;
+
+	}
+
+	function addMarker( group, x, y, z, fill, size, opacity = 1 ) {
+
+		const g = new THREE.Group();
+		const ring = new THREE.Mesh( geoRing, flatMaterial( COLORS.outline, opacity ) );
+		const disc = new THREE.Mesh( geoDisc, flatMaterial( fill, opacity ) );
+		ring.renderOrder = 20;
+		disc.renderOrder = 21;
+		g.add( ring, disc );
+		g.position.set( x, y, z );
+		group.add( g );
+		scaled.push( { obj: g, size } );
+		return g;
+
+	}
+
+	function addArrow( group, node, color, size, opacity = 1 ) {
+
+		const arrow = new THREE.Mesh( geoArrow, flatMaterial( color, opacity ) );
+		arrow.renderOrder = 22;
+		group.add( arrow );
+		scaled.push( { obj: arrow, size, node } );
+		return arrow;
+
+	}
+
+	function addLabel( group, node, text ) {
+
+		const material = labelMaterial( text );
+		const sprite = new THREE.Sprite( material );
+		sprite.renderOrder = 23;
+		group.add( sprite );
+		scaled.push( { obj: sprite, size: 1.1, label: true, aspect: material.userData.aspect, node } );
+
+	}
+
+	function addLine( group, p, color, opacity, stride = 2 ) {
+
+		const pts = [];
+		const n = p.sampleCount;
+		for ( let i = 0; i < n; i += stride ) pts.push( new THREE.Vector3( p.px[ i ], p.py[ i ] + ROAD_Y + MARKER_LIFT, p.pz[ i ] ) );
+		pts.push( new THREE.Vector3( p.px[ n - 1 ], p.py[ n - 1 ] + ROAD_Y + MARKER_LIFT, p.pz[ n - 1 ] ) );
+
+		const line = new THREE.Line( new THREE.BufferGeometry().setFromPoints( pts ), lineMaterial( color, opacity ) );
+		line.renderOrder = 15;
+		group.add( line );
+
+	}
+
+	// Translucent road-wide bands over samples matching a predicate
+	function addBands( group, flagged, color ) {
+
+		const pos = [];
+		const lift = ROAD_Y + MARKER_LIFT - 0.1;
+
+		for ( let i = 0; i + 1 < path.sampleCount; i ++ ) {
+
+			if ( ! flagged[ i ] && ! flagged[ i + 1 ] ) continue;
+
+			const quad = [];
+			for ( const j of [ i, i + 1 ] ) {
+
+				const lx = path.tz[ j ] * ROAD_HALF, lz = - path.tx[ j ] * ROAD_HALF, y = path.py[ j ] + lift;
+				quad.push( [ path.px[ j ] - lx, y, path.pz[ j ] - lz ], [ path.px[ j ] + lx, y, path.pz[ j ] + lz ] );
+
+			}
+
+			const [ a, b, c, d ] = quad;
+			pos.push( ...a, ...b, ...c, ...b, ...d, ...c );
+
+		}
+
+		if ( pos.length === 0 ) return false;
+
+		const geo = new THREE.BufferGeometry();
+		geo.setAttribute( 'position', new THREE.Float32BufferAttribute( pos, 3 ) );
+		const mesh = new THREE.Mesh( geo, flatMaterial( color, 0.35 ) );
+		mesh.renderOrder = 14;
+		group.add( mesh );
+		return true;
+
+	}
+
+	function clearGroup( group ) {
+
+		for ( let i = scaled.length - 1; i >= 0; i -- ) {
+
+			let o = scaled[ i ].obj;
+			while ( o && o !== group ) o = o.parent;
+			if ( o === group ) scaled.splice( i, 1 );
+
+		}
+
+		group.traverse( ( c ) => {
+
+			if ( c !== group && c.geometry && ! c.isSprite && ! sharedGeometries.has( c.geometry ) ) c.geometry.dispose();
+
+		} );
+
+		group.clear();
+
+	}
+
+	let hasTightSpots = false;
+	let hasSteepSpots = false;
+	let hasCrossings = false; // roads crossing at the same level (Bridges.js)
+	const BRIDGE_HINT = t( 'editor.bridgeHint', { m: BRIDGE_CLEARANCE.toLocaleString( lang ) } );
+
+	function formatHeight( y ) {
+
+		return ( y > 0 ? '+' : y < 0 ? '−' : '' ) + Math.abs( y ).toFixed( 1 ) + ' m';
+
+	}
+
+	function refreshOverlay() {
+
+		clearGroup( overlay );
+
+		hasTightSpots = hasSteepSpots = hasCrossings = false;
+
+		if ( path.sampleCount >= 2 ) {
+
+			addLine( overlay, path, 0xffffff, 0.45 );
+			hasTightSpots = addBands( overlay, Array.from( path.radii(), ( r ) => r < MIN_RADIUS ), COLORS.invalid );
+			hasSteepSpots = addBands( overlay, Array.from( path.gy, ( g ) => Math.abs( g ) > MAX_GRADE ), COLORS.steep );
+			if ( terrain.path === path && terrain.crossings ) hasCrossings = addBands( overlay, terrain.crossings.crossing, COLORS.invalid );
+
+		}
+
+		const showHandles = tool === 'edit';
+
+		if ( tool !== 'relief' ) {
+
+			for ( let i = 0; i < nodes.length; i ++ ) {
+
+				const n = nodes[ i ];
+				const nodeHover = hover && hover.type === 'node' && hover.index === i;
+				const handleHover = hover && hover.type === 'handle' && hover.index === i;
+				const fill = i === selected ? COLORS.selected : i === 0 ? COLORS.start : COLORS.node;
+
+				addMarker( overlay, n.x, nodeY( n ), n.z, fill, MARKER * ( nodeHover ? 1.3 : 1 ) );
+
+				if ( showHandles || i === 0 ) addArrow( overlay, n, i === 0 ? COLORS.start : COLORS.handle, handleHover ? 1.35 : 1 );
+				if ( Math.abs( n.y || 0 ) >= 0.05 || i === selected ) addLabel( overlay, n, formatHeight( n.y || 0 ) );
+
+			}
+
+		}
+
+		// Ghost of the start line before anything is placed
+		if ( tool === 'build' && nodes.length === 0 && cursor ) {
+
+			const start = gesture && gesture.type === 'build-start' ? gesture.node : newNodeAt( cursor, DEFAULT_HEADING );
+			addMarker( overlay, start.x, nodeY( start ), start.z, COLORS.start, MARKER, 0.7 );
+			addArrow( overlay, start, COLORS.start, 1.2, 0.8 );
+
+		}
+
+		// Highlight the start node when the preview would close the loop
+		if ( candidate && candidate.close ) {
+
+			addMarker( overlay, nodes[ 0 ].x, nodeY( nodes[ 0 ] ), nodes[ 0 ].z, candidate.valid ? COLORS.valid : COLORS.invalid, MARKER * 1.8, 0.5 );
+
+		}
+
+		layoutOverlay();
+		updateHud();
+
+	}
+
+	function layoutOverlay() {
+
+		for ( const e of scaled ) {
+
+			const n = e.node;
+			const ref = n ? _p.set( n.x, nodeY( n ), n.z ) : e.obj.position;
+			const sc = scaleAt( ref.x, ref.y, ref.z );
+
+			if ( e.label ) {
+
+				e.obj.scale.set( e.size * sc * e.aspect, e.size * sc, 1 );
+				e.obj.position.set( n.x, nodeY( n ) + 0.1, n.z );
+				// Nudge the label to the right of the marker on screen
+				e.obj.center.set( - MARKER * 1.6 / ( e.size * e.aspect ), 0.5 );
+
+			} else if ( n ) {
+
+				e.obj.scale.setScalar( e.size * sc );
+				const d = HANDLE_DIST * sc;
+				e.obj.position.set( n.x + Math.sin( n.a ) * d, nodeY( n ), n.z + Math.cos( n.a ) * d );
+				e.obj.rotation.y = n.a;
+
+			} else {
+
+				e.obj.scale.setScalar( e.size * sc );
+
+			}
+
+		}
+
+	}
+
+	function updateBrushRing() {
+
+		const show = tool === 'relief' && cursor && ! ( gesture && ( gesture.type === 'pan' || gesture.type === 'orbit' || gesture.type === 'pinch' ) );
+		brushRing.visible = !! show;
+		if ( ! show ) return;
+
+		const pos = brushRing.geometry.attributes.position;
+
+		for ( let i = 0; i < 64; i ++ ) {
+
+			const a = i / 64 * Math.PI * 2;
+			const x = cursor.x + Math.cos( a ) * brush.radius;
+			const z = cursor.z + Math.sin( a ) * brush.radius;
+			pos.setXYZ( i, x, terrain.heightAt( x, z ) + ROAD_Y + 0.15, z );
+
+		}
+
+		pos.needsUpdate = true;
+		brushRing.material.color.set( effectiveBrushMode() === 'lower' ? 0xffb0a0 : 0xffffff );
+
+	}
+
+	// ─── Building (Planet Coaster style) ──────────────────────
+
+	function snapPoint( p ) {
+
+		const step = grid ? TILE_LEN / 2 : snap ? GRID_SNAP : 0;
+		if ( ! step ) return { x: p.x, z: p.z };
+		return { x: Math.round( p.x / step ) * step, z: Math.round( p.z / step ) * step };
+
+	}
+
+	// ─── Grid mode ────────────────────────────────────────────
+	// The circuit lives on the tile grid drawn on the terrain: nodes sit in the
+	// middle of a tile edge, headings are multiples of 90°, and each click adds a
+	// straight of whole tiles or a quarter turn of 0.5, 1.5 or 2.5 tiles — radii
+	// that land on the next tile edge again. The 0.5 one is the Kenney corner
+	// piece (a turn inside one tile), drawn with the real model.
+
+	const RIGHT_ANGLE = Math.PI / 2;
+	const GRID_TURNS = [ 0.5, 1.5, 2.5 ];
+	const GRID_MAX_STRAIGHT = 16;
+
+	// Start line on the grid: heading to 90°, centred on a tile edge across it
+	function gridAlign( node ) {
+
+		const a = Math.round( node.a / RIGHT_ANGLE ) * RIGHT_ANGLE;
+		const alongZ = Math.abs( Math.cos( a ) ) > 0.5;
+		const mid = ( v ) => ( Math.floor( v / TILE_LEN ) + 0.5 ) * TILE_LEN;
+		const edge = ( v ) => Math.round( v / TILE_LEN ) * TILE_LEN;
+		return { ...node, a, x: alongZ ? mid( node.x ) : edge( node.x ), z: alongZ ? edge( node.z ) : mid( node.z ) };
+
+	}
+
+	// The grid piece leaving `last` whose end is closest to the pointer. The
+	// grid follows `last`, so it also works after free-drawn segments.
+	function gridStep( last, target ) {
+
+		// Tile units exactly as the corner piece expects them
+		const half = CORNER_RADIUS;
+
+		const fx = Math.sin( last.a ), fz = Math.cos( last.a );
+		const rx = fz, rz = - fx; // lateral axis
+		const pieces = [];
+
+		for ( let n = 1; n <= GRID_MAX_STRAIGHT; n ++ ) {
+
+			pieces.push( { u: n * TILE_LEN, v: 0, a: last.a } );
+
+		}
+
+		for ( const r of GRID_TURNS ) {
+
+			for ( const side of [ - 1, 1 ] ) {
+
+				const d = r === 0.5 ? half : r * TILE_LEN;
+				pieces.push( { u: d, v: side * d, a: Math.atan2( rx * side, rz * side ) } );
+
+			}
+
+		}
+
+		let best = null, bestD = Infinity;
+
+		for ( const p of pieces ) {
+
+			const x = last.x + fx * p.u + rx * p.v;
+			const z = last.z + fz * p.u + rz * p.v;
+			const d = Math.hypot( x - target.x, z - target.z );
+
+			if ( d < bestD ) {
+
+				bestD = d;
+				best = { x, z, a: p.a };
+
+			}
+
+		}
+
+		return best;
+
+	}
+
+	function quantizeHeight( y ) {
+
+		return THREE.MathUtils.clamp( Math.round( y * 4 ) / 4, HEIGHT_MIN, HEIGHT_MAX );
+
+	}
+
+	function inArea( p ) {
+
+		return Math.abs( p.x ) <= AREA && Math.abs( p.z ) <= AREA;
+
+	}
+
+	function newNodeAt( p, a ) {
+
+		let s = snapPoint( p );
+		if ( grid ) s = gridAlign( { x: p.x, z: p.z, a } );
+		return { x: s.x, z: s.z, a: grid ? s.a : a, y: quantizeHeight( terrain.sculptAt( s.x, s.z ) ) };
+
+	}
+
+	function isBuilding() {
+
+		return tool === 'build' && ! closed && nodes.length > 0;
+
+	}
+
+	function updateCandidate() {
+
+		clearGroup( previewOverlay );
+		const hadClose = candidate && candidate.close;
+		candidate = null;
+
+		if ( ! isBuilding() || ! cursor || ( gesture && gesture.type !== 'build' ) ) {
+
+			setGeometry( previewMesh, null );
+			if ( hadClose ) refreshOverlay();
+			else updateHud();
+			return;
+
+		}
+
+		const last = nodes[ nodes.length - 1 ];
+		const first = nodes[ 0 ];
+
+		// Close the loop when the pointer is over the start node
+		let close = false;
+
+		if ( nodes.length >= 2 ) {
+
+			const s = toScreen( first.x, nodeY( first ), first.z );
+			close = ( pointerScreen && Math.hypot( s.x - pointerScreen.x, s.y - pointerScreen.y ) < PICK_PX * 1.4 ) ||
+				Math.hypot( cursor.x - first.x, cursor.z - first.z ) < 2.5;
+
+		}
+
+		let node = first;
+
+		if ( ! close ) {
+
+			node = grid ? gridStep( last, cursor ) : arcTo( last, cursor.x, cursor.z, { straight: shiftDown, snap } );
+			node.y = followTerrain ? quantizeHeight( terrain.sculptAt( node.x, node.z ) ) : quantizeHeight( ( last.y || 0 ) + buildRise );
+
+		}
+
+		const segPath = new TrackPath( [ last, node ] );
+		const minR = segPath.minRadius();
+		const grade = segPath.maxGrade();
+
+		let reason = null;
+		if ( segPath.length < MIN_SEGMENT ) reason = t( 'editor.tooShort' );
+		else if ( ! inArea( node ) ) reason = t( 'editor.outOfArea' );
+		else if ( minR < MIN_RADIUS ) reason = t( 'editor.tooTight', { r: minR.toFixed( 1 ), min: MIN_RADIUS } );
+		else if ( grade > MAX_GRADE ) reason = t( 'editor.tooSteep', { g: ( grade * 100 ).toFixed( 0 ), max: MAX_GRADE * 100 } );
+		else if ( crossesRoad( node, close ) ) reason = t( 'editor.crosses', { hint: BRIDGE_HINT } );
+
+		candidate = { node, close, valid: reason === null, reason, length: segPath.length, minR, grade };
+
+		setGeometry( previewMesh, segPath.length > 0.5 ? buildRoadGeometry( segPath, tiles.straight, null, false, tiles.corner ) : null );
+		ghostMaterial.color.set( candidate.valid ? 0xffffff : 0xff7070 );
+
+		if ( segPath.sampleCount >= 2 ) addLine( previewOverlay, segPath, candidate.valid ? COLORS.valid : COLORS.invalid, 1, 1 );
+
+		if ( ! close ) {
+
+			addMarker( previewOverlay, node.x, nodeY( node ), node.z, candidate.valid ? COLORS.valid : COLORS.invalid, MARKER * 0.8, 0.9 );
+			addArrow( previewOverlay, node, candidate.valid ? COLORS.valid : COLORS.invalid, 0.9, 0.9 );
+			if ( Math.abs( node.y ) >= 0.05 ) addLabel( previewOverlay, node, formatHeight( node.y ) );
+
+		}
+
+		if ( close !== hadClose ) refreshOverlay();
+		else {
+
+			layoutOverlay();
+			updateHud();
+
+		}
+
+	}
+
+	// Would the new segment (to node, or closing the loop) cross the road at
+	// the same level? Over it with enough clearance is a bridge, allowed
+	function crossesRoad( node, close ) {
+
+		const full = new TrackPath( close ? nodes : [ ...nodes, node ], close );
+		const { crossing } = roadCrossings( full );
+		const last = nodes.length - 1; // index of the new segment
+
+		for ( let k = 0; k < full.sampleCount; k ++ ) if ( crossing[ k ] && full.seg[ k ] >= last ) return true;
+		return false;
+
+	}
+
+	function commitCandidate() {
+
+		if ( ! candidate ) return;
+
+		if ( ! candidate.valid ) {
+
+			showToast( candidate.reason );
+			return;
+
+		}
+
+		pushUndo();
+
+		// The new segment leaves the current last node: on piers or on the terrain
+		const from = nodes[ nodes.length - 1 ];
+		if ( buildPiers ) from.p = true;
+		else delete from.p;
+
+		if ( candidate.close ) {
+
+			closed = true;
+			showToast( t( 'editor.closedToast' ) );
+
+		} else {
+
+			nodes.push( candidate.node );
+
+		}
+
+		changed();
+
+	}
+
+	// ─── Edit tool ────────────────────────────────────────────
+
+	function pick( clientX, clientY ) {
+
+		let best = null, bestD = PICK_PX;
+
+		for ( let i = nodes.length - 1; i >= 0; i -- ) {
+
+			const n = nodes[ i ];
+			const y = nodeY( n );
+			const sc = scaleAt( n.x, y, n.z );
+			const hs = toScreen( n.x + Math.sin( n.a ) * HANDLE_DIST * sc, y, n.z + Math.cos( n.a ) * HANDLE_DIST * sc );
+			const ns = toScreen( n.x, y, n.z );
+			const dh = Math.hypot( hs.x - clientX, hs.y - clientY );
+			const dn = Math.hypot( ns.x - clientX, ns.y - clientY );
+
+			if ( dh < bestD ) {
+
+				best = { type: 'handle', index: i };
+				bestD = dh;
+
+			}
+
+			if ( dn < bestD ) {
+
+				best = { type: 'node', index: i };
+				bestD = dn;
+
+			}
+
+		}
+
+		return best;
+
+	}
+
+	function insertNodeAt( p ) {
+
+		if ( path.sampleCount < 2 ) return;
+
+		const near = path.nearest( p.x, p.z );
+		if ( near.dist > ROAD_HALF ) return;
+
+		const segIndex = Math.floor( near.seg );
+		const segCount = closed ? nodes.length : nodes.length - 1;
+		if ( segIndex >= segCount || near.seg - segIndex < 0.03 || near.seg - segIndex > 0.97 ) return;
+
+		const f = path.frameAt( near.s );
+		pushUndo();
+		nodes.splice( segIndex + 1, 0, { x: f.x, z: f.z, a: Math.atan2( f.tx, f.tz ), y: quantizeHeight( f.y ), ...( nodes[ segIndex ].p ? { p: true } : {} ) } );
+		selected = segIndex + 1;
+		changed();
+
+	}
+
+	function deleteNode( index ) {
+
+		if ( index < 0 || index >= nodes.length ) return;
+
+		pushUndo();
+		nodes.splice( index, 1 );
+		if ( closed && nodes.length < 3 ) closed = false;
+		selected = - 1;
+		hover = null;
+		changed();
+
+	}
+
+	function setNodeHeight( index, y ) {
+
+		const n = nodes[ index ];
+		if ( ! n ) return;
+
+		const next = quantizeHeight( y );
+		if ( next === ( n.y || 0 ) ) return;
+
+		pushUndo();
+		n.y = next;
+		changed();
+
+	}
+
+	function nodesToTerrain( indices ) {
+
+		pushUndo();
+		for ( const i of indices ) nodes[ i ].y = quantizeHeight( terrain.sculptAt( nodes[ i ].x, nodes[ i ].z ) );
+		changed();
+
+	}
+
+	// ─── Relief tool ──────────────────────────────────────────
+
+	function effectiveBrushMode() {
+
+		if ( shiftDown && brush.mode === 'raise' ) return 'lower';
+		if ( shiftDown && brush.mode === 'lower' ) return 'raise';
+		return brush.mode;
+
+	}
+
+	function applyBrush( dt ) {
+
+		if ( ! cursor ) return;
+
+		const mode = effectiveBrushMode();
+		const rate = mode === 'raise' || mode === 'lower' ? 8 : 6;
+
+		if ( terrain.brush( mode, cursor.x, cursor.z, brush.radius, rate * brush.strength * dt, gesture.target ) ) {
+
+			gesture.moved = true;
+			rebuildTerrain();
+
+		}
+
+	}
+
+	function resetTerrain() {
+
+		if ( terrain.isFlat() ) return;
+
+		pushUndo();
+		terrain.clearSculpt();
+		sculptCommitted = terrain.snapshot();
+		rebuildTerrain();
+		save();
+		showToast( t( 'editor.flattened' ) );
+
+	}
+
+	// ─── History & persistence ────────────────────────────────
+
+	function snapshot() {
+
+		return { nodes: nodes.map( ( n ) => ( { ...n } ) ), closed, sculpt: sculptCommitted };
+
+	}
+
+	function pushUndo( state = snapshot() ) {
+
+		undoStack.push( state );
+		if ( undoStack.length > 200 ) undoStack.shift();
+		redoStack.length = 0;
+
+	}
+
+	function restore( state ) {
+
+		nodes = state.nodes;
+		closed = state.closed;
+
+		if ( state.sculpt !== sculptCommitted ) {
+
+			terrain.restore( state.sculpt );
+			sculptCommitted = state.sculpt;
+
+		}
+
+		selected = - 1;
+		hover = null;
+		changed();
+
+	}
+
+	function undo() {
+
+		if ( undoStack.length === 0 ) return;
+		redoStack.push( snapshot() );
+		restore( undoStack.pop() );
+
+	}
+
+	function redo() {
+
+		if ( redoStack.length === 0 ) return;
+		undoStack.push( snapshot() );
+		restore( redoStack.pop() );
+
+	}
+
+	function encodeCurrent() {
+
+		const ground = terrain.toData();
+		return encodeTrack( nodes, closed, ground ? ground.bytes : null, ground ? ground.size : 0 );
+
+	}
+
+	let saveTimer = 0;
+
+	// Autosave: the on-screen draft, and the library entry once the circuit has one
+	function save() {
+
+		clearTimeout( saveTimer );
+		saveTimer = setTimeout( async () => {
+
+			const data = await encodeCurrent();
+
+			try {
+
+				localStorage.setItem( STORAGE_KEY, data );
+
+			} catch {}
+
+			if ( current.id ) saveLocal( { ...current, data } );
+			if ( libDialog.classList.contains( 'show' ) ) renderLibrary();
+
+		}, 400 );
+
+	}
+
+	// Replaces what is on screen by an encoded track; false if unreadable
+	async function loadData( encoded ) {
+
+		try {
+
+			const data = await decodeTrack( encoded );
+			nodes = data.nodes;
+			closed = data.closed;
+			terrain = Terrain.fromData( data.terrain );
+			sculptCommitted = terrain.snapshot();
+			return true;
+
+		} catch ( e ) {
+
+			console.warn( 'Failed to load track', e );
+			return false;
+
+		}
+
+	}
+
+	function setCurrent( entry ) {
+
+		current = { id: entry.id || null, name: entry.name || '', published: entry.published || null };
+		document.getElementById( 'circuit-title' ).textContent = current.name || t( 'editor.title' );
+
+		try {
+
+			if ( current.id ) localStorage.setItem( CURRENT_KEY, current.id );
+			else localStorage.removeItem( CURRENT_KEY );
+
+		} catch {}
+
+	}
+
+	// What to open: ?new (blank), #track= or ?track= (a shared link, unsaved), ?local= (Mes circuits),
+	// ?circuit= (a published one, opened as a copy), else the circuit last
+	// edited, else the draft
+	async function loadSaved() {
+
+		const params = new URLSearchParams( window.location.search );
+		for ( const [ key, value ] of new URLSearchParams( window.location.hash.slice( 1 ) ) ) params.set( key, value ); // #track=
+		let last = null;
+
+		try {
+
+			last = localStorage.getItem( CURRENT_KEY );
+
+		} catch {}
+
+		if ( params.has( 'new' ) ) {
+
+			setCurrent( {} ); // blank page, the previous circuit stays in the library
+
+		} else if ( params.get( 'track' ) ) {
+
+			if ( await loadData( params.get( 'track' ) ) ) setCurrent( {} );
+
+		} else if ( /^[a-f0-9]{64}$/.test( params.get( 'circuit' ) || '' ) ) {
+
+			const res = await fetchPublished( params.get( 'circuit' ) );
+			if ( res.ok && await loadData( res.data.data ) ) setCurrent( { name: t( 'editor.copyOf', { name: res.data.name } ) } );
+
+		} else {
+
+			const entry = getLocal( params.get( 'local' ) || last );
+
+			if ( entry ) {
+
+				if ( await loadData( entry.data ) ) setCurrent( entry );
+
+			} else {
+
+				let draft = null;
+
+				try {
+
+					draft = localStorage.getItem( STORAGE_KEY );
+
+				} catch {}
+
+				if ( draft ) await loadData( draft );
+				setCurrent( {} );
+
+			}
+
+		}
+
+	}
+
+	function changed() {
+
+		rebuildRoad();
+		updateCandidate();
+		refreshOverlay();
+		save();
+
+	}
+
+	// ─── HUD, panels & toast ──────────────────────────────────
+
+	const hintEl = document.getElementById( 'hint' );
+	const statsEl = document.getElementById( 'stats' );
+	const navHint = () => view === 'top'
+		? t( 'editor.hints.navTop' )
+		: t( 'editor.hints.nav3d' );
+
+	function updateHud() {
+
+		let hint;
+
+		if ( tool === 'pan' ) {
+
+			hint = t( 'editor.hints.pan' ) + ' · ' + navHint();
+
+		} else if ( tool === 'relief' ) {
+
+			hint = t( 'editor.hints.relief' ) + ' ' + navHint();
+
+		} else if ( tool === 'edit' ) {
+
+			hint = t( 'editor.hints.edit' ) + ' ' + navHint();
+
+		} else if ( nodes.length === 0 ) {
+
+			hint = t( 'editor.hints.start' ) + ' ' + navHint();
+
+		} else if ( closed ) {
+
+			hint = t( 'editor.hints.closed' );
+
+		} else if ( candidate && candidate.close ) {
+
+			hint = t( 'editor.hints.close' );
+
+		} else {
+
+			hint = grid
+				? t( 'editor.hints.grid' )
+				: t( 'editor.hints.build' );
+
+		}
+
+		hintEl.innerHTML = hint;
+
+		const parts = [];
+
+		if ( nodes.length > 0 ) {
+
+			parts.push( `${ path.length.toFixed( 0 ) } m`, t( 'editor.stats.points', { n: nodes.length } ) );
+
+			const minR = path.minRadius();
+			if ( Number.isFinite( minR ) ) parts.push( t( 'editor.stats.minRadius', { r: minR.toFixed( 1 ) } ) );
+
+			if ( path.sampleCount > 1 ) {
+
+				let lo = Infinity, hi = - Infinity;
+				for ( const y of path.py ) {
+
+					lo = Math.min( lo, y );
+					hi = Math.max( hi, y );
+
+				}
+
+				if ( hi - lo >= 0.05 ) parts.push( t( 'editor.stats.drop', { m: ( hi - lo ).toFixed( 1 ) } ), t( 'editor.stats.maxGrade', { g: ( path.maxGrade() * 100 ).toFixed( 0 ) } ) );
+
+			}
+
+			parts.push( closed ? `<span class="ok">${ t( 'editor.stats.closed' ) }</span>` : t( 'editor.stats.open' ) );
+			if ( hasTightSpots ) parts.push( `<span class="warn">${ t( 'editor.stats.tight' ) }</span>` );
+			if ( hasSteepSpots ) parts.push( `<span class="caution">${ t( 'editor.stats.steep' ) }</span>` );
+			if ( hasCrossings ) parts.push( `<span class="warn">${ t( 'editor.stats.crossing', { hint: BRIDGE_HINT } ) }</span>` );
+
+		}
+
+		if ( candidate && ! candidate.close ) {
+
+			parts.push( t( 'editor.stats.segment', { m: candidate.length.toFixed( 1 ) } ) + ( candidate.grade >= 0.005 ? ', ' + t( 'editor.stats.grade', { g: ( candidate.grade * 100 ).toFixed( 0 ) } ) : '' ) );
+
+		}
+
+		statsEl.innerHTML = parts.join( ' · ' );
+
+		document.getElementById( 'btn-undo' ).disabled = undoStack.length === 0;
+		document.getElementById( 'btn-redo' ).disabled = redoStack.length === 0;
+
+		updatePanels();
+
+	}
+
+	const reliefPanel = document.getElementById( 'relief-panel' );
+	const nodePanel = document.getElementById( 'node-panel' );
+	const buildPanel = document.getElementById( 'build-panel' );
+
+	function updatePanels() {
+
+		reliefPanel.classList.toggle( 'show', tool === 'relief' );
+		for ( const b of reliefPanel.querySelectorAll( '[data-mode]' ) ) b.classList.toggle( 'active', b.dataset.mode === brush.mode );
+		document.getElementById( 'brush-radius-value' ).textContent = brush.radius + ' m';
+		document.getElementById( 'brush-strength-value' ).textContent = t( 'settings.percent', { v: Math.round( brush.strength * 100 ) } );
+
+		const n = nodes[ selected ];
+		nodePanel.classList.toggle( 'show', tool === 'edit' && !! n );
+
+		if ( n ) {
+
+			document.getElementById( 'node-title' ).textContent = selected === 0 ? t( 'editor.svgStart' ) : t( 'editor.point', { n: selected + 1 } );
+			document.getElementById( 'node-height' ).textContent = formatHeight( n.y || 0 );
+
+		}
+
+		// The segment leaving the selected node: on the terrain or on piers
+		const hasNext = !! n && ( closed || selected < nodes.length - 1 );
+		document.getElementById( 'seg-support' ).hidden = ! hasNext;
+		document.getElementById( 'seg-terrain' ).classList.toggle( 'active', hasNext && ! n.p );
+		document.getElementById( 'seg-piers' ).classList.toggle( 'active', hasNext && !! n.p );
+
+		buildPanel.classList.toggle( 'show', isBuilding() );
+		document.getElementById( 'build-terrain' ).classList.toggle( 'active', ! buildPiers );
+		document.getElementById( 'build-piers' ).classList.toggle( 'active', buildPiers );
+		document.getElementById( 'rise-value' ).textContent = followTerrain ? t( 'editor.followShort' ) : formatHeight( buildRise );
+		document.getElementById( 'rise-follow' ).classList.toggle( 'active', followTerrain );
+
+	}
+
+	let toastTimer = 0;
+
+	function showToast( msg ) {
+
+		const el = document.getElementById( 'toast' );
+		el.textContent = msg;
+		el.classList.add( 'show' );
+		clearTimeout( toastTimer );
+		toastTimer = setTimeout( () => el.classList.remove( 'show' ), 2200 );
+
+	}
+
+	// ─── Toolbar & panels ─────────────────────────────────────
+
+	const toolButtons = {
+		build: document.getElementById( 'btn-build' ),
+		edit: document.getElementById( 'btn-edit' ),
+		relief: document.getElementById( 'btn-relief' ),
+		pan: document.getElementById( 'btn-pan' ),
+	};
+
+	function selectTool( t ) {
+
+		tool = t;
+		for ( const k in toolButtons ) toolButtons[ k ].classList.toggle( 'active', k === t );
+		if ( t !== 'edit' ) selected = - 1;
+		hover = null;
+		gesture = null;
+		updateCursor();
+		updateCandidate();
+		updateBrushRing();
+		refreshOverlay();
+
+	}
+
+	const DRAW_MODES = [ 'free', 'snap', 'grid' ];
+	const DRAW_LABELS = Object.fromEntries( [ 'free', 'snap', 'grid' ].map( ( m ) => [ m, t( 'editor.drawToast.' + m ) ] ) );
+
+	// Free, magnetic or grid: only changes how new segments are drawn, so the
+	// modes mix freely on one circuit
+	function setDrawMode( mode, toast = true ) {
+
+		snap = mode === 'snap';
+		grid = mode === 'grid';
+		for ( const b of document.querySelectorAll( '[data-draw]' ) ) b.classList.toggle( 'active', b.dataset.draw === mode );
+		updateCandidate();
+		updateHud();
+		if ( toast ) showToast( DRAW_LABELS[ mode ] );
+
+	}
+
+	function drawMode() {
+
+		return grid ? 'grid' : snap ? 'snap' : 'free';
+
+	}
+
+	function flipDirection() {
+
+		if ( nodes.length < 2 ) return;
+
+		pushUndo();
+		const flip = ( n ) => ( { ...n, a: n.a + Math.PI } );
+		const order = closed ? [ nodes[ 0 ], ...nodes.slice( 1 ).reverse() ] : nodes.slice().reverse();
+		// Each segment is run the other way: its piers flag (on the node it
+		// leaves) moves to the node it now leaves from
+		nodes = order.map( ( n, j ) => {
+
+			const f = flip( n );
+			const next = closed ? order[ ( j + 1 ) % order.length ] : order[ j + 1 ];
+			if ( next?.p ) f.p = true;
+			else delete f.p;
+			return f;
+
+		} );
+		selected = - 1;
+		changed();
+		showToast( t( 'editor.flipped' ) );
+
+	}
+
+	function adjustHeight( delta ) {
+
+		if ( tool === 'edit' && selected >= 0 ) {
+
+			setNodeHeight( selected, ( nodes[ selected ].y || 0 ) + delta );
+
+		} else if ( isBuilding() ) {
+
+			followTerrain = false;
+			buildRise = THREE.MathUtils.clamp( buildRise + delta, - 10, 10 );
+			updateCandidate();
+			updatePanels();
+
+		}
+
+	}
+
+	// Piers or terrain: for the next segments while building, for the
+	// segment leaving the selected node while editing
+	function setPiers( on ) {
+
+		if ( tool === 'edit' ) {
+
+			const n = nodes[ selected ];
+			if ( ! n || ( ! closed && selected >= nodes.length - 1 ) || !! n.p === on ) return;
+			pushUndo();
+			if ( on ) n.p = true;
+			else delete n.p;
+			changed();
+			showToast( on ? t( 'editor.onPiers' ) : t( 'editor.onTerrain' ) );
+
+		} else if ( isBuilding() ) {
+
+			buildPiers = on;
+			updatePanels();
+
+		}
+
+	}
+
+	function togglePiers() {
+
+		setPiers( tool === 'edit' ? ! nodes[ selected ]?.p : ! buildPiers );
+
+	}
+
+	function groundAction() {
+
+		if ( tool === 'edit' ) {
+
+			if ( selected >= 0 ) nodesToTerrain( [ selected ] );
+			else if ( nodes.length > 0 ) {
+
+				nodesToTerrain( nodes.map( ( _, i ) => i ) );
+				showToast( t( 'editor.allOnGround' ) );
+
+			}
+
+		} else if ( isBuilding() ) {
+
+			followTerrain = ! followTerrain;
+			updateCandidate();
+			updatePanels();
+
+		}
+
+	}
+
+	for ( const k in toolButtons ) toolButtons[ k ].addEventListener( 'click', () => selectTool( k ) );
+	for ( const b of document.querySelectorAll( '[data-draw]' ) ) b.addEventListener( 'click', () => setDrawMode( b.dataset.draw ) );
+	document.getElementById( 'btn-flip' ).addEventListener( 'click', flipDirection );
+	document.getElementById( 'btn-undo' ).addEventListener( 'click', undo );
+	document.getElementById( 'btn-redo' ).addEventListener( 'click', redo );
+	document.getElementById( 'btn-view' ).addEventListener( 'click', () => setView( view === 'top' ? '3d' : 'top' ) );
+
+	for ( const b of reliefPanel.querySelectorAll( '[data-mode]' ) ) {
+
+		b.addEventListener( 'click', () => {
+
+			brush.mode = b.dataset.mode;
+			updatePanels();
+
+		} );
+
+	}
+
+	const radiusInput = document.getElementById( 'brush-radius' );
+	const strengthInput = document.getElementById( 'brush-strength' );
+	radiusInput.addEventListener( 'input', () => {
+
+		brush.radius = + radiusInput.value;
+		updatePanels();
+
+	} );
+	strengthInput.addEventListener( 'input', () => {
+
+		brush.strength = + strengthInput.value;
+		updatePanels();
+
+	} );
+	document.getElementById( 'btn-terrain-reset' ).addEventListener( 'click', resetTerrain );
+
+	document.getElementById( 'node-down' ).addEventListener( 'click', () => adjustHeight( - HEIGHT_STEP ) );
+	document.getElementById( 'node-up' ).addEventListener( 'click', () => adjustHeight( HEIGHT_STEP ) );
+	document.getElementById( 'node-ground' ).addEventListener( 'click', groundAction );
+	document.getElementById( 'node-delete' ).addEventListener( 'click', () => deleteNode( selected ) );
+	document.getElementById( 'rise-down' ).addEventListener( 'click', () => adjustHeight( - HEIGHT_STEP ) );
+	document.getElementById( 'rise-up' ).addEventListener( 'click', () => adjustHeight( HEIGHT_STEP ) );
+	document.getElementById( 'rise-follow' ).addEventListener( 'click', groundAction );
+	for ( const prefix of [ 'seg', 'build' ] ) {
+
+		document.getElementById( prefix + '-terrain' ).addEventListener( 'click', () => setPiers( false ) );
+		document.getElementById( prefix + '-piers' ).addEventListener( 'click', () => setPiers( true ) );
+
+	}
+
+	document.getElementById( 'btn-play' ).addEventListener( 'click', async () => {
+
+		if ( nodes.length < 2 ) {
+
+			showToast( t( 'editor.drawSomething' ) );
+			return;
+
+		}
+
+		if ( hasCrossings ) {
+
+			showToast( t( 'editor.crossing', { hint: BRIDGE_HINT } ) );
+			return;
+
+		}
+
+		// Open synchronously (popup blockers), fill the URL once encoded. The circuit
+		// goes after the #: never sent to the server, so no size limit (nginx 414)
+		const win = window.open( '', '_blank' );
+		const url = 'play.html#track=' + await encodeCurrent();
+		if ( win ) win.location.href = url;
+		else window.location.href = url;
+
+		if ( ! closed ) showToast( t( 'editor.openCircuit' ) );
+
+	} );
+
+	document.getElementById( 'btn-clear' ).addEventListener( 'click', () => {
+
+		if ( nodes.length === 0 || ! confirm( t( 'editor.clearConfirm' ) ) ) return;
+
+		pushUndo();
+		nodes = [];
+		closed = false;
+		selected = - 1;
+		selectTool( 'build' );
+		changed();
+		showToast( t( 'editor.cleared' ) );
+
+	} );
+
+	for ( const panel of [ document.getElementById( 'toolbar' ), reliefPanel, nodePanel, buildPanel ] ) {
+
+		panel.addEventListener( 'pointerenter', () => {
+
+			cursor = null;
+			updateCandidate();
+			updateBrushRing();
+			if ( nodes.length === 0 ) refreshOverlay();
+
+		} );
+
+	}
+
+	// ─── Mes circuits: library & publication ──────────────────
+
+	const libDialog = document.getElementById( 'lib-dialog' );
+	const libName = document.getElementById( 'lib-name' );
+	const libPseudo = document.getElementById( 'lib-pseudo' );
+	const libStatus = document.getElementById( 'lib-status' );
+	const libPublishStatus = document.getElementById( 'lib-publish-status' );
+
+	const escapeHtml = ( t ) => String( t ).replace( /[&<>"']/g, ( c ) => `&#${ c.charCodeAt( 0 ) };` );
+
+	function setNote( el, text, kind = '' ) {
+
+		el.textContent = text;
+		el.className = 'note' + ( kind ? ' ' + kind : '' );
+
+	}
+
+	function openLibrary() {
+
+		libName.value = current.name;
+		libPseudo.disabled = true; // the Google account's pseudo, chosen in the menu
+		libPseudo.value = '';
+		getAccount().then( ( account ) => { libPseudo.value = account?.pseudo || ( account?.error ? t( 'account.offline' ) : account ? t( 'editor.pseudoInMenu' ) : t( 'editor.signInInMenu' ) ); } );
+		setNote( libStatus, current.id ? t( 'editor.saved' ) : t( 'editor.notSaved' ) );
+		libDialog.classList.add( 'show' );
+		renderLibrary();
+		( current.id ? libPseudo : libName ).focus();
+
+	}
+
+	function closeLibrary() {
+
+		libDialog.classList.remove( 'show' );
+
+	}
+
+	async function renderLibrary() {
+
+		const list = listLocal();
+		const date = ( time ) => new Date( time ).toLocaleDateString( lang, { day: 'numeric', month: 'short' } );
+
+		document.getElementById( 'lib-list' ).innerHTML = list.map( ( c ) =>
+			`<div class="item${ c.id === current.id ? ' current' : '' }">` +
+			`<span class="name">${ escapeHtml( c.name ) }</span>` +
+			( c.published ? `<span class="badge">${ t( 'editor.published' ) }</span>` : '' ) +
+			`<span class="meta">${ date( c.updated ) }</span>` +
+			( c.id === current.id ? '' : `<button class="chip small" data-open="${ c.id }">${ t( 'editor.open' ) }</button>` ) +
+			`<button class="chip small" data-delete="${ c.id }" title="${ t( 'editor.deleteLocal' ) }">✕</button></div>` ).join( '' );
+
+		// Publication state of the circuit on screen
+		document.getElementById( 'lib-unpublish' ).style.display = current.published ? '' : 'none';
+		document.getElementById( 'lib-publish' ).textContent = current.published ? t( 'editor.update' ) : t( 'editor.publish' );
+
+		if ( ! current.published ) {
+
+			setNote( libPublishStatus, t( 'editor.publishNote' ) );
+
+		} else {
+
+			const same = ( await circuitId( { track: await encodeCurrent() } ) ) === current.published;
+			setNote( libPublishStatus, same ? t( 'editor.online' ) : t( 'editor.changedSince' ), same ? 'ok' : '' );
+
+		}
+
+	}
+
+	function cleanName( raw ) {
+
+		return raw.normalize( 'NFKC' ).trim().replace( /\s+/g, ' ' ).slice( 0, 40 );
+
+	}
+
+	async function saveToLibrary() {
+
+		const name = cleanName( libName.value );
+
+		if ( name.length < 2 ) {
+
+			setNote( libStatus, t( 'editor.nameTooShort' ), 'error' );
+			libName.focus();
+			return false;
+
+		}
+
+		setCurrent( { ...current, id: current.id || newLocalId(), name } );
+
+		if ( ! saveLocal( { ...current, data: await encodeCurrent() } ) ) {
+
+			setNote( libStatus, t( 'editor.storageFull' ), 'error' );
+			return false;
+
+		}
+
+		setNote( libStatus, t( 'editor.saved' ), 'ok' );
+		renderLibrary();
+		return true;
+
+	}
+
+	// Replaces the circuit on screen (the current one is already autosaved if it has a name)
+	async function openCircuit( entry ) {
+
+		if ( ! current.id && nodes.length > 0 && ! confirm( t( 'editor.abandonConfirm' ) ) ) return;
+
+		if ( entry ) {
+
+			if ( ! await loadData( entry.data ) ) {
+
+				showToast( t( 'editor.unreadable' ) );
+				return;
+
+			}
+
+			setCurrent( entry );
+
+		} else {
+
+			nodes = [];
+			closed = false;
+			terrain = new Terrain();
+			sculptCommitted = terrain.snapshot();
+			setCurrent( {} );
+
+		}
+
+		undoStack.length = 0;
+		redoStack.length = 0;
+		selected = - 1;
+		terrainView.clear();
+		changed();
+		fitCamera();
+		selectTool( closed ? 'edit' : 'build' );
+		closeLibrary();
+		showToast( entry ? t( 'editor.opened', { name: entry.name } ) : t( 'circuits.new' ) );
+
+	}
+
+	async function publish() {
+
+		const account = await getAccount();
+
+		if ( ! account?.pseudo ) {
+
+			setNote( libPublishStatus, account?.error ? t( 'account.offlineWhy', { why: account.error } ) : account ? t( 'editor.pseudoToPublish' ) : t( 'editor.signInToPublish' ), 'error' );
+			return;
+
+		}
+
+		if ( ! closed || nodes.length < 3 ) {
+
+			setNote( libPublishStatus, t( 'editor.closeFirst' ), 'error' );
+			return;
+
+		}
+
+		if ( hasCrossings ) {
+
+			setNote( libPublishStatus, t( 'editor.crossing', { hint: BRIDGE_HINT } ) + '.', 'error' );
+			return;
+
+		}
+
+		// Publishing also keeps it in "Mes circuits"
+		if ( ! current.id || cleanName( libName.value ) !== current.name ) {
+
+			if ( ! await saveToLibrary() ) return;
+
+		}
+
+		const data = await encodeCurrent();
+
+		// The server's limit (server/lib/circuits.mjs MAX_DATA): the endless terrain
+		// can hold more sculpting than a circuit can carry
+		if ( data.length > PUBLISH_MAX ) {
+
+			setNote( libPublishStatus, t( 'editor.publishTooBig', { size: Math.ceil( data.length / 1024 ), max: PUBLISH_MAX / 1024 } ), 'error' );
+			return;
+
+		}
+
+		setNote( libPublishStatus, t( 'editor.publishing' ) );
+
+		// Already published: this version replaces it (no duplicate in the list)
+		const res = await publishCircuit( current.name, data, current.published );
+
+		if ( ! res.ok ) {
+
+			setNote( libPublishStatus, res.error || t( 'editor.publishFailed' ), 'error' );
+			return;
+
+		}
+
+		const updated = current.published !== null;
+		setCurrent( { ...current, published: res.data.id } );
+		saveLocal( { ...current, data: await encodeCurrent() } );
+		renderLibrary();
+		showToast( updated ? t( 'editor.updatedToast' ) : t( 'editor.publishedToast' ) );
+
+	}
+
+	async function unpublish() {
+
+		if ( ! current.published || ! confirm( t( 'editor.unpublishConfirm' ) ) ) return;
+
+		const res = await unpublishCircuit( current.published );
+
+		if ( ! res.ok && res.status !== 404 ) {
+
+			setNote( libPublishStatus, res.error || t( 'editor.unpublishFailed' ), 'error' );
+			return;
+
+		}
+
+		setCurrent( { ...current, published: null } );
+		if ( current.id ) saveLocal( { ...current, data: await encodeCurrent() } );
+		renderLibrary();
+		showToast( t( 'editor.unpublished' ) );
+
+	}
+
+	document.getElementById( 'btn-library' ).addEventListener( 'click', openLibrary );
+	document.getElementById( 'lib-close' ).addEventListener( 'click', closeLibrary );
+	document.getElementById( 'lib-save' ).addEventListener( 'click', saveToLibrary );
+	document.getElementById( 'lib-new' ).addEventListener( 'click', () => openCircuit( null ) );
+	document.getElementById( 'lib-publish' ).addEventListener( 'click', publish );
+	document.getElementById( 'lib-unpublish' ).addEventListener( 'click', unpublish );
+	libName.addEventListener( 'keydown', ( e ) => { if ( e.key === 'Enter' ) saveToLibrary(); } );
+
+	document.getElementById( 'lib-list' ).addEventListener( 'click', ( e ) => {
+
+		const b = e.target.closest( 'button' );
+		if ( ! b ) return;
+
+		if ( b.dataset.open ) openCircuit( getLocal( b.dataset.open ) );
+
+		if ( b.dataset.delete ) {
+
+			const entry = getLocal( b.dataset.delete );
+			if ( ! entry || ! confirm( t( entry.published ? 'editor.deleteConfirmPublished' : 'editor.deleteConfirm', { name: entry.name } ) ) ) return;
+			deleteLocal( entry.id );
+			if ( entry.id === current.id ) setCurrent( {} );
+			renderLibrary();
+
+		}
+
+	} );
+
+	libDialog.addEventListener( 'pointerdown', ( e ) => {
+
+		if ( e.target === libDialog ) closeLibrary();
+
+	} );
+
+	// ─── SVG import ───────────────────────────────────────────
+
+	const svgDialog = document.getElementById( 'svg-dialog' );
+	const svgFile = document.getElementById( 'svg-file' );
+	const svgCanvas = document.getElementById( 'svg-preview' );
+	const svgInputs = {
+		shape: document.getElementById( 'svg-shape' ),
+		size: document.getElementById( 'svg-size' ),
+		rotation: document.getElementById( 'svg-rotation' ),
+		smoothing: document.getElementById( 'svg-smoothing' ),
+		start: document.getElementById( 'svg-start' ),
+		closed: document.getElementById( 'svg-closed' ),
+		flip: document.getElementById( 'svg-flip' ),
+		relief: document.getElementById( 'svg-relief' ),
+	};
+
+	let svgCandidates = [];
+	let svgResult = null;
+
+	// Size = the drawing's longest side, on a logarithmic slider (30 m to 5 km)
+	// or typed in metres; the field holds the value
+	const SVG_SIZE = [ 30, 5000 ];
+	const svgSizeNumber = document.getElementById( 'svg-size-number' );
+
+	function svgSize() {
+
+		const m = + svgSizeNumber.value;
+		return Number.isFinite( m ) && m > 0 ? THREE.MathUtils.clamp( m, SVG_SIZE[ 0 ], SVG_SIZE[ 1 ] ) : 150;
+
+	}
+
+	svgInputs.size.addEventListener( 'input', () => {
+
+		const m = SVG_SIZE[ 0 ] * Math.pow( SVG_SIZE[ 1 ] / SVG_SIZE[ 0 ], svgInputs.size.value / 1000 );
+		const step = m < 200 ? 5 : m < 1000 ? 10 : 50;
+		svgSizeNumber.value = Math.round( m / step ) * step;
+
+	} );
+
+	svgSizeNumber.addEventListener( 'input', () => {
+
+		svgInputs.size.value = Math.round( 1000 * Math.log( svgSize() / SVG_SIZE[ 0 ] ) / Math.log( SVG_SIZE[ 1 ] / SVG_SIZE[ 0 ] ) );
+		updateSvgPreview();
+
+	} );
+
+	function svgOptions() {
+
+		return {
+			size: svgSize(),
+			rotation: + svgInputs.rotation.value,
+			smoothing: + svgInputs.smoothing.value,
+			start: + svgInputs.start.value / 100,
+			closed: svgInputs.closed.checked,
+			flip: svgInputs.flip.checked,
+			heightAt: svgInputs.relief.checked ? ( x, z ) => terrain.sculptAt( x, z ) : null,
+		};
+
+	}
+
+	function isSvgOpen() {
+
+		return svgDialog.classList.contains( 'show' );
+
+	}
+
+	async function openSvg( file ) {
+
+		let candidates;
+
+		try {
+
+			candidates = sampleSvg( await file.text() );
+
+		} catch ( e ) {
+
+			showToast( e.message || t( 'editor.svgUnreadable' ) );
+			return;
+
+		}
+
+		if ( candidates.length === 0 ) {
+
+			showToast( t( 'editor.svgEmpty' ) );
+			return;
+
+		}
+
+		svgCandidates = candidates;
+		// Labels come from the SVG file (ids): set as text, never as HTML
+		svgInputs.shape.replaceChildren( ...candidates.map( ( c, i ) => new Option( c.label + ( i === 0 ? ' ' + t( 'editor.svgLongest' ) : '' ), String( i ) ) ) );
+		// Only the « Tracé » row: its parent is the whole grid of settings (a
+		// single path used to hide the size, rotation and smoothing with it)
+		for ( const row of [ svgInputs.shape, document.getElementById( 'svg-shape-label' ) ] ) row.style.display = candidates.length > 1 ? '' : 'none';
+		svgInputs.closed.checked = candidates[ 0 ].closed;
+		document.getElementById( 'svg-name' ).textContent = file.name;
+
+		svgDialog.classList.add( 'show' );
+		updateSvgPreview();
+
+	}
+
+	function updateSvgPreview() {
+
+		const candidate = svgCandidates[ + svgInputs.shape.value ] || svgCandidates[ 0 ];
+		svgResult = polylineToTrack( candidate.points, svgOptions() );
+		const p = svgResult.path;
+		const radii = p.radii();
+		const minR = p.minRadius();
+
+		document.getElementById( 'svg-rotation-value' ).textContent = svgInputs.rotation.value + '°';
+		document.getElementById( 'svg-smoothing-value' ).textContent = svgInputs.smoothing.value + ' m';
+		document.getElementById( 'svg-start-value' ).textContent = t( 'settings.percent', { v: svgInputs.start.value } );
+		svgInputs.start.disabled = ! svgInputs.closed.checked;
+
+		const tight = minR < MIN_RADIUS;
+		document.getElementById( 'svg-stats' ).innerHTML =
+			`${ p.length.toFixed( 0 ) } m · ${ t( 'editor.stats.points', { n: svgResult.nodes.length } ) } · ` +
+			t( 'editor.stats.minRadius', { r: `<span class="${ tight ? 'warn' : 'ok' }">${ Number.isFinite( minR ) ? minR.toFixed( 1 ) : '∞' }</span>` } ) +
+			( tight ? ` <span class="warn">— ${ t( 'editor.svgTight', { min: MIN_RADIUS } ) }</span>` : '' );
+
+		// Preview: road band, tight spots in red, nodes, start arrow
+		const dpr = window.devicePixelRatio || 1;
+		const W = svgCanvas.clientWidth, H = svgCanvas.clientHeight;
+		svgCanvas.width = W * dpr;
+		svgCanvas.height = H * dpr;
+		const ctx = svgCanvas.getContext( '2d' );
+		ctx.setTransform( dpr, 0, 0, dpr, 0, 0 );
+		ctx.fillStyle = '#3a8c5e';
+		ctx.fillRect( 0, 0, W, H );
+
+		let minX = Infinity, maxX = - Infinity, minZ = Infinity, maxZ = - Infinity;
+
+		for ( let i = 0; i < p.sampleCount; i ++ ) {
+
+			minX = Math.min( minX, p.px[ i ] ); maxX = Math.max( maxX, p.px[ i ] );
+			minZ = Math.min( minZ, p.pz[ i ] ); maxZ = Math.max( maxZ, p.pz[ i ] );
+
+		}
+
+		const pad = ROAD_HALF + 6;
+		const k = Math.min( W / ( maxX - minX + pad * 2 ), H / ( maxZ - minZ + pad * 2 ) );
+		const ox = W / 2 - ( minX + maxX ) / 2 * k, oy = H / 2 - ( minZ + maxZ ) / 2 * k;
+		const X = ( x ) => ox + x * k, Y = ( z ) => oy + z * k;
+
+		const trace = ( from = 0, to = p.sampleCount ) => {
+
+			ctx.beginPath();
+			ctx.moveTo( X( p.px[ from ] ), Y( p.pz[ from ] ) );
+			for ( let i = from + 1; i < to; i ++ ) ctx.lineTo( X( p.px[ i ] ), Y( p.pz[ i ] ) );
+
+		};
+
+		ctx.lineJoin = ctx.lineCap = 'round';
+		trace();
+		ctx.strokeStyle = '#d9dbe3';
+		ctx.lineWidth = Math.max( 3, ROAD_HALF * 2 * k );
+		ctx.stroke();
+		trace();
+		ctx.strokeStyle = '#46474f';
+		ctx.lineWidth = Math.max( 2, ROAD_HALF * 1.6 * k );
+		ctx.stroke();
+
+		ctx.strokeStyle = 'rgba(255, 70, 70, 0.9)';
+		ctx.lineWidth = Math.max( 3, ROAD_HALF * 2 * k );
+
+		for ( let i = 0; i + 1 < p.sampleCount; i ++ ) {
+
+			if ( radii[ i ] >= MIN_RADIUS ) continue;
+			ctx.beginPath();
+			ctx.moveTo( X( p.px[ i ] ), Y( p.pz[ i ] ) );
+			ctx.lineTo( X( p.px[ i + 1 ] ), Y( p.pz[ i + 1 ] ) );
+			ctx.stroke();
+
+		}
+
+		ctx.fillStyle = '#fff';
+		for ( const n of svgResult.nodes ) {
+
+			ctx.beginPath();
+			ctx.arc( X( n.x ), Y( n.z ), 2.5, 0, Math.PI * 2 );
+			ctx.fill();
+
+		}
+
+		const s0 = svgResult.nodes[ 0 ];
+		const ax = Math.sin( s0.a ), az = Math.cos( s0.a );
+		ctx.fillStyle = '#4caf6a';
+		ctx.beginPath();
+		ctx.moveTo( X( s0.x ) + ax * 16, Y( s0.z ) + az * 16 );
+		ctx.lineTo( X( s0.x ) - az * 7, Y( s0.z ) + ax * 7 );
+		ctx.lineTo( X( s0.x ) + az * 7, Y( s0.z ) - ax * 7 );
+		ctx.fill();
+
+		// Scale bar
+		const bar = [ 5, 10, 20, 50, 100, 200, 500, 1000, 2000 ].find( ( m ) => m * k > 50 ) || 2000;
+		ctx.fillStyle = '#fff';
+		ctx.fillRect( 12, H - 16, bar * k, 3 );
+		ctx.font = '600 11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+		ctx.fillText( bar + ' m', 12, H - 22 );
+
+	}
+
+	// Raise smoothing until every curve respects MIN_RADIUS
+	function autoSmooth() {
+
+		const candidate = svgCandidates[ + svgInputs.shape.value ] || svgCandidates[ 0 ];
+
+		for ( let s = + svgInputs.smoothing.value; s <= + svgInputs.smoothing.max; s += 0.5 ) {
+
+			svgInputs.smoothing.value = s;
+			if ( polylineToTrack( candidate.points, svgOptions() ).path.minRadius() >= MIN_RADIUS ) break;
+
+		}
+
+		updateSvgPreview();
+		if ( svgResult.path.minRadius() < MIN_RADIUS ) showToast( t( 'editor.svgStillTight' ) );
+
+	}
+
+	function closeSvg() {
+
+		svgDialog.classList.remove( 'show' );
+		svgFile.value = '';
+
+	}
+
+	function applySvg() {
+
+		if ( ! svgResult || svgResult.nodes.length < 2 ) return;
+
+		pushUndo();
+		nodes = svgResult.nodes;
+		closed = svgResult.closed;
+		selected = - 1;
+		closeSvg();
+		changed();
+		fitCamera();
+		selectTool( 'edit' );
+		showToast( t( 'editor.svgImported' ) );
+
+	}
+
+	document.getElementById( 'btn-svg' ).addEventListener( 'click', () => svgFile.click() );
+	svgFile.addEventListener( 'change', () => {
+
+		if ( svgFile.files[ 0 ] ) openSvg( svgFile.files[ 0 ] );
+
+	} );
+
+	for ( const input of Object.values( svgInputs ) ) input.addEventListener( 'input', updateSvgPreview );
+	document.getElementById( 'svg-auto' ).addEventListener( 'click', autoSmooth );
+	document.getElementById( 'svg-cancel' ).addEventListener( 'click', closeSvg );
+	document.getElementById( 'svg-apply' ).addEventListener( 'click', applySvg );
+	svgDialog.addEventListener( 'pointerdown', ( e ) => {
+
+		if ( e.target === svgDialog ) closeSvg();
+
+	} );
+
+	// Drop an .svg anywhere on the page
+	window.addEventListener( 'dragover', ( e ) => e.preventDefault() );
+	window.addEventListener( 'drop', ( e ) => {
+
+		e.preventDefault();
+		const file = [ ...e.dataTransfer.files ].find( ( f ) => f.name.toLowerCase().endsWith( '.svg' ) || f.type === 'image/svg+xml' );
+		if ( file ) openSvg( file );
+		else if ( e.dataTransfer.files.length ) showToast( t( 'editor.svgDrop' ) );
+
+	} );
+
+	// ─── Pointer input ────────────────────────────────────────
+
+	const el = renderer.domElement;
+	const pointers = new Map();
+
+	function updateCursor() {
+
+		if ( gesture && ( gesture.type === 'pan' || gesture.type === 'orbit' ) ) el.style.cursor = 'grabbing';
+		else if ( spaceDown || tool === 'pan' ) el.style.cursor = 'grab';
+		else if ( tool === 'edit' && hover ) el.style.cursor = hover.type === 'node' ? 'move' : 'grab';
+		else if ( tool === 'build' || tool === 'relief' ) el.style.cursor = 'crosshair';
+		else el.style.cursor = '';
+
+	}
+
+	el.addEventListener( 'contextmenu', ( e ) => e.preventDefault() );
+
+	function pinchInfo() {
+
+		const [ a, b ] = [ ...pointers.values() ];
+		return { dist: Math.hypot( b.x - a.x, b.y - a.y ), x: ( a.x + b.x ) / 2, y: ( a.y + b.y ) / 2 };
+
+	}
+
+	function finishStroke( g ) {
+
+		if ( g.before && g.moved ) {
+
+			if ( g.type === 'sculpt' ) sculptCommitted = terrain.snapshot();
+			pushUndo( g.before );
+			save();
+			updateHud();
+
+		}
+
+	}
+
+	el.addEventListener( 'pointerdown', ( e ) => {
+
+		el.setPointerCapture( e.pointerId );
+		pointers.set( e.pointerId, { x: e.clientX, y: e.clientY } );
+		pointerScreen = { x: e.clientX, y: e.clientY };
+
+		if ( pointers.size === 2 ) {
+
+			// A second finger turns any gesture into pan + pinch
+			if ( gesture ) finishStroke( gesture );
+			gesture = { type: 'pinch', ...pinchInfo() };
+			updateCandidate();
+			updateBrushRing();
+			return;
+
+		}
+
+		if ( pointers.size > 2 ) return;
+
+		cursor = toWorld( e.clientX, e.clientY );
+
+		const drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, button: e.button };
+		const orbitGesture = view === '3d' && ( e.button === 2 || ( e.button === 0 && e.altKey ) );
+		const panGesture = e.button === 1 || ( e.button === 2 && view === 'top' ) || ( e.button === 0 && ( spaceDown || tool === 'pan' ) );
+
+		if ( orbitGesture || panGesture ) {
+
+			gesture = { type: orbitGesture ? 'orbit' : 'pan', ...drag };
+			updateCursor();
+			updateBrushRing();
+			return;
+
+		}
+
+		if ( e.button !== 0 || ! cursor ) return;
+
+		if ( tool === 'build' ) {
+
+			if ( closed ) {
+
+				showToast( t( 'editor.closedNoBuild' ) );
+				return;
+
+			}
+
+			if ( nodes.length === 0 ) {
+
+				if ( ! inArea( cursor ) ) {
+
+					showToast( t( 'editor.outOfArea' ) );
+					return;
+
+				}
+
+				gesture = { type: 'build-start', node: newNodeAt( cursor, DEFAULT_HEADING ), x0: cursor.x, z0: cursor.z };
+				refreshOverlay();
+
+			} else {
+
+				gesture = { type: 'build' };
+				updateCandidate();
+
+			}
+
+		} else if ( tool === 'edit' ) {
+
+			const hit = pick( e.clientX, e.clientY );
+
+			if ( hit ) {
+
+				const n = nodes[ hit.index ];
+				selected = hit.index;
+				gesture = {
+					type: hit.type === 'node' ? 'drag-node' : 'drag-handle',
+					index: hit.index,
+					before: snapshot(),
+					moved: false,
+					offX: n.x - cursor.x,
+					offZ: n.z - cursor.z,
+				};
+
+			} else {
+
+				selected = - 1;
+
+			}
+
+			refreshOverlay();
+
+		} else if ( tool === 'relief' ) {
+
+			gesture = { type: 'sculpt', before: snapshot(), moved: false, target: terrain.sculptAt( cursor.x, cursor.z ) };
+
+		}
+
+	} );
+
+	el.addEventListener( 'pointermove', ( e ) => {
+
+		if ( pointers.has( e.pointerId ) ) pointers.set( e.pointerId, { x: e.clientX, y: e.clientY } );
+		pointerScreen = { x: e.clientX, y: e.clientY };
+
+		if ( gesture && gesture.type === 'pinch' ) {
+
+			if ( pointers.size < 2 ) return;
+			const p = pinchInfo();
+			panBy( p.x - gesture.x, p.y - gesture.y );
+			if ( gesture.dist > 0 ) zoomAt( p.x, p.y, p.dist / gesture.dist );
+			Object.assign( gesture, p );
+			return;
+
+		}
+
+		if ( gesture && ( gesture.type === 'pan' || gesture.type === 'orbit' ) ) {
+
+			if ( gesture.type === 'pan' ) panBy( e.clientX - gesture.x, e.clientY - gesture.y );
+			else orbitBy( e.clientX - gesture.x, e.clientY - gesture.y );
+			gesture.x = e.clientX;
+			gesture.y = e.clientY;
+			if ( Math.hypot( e.clientX - gesture.sx, e.clientY - gesture.sy ) > 4 ) gesture.moved = true;
+			return;
+
+		}
+
+		cursor = toWorld( e.clientX, e.clientY );
+		updateBrushRing();
+		if ( ! cursor ) return;
+
+		if ( gesture && gesture.type === 'build-start' ) {
+
+			const n = gesture.node;
+			const dx = cursor.x - n.x, dz = cursor.z - n.z;
+
+			if ( Math.hypot( dx, dz ) > 0.6 * scaleAt( n.x, nodeY( n ), n.z ) ) {
+
+				n.a = Math.atan2( dx, dz );
+				if ( snap ) n.a = Math.round( n.a / SNAP_ANGLE ) * SNAP_ANGLE;
+				if ( grid ) Object.assign( n, gridAlign( { ...n, x: gesture.x0, z: gesture.z0 } ) );
+
+			}
+
+			refreshOverlay();
+			return;
+
+		}
+
+		if ( gesture && gesture.type === 'drag-node' ) {
+
+			const n = nodes[ gesture.index ];
+			const p = snapPoint( { x: cursor.x + gesture.offX, z: cursor.z + gesture.offZ } );
+			n.x = THREE.MathUtils.clamp( p.x, - AREA, AREA );
+			n.z = THREE.MathUtils.clamp( p.z, - AREA, AREA );
+			gesture.moved = true;
+			rebuildRoad();
+			refreshOverlay();
+			return;
+
+		}
+
+		if ( gesture && gesture.type === 'drag-handle' ) {
+
+			const n = nodes[ gesture.index ];
+			n.a = Math.atan2( cursor.x - n.x, cursor.z - n.z );
+			if ( snap ) n.a = Math.round( n.a / SNAP_ANGLE ) * SNAP_ANGLE;
+			if ( grid ) n.a = Math.round( n.a / RIGHT_ANGLE ) * RIGHT_ANGLE;
+			gesture.moved = true;
+			rebuildRoad();
+			refreshOverlay();
+			return;
+
+		}
+
+		if ( tool === 'edit' && e.pointerType === 'mouse' && ! gesture ) {
+
+			const h = pick( e.clientX, e.clientY );
+			if ( ( h && h.type ) !== ( hover && hover.type ) || ( h && h.index ) !== ( hover && hover.index ) ) {
+
+				hover = h;
+				updateCursor();
+				refreshOverlay();
+
+			}
+
+		}
+
+		if ( tool === 'build' ) {
+
+			if ( nodes.length === 0 ) refreshOverlay();
+			else updateCandidate();
+
+		}
+
+	} );
+
+	function endGesture( e ) {
+
+		pointers.delete( e.pointerId );
+		if ( ! gesture ) return;
+
+		if ( gesture.type === 'pinch' ) {
+
+			if ( pointers.size === 0 ) gesture = null;
+			return;
+
+		}
+
+		const g = gesture;
+		gesture = null;
+
+		if ( e.type === 'pointercancel' ) {
+
+			finishStroke( g );
+			updateCursor();
+			return;
+
+		}
+
+		if ( g.type === 'pan' || g.type === 'orbit' ) {
+
+			// Right click without dragging stops building, like Esc
+			if ( ! g.moved && g.button === 2 && isBuilding() ) selectTool( 'edit' );
+
+		} else if ( g.type === 'build-start' ) {
+
+			pushUndo();
+			nodes.push( g.node );
+			changed();
+
+		} else if ( g.type === 'build' ) {
+
+			cursor = toWorld( e.clientX, e.clientY ) || cursor;
+			updateCandidate();
+			commitCandidate();
+
+		} else {
+
+			finishStroke( g );
+
+		}
+
+		updateCursor();
+		updateBrushRing();
+
+	}
+
+	window.addEventListener( 'pointerup', endGesture );
+	window.addEventListener( 'pointercancel', endGesture );
+
+	el.addEventListener( 'dblclick', ( e ) => {
+
+		if ( tool !== 'edit' ) return;
+		const p = toWorld( e.clientX, e.clientY );
+		if ( p && ! pick( e.clientX, e.clientY ) ) insertNodeAt( p );
+
+	} );
+
+	el.addEventListener( 'wheel', ( e ) => {
+
+		e.preventDefault();
+		const factor = Math.exp( - e.deltaY * ( e.ctrlKey ? 0.01 : 0.0015 ) );
+		zoomAt( e.clientX, e.clientY, factor );
+		cursor = toWorld( e.clientX, e.clientY );
+		updateBrushRing();
+		if ( tool === 'build' ) updateCandidate();
+
+	}, { passive: false } );
+
+	// ─── Keyboard ─────────────────────────────────────────────
+
+	window.addEventListener( 'keydown', ( e ) => {
+
+		if ( isSvgOpen() ) {
+
+			if ( e.key === 'Escape' ) closeSvg();
+			else if ( e.key === 'Enter' ) applySvg();
+			return;
+
+		}
+
+		if ( libDialog.classList.contains( 'show' ) ) {
+
+			if ( e.key === 'Escape' ) closeLibrary();
+			return;
+
+		}
+
+		const ctrl = e.ctrlKey || e.metaKey;
+		const key = e.key.toLowerCase();
+
+		if ( ctrl && key === 'z' ) {
+
+			e.preventDefault();
+			if ( e.shiftKey ) redo();
+			else undo();
+			return;
+
+		}
+
+		if ( ctrl && key === 'y' ) {
+
+			e.preventDefault();
+			redo();
+			return;
+
+		}
+
+		if ( ctrl ) return;
+
+		if ( e.key === ' ' ) {
+
+			e.preventDefault();
+			if ( ! spaceDown ) {
+
+				spaceDown = true;
+				updateCursor();
+
+			}
+
+		} else if ( e.key === 'Shift' ) {
+
+			if ( ! shiftDown ) {
+
+				shiftDown = true;
+				updateCandidate();
+				updateBrushRing();
+
+			}
+
+		} else if ( e.key === 'Escape' ) {
+
+			if ( tool === 'build' ) selectTool( 'edit' );
+			else {
+
+				selected = - 1;
+				refreshOverlay();
+
+			}
+
+		} else if ( e.key === 'Backspace' || e.key === 'Delete' ) {
+
+			e.preventDefault();
+
+			if ( tool === 'edit' && selected >= 0 ) {
+
+				deleteNode( selected );
+
+			} else if ( tool === 'build' && nodes.length > 0 ) {
+
+				pushUndo();
+				if ( closed ) closed = false;
+				else nodes.pop();
+				changed();
+
+			}
+
+		} else if ( key === '1' ) selectTool( 'build' );
+		else if ( key === '2' ) selectTool( 'edit' );
+		else if ( key === '3' ) selectTool( 'relief' );
+		else if ( key === '4' ) selectTool( 'pan' );
+		else if ( key === 'v' ) setView( view === 'top' ? '3d' : 'top' );
+		else if ( key === 'g' ) setDrawMode( DRAW_MODES[ ( DRAW_MODES.indexOf( drawMode() ) + 1 ) % DRAW_MODES.length ] );
+		else if ( key === 'f' ) flipDirection();
+		else if ( key === 'q' ) adjustHeight( - HEIGHT_STEP );
+		else if ( key === 'e' ) adjustHeight( HEIGHT_STEP );
+		else if ( key === 't' ) groundAction();
+		else if ( key === 'p' ) togglePiers();
+		else if ( '[]()'.includes( e.key ) ) {
+
+			const grow = e.key === ']' || e.key === ')';
+			brush.radius = THREE.MathUtils.clamp( brush.radius + ( grow ? 2 : - 2 ), 3, 40 );
+			radiusInput.value = brush.radius;
+			updateBrushRing();
+			updatePanels();
+
+		}
+
+	} );
+
+	window.addEventListener( 'keyup', ( e ) => {
+
+		if ( e.key === ' ' ) {
+
+			spaceDown = false;
+			updateCursor();
+
+		} else if ( e.key === 'Shift' ) {
+
+			shiftDown = false;
+			updateCandidate();
+			updateBrushRing();
+
+		}
+
+	} );
+
+	window.addEventListener( 'blur', () => {
+
+		spaceDown = false;
+		shiftDown = false;
+
+	} );
+
+	// ─── Init & render loop ───────────────────────────────────
+
+	await loadTiles();
+	await loadSaved();
+	setDrawMode( 'free', false );
+	terrainView.clear();
+	rebuildRoad();
+	fitCamera();
+	selectTool( closed ? 'edit' : 'build' );
+	loading.set( 'build', 1 );
+	await loading.compile( 'shaders', renderer, scene, cam() );
+
+	// Inspect the scene from the console with ?debug
+	if ( new URLSearchParams( window.location.search ).has( 'debug' ) ) {
+
+		window.editor = {
+			scene, renderer, terrainView, roadMesh, dirLight, terrain, toScreen, nodeY, setDrawMode, openLibrary,
+			get nodes() { return nodes; }, get closed() { return closed; }, get path() { return path; }, get current() { return current; },
+		};
+
+	}
+
+	const timer = new THREE.Timer();
+
+	function animate() {
+
+		requestAnimationFrame( animate );
+		timer.update();
+
+		if ( gesture && gesture.type === 'sculpt' ) {
+
+			applyBrush( Math.min( timer.getDelta(), 1 / 20 ) );
+			updateBrushRing();
+
+		}
+
+		if ( view === '3d' ) layoutOverlay();
+		renderer.render( scene, cam() );
+
+	}
+
+	animate();
+	loading.reveal();
+
+	</script>
+</body>
+</html>
