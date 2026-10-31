@@ -1,0 +1,28 @@
+name: dirtbound-go
+
+services:
+  dirtbound:
+    image: ${DIRTBOUND_IMAGE:-dirtbound-go:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
+    volumes:
+      - data:/data
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 10s
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:

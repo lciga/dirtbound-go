@@ -7,3 +7,6 @@
 /tools/.parity-vehicle.mjs
 /web/wasm/physics.wasm
 /web/wasm/wasm_exec.js
+.env
+.env.*
+!.env.example

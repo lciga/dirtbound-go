@@ -1,4 +1,14 @@
 .git
+.github
+.DS_Store
+.env
+.env.*
 node_modules
 bin
 data
+work
+outputs
+*.tmp
+*.log
+web/wasm/physics.wasm
+web/wasm/wasm_exec.js
