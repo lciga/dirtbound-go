@@ -1,15 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import { createDecipheriv, createHash } from 'node:crypto';
-import { gunzipSync } from 'node:zlib';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
-import { RALLY_CARS } from '../web/js/RallyCars.js';
-import * as keys from '../web/js/assetKey.js';
-import { addCarDecal } from '../web/js/CarDecal.js';
 import { themeSeason, setThemeSeason } from '../web/js/Theme.js';
 import { BackfireGate } from '../web/js/Backfire.js';
 import { Gearbox, REDLINE_RPM } from '../web/js/Gearbox.js';
@@ -134,40 +128,5 @@ test('recorded exhaust WAVs are short, nonempty PCM with faded endpoints', async
 		let peak=0;
 		for(let i=44;i<bytes.length;i+=2) peak=Math.max(peak,Math.abs(bytes.readInt16LE(i)));
 		assert.ok(peak>20000&&peak<32767);
-	}
-});
-
-test('both door decals are present on all 17 rally models and four trucks, and survive cloning', async () => {
-	// Actual GLB meshes; image decoding is replaced only for this geometry test.
-	const loader=new GLTFLoader();
-	loader.register(()=>({name:'TEST_TEXTURES',loadTexture:()=>Promise.resolve(new THREE.Texture())}));
-	const sticker=new THREE.MeshStandardMaterial();
-	const rawKey=Buffer.from(keys.ASSET_KEY.map((b,i)=>b^keys.ASSET_MASK[i]));
-	const models=[];
-	for(const name of RALLY_CARS) {
-		const id=createHash('sha256').update(keys.ASSET_SALT+'car/'+name).digest('hex').slice(0,24);
-		const packed=await fs.readFile(new URL('../web/models/cars/'+id+'.car',import.meta.url));
-		const decipher=createDecipheriv('aes-256-gcm',rawKey,packed.subarray(0,12));
-		decipher.setAuthTag(packed.subarray(-16));
-		models.push([name,gunzipSync(Buffer.concat([decipher.update(packed.subarray(12,-16)),decipher.final()]))]);
-	}
-	for(const color of ['yellow','green','purple','red']) models.push([color,await fs.readFile(new URL('../web/models/vehicle-truck-'+color+'.glb',import.meta.url))]);
-	for(const [name,bytes] of models) {
-		const gltf=await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
-		gltf.scene.scale.setScalar(0.5);
-		addCarDecal(gltf.scene,sticker);
-		const decal=gltf.scene.getObjectByName('iskander-decal');
-		assert.ok(decal, name+' has door decals');
-		assert.deepEqual(decal.userData.sides,[-1,1],name+' has both doors');
-		assert.ok(decal.geometry.attributes.position.count>0,name);
-		const normals=decal.geometry.attributes.normal;
-		let left=0,right=0;
-		for(let i=0;i<normals.count;i++){if(normals.getX(i)<-0.55)left++;if(normals.getX(i)>0.55)right++;}
-		assert.ok(left>0&&right>0,name+' faces outwards on both doors');
-		assert.ok(decal.geometry.attributes.position.array.every(Number.isFinite),name);
-		assert.equal(decal.parent.name,'body',name+' follows body suspension');
-		assert.ok(gltf.scene.clone().getObjectByName('iskander-decal'),name+' clone');
-		addCarDecal(gltf.scene,sticker);
-		assert.equal(decal.parent.children.filter(o=>o.name==='iskander-decal').length,1,name+' idempotent');
 	}
 });

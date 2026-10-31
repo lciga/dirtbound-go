@@ -94,13 +94,15 @@ func (p *peer) emit(msg any) {
 	}
 }
 func (h *Hub) socket(w http.ResponseWriter, r *http.Request) {
-	h.app.mu.Lock()
-	a := h.app.accountLocked(r)
+	a, authErr := h.app.account(r)
+	if authErr != nil {
+		databaseFailure(w, authErr)
+		return
+	}
 	var user Account
 	if a != nil {
 		user = *a
 	}
-	h.app.mu.Unlock()
 	if user.ID == "" || user.Pseudo == "" {
 		failure(w, 401, "Choose a profile name first")
 		return

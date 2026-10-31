@@ -230,7 +230,7 @@ export class RaceSync {
 		if ( this.leaving ) return;
 		this.leaving = true;
 		this.hud.showCard( message, t( 'race.backToMenu' ) );
-		setTimeout( () => leavePage( 'index.html' ), 2500 );
+		setTimeout( () => leavePage( 'menu.html' ), 2500 );
 
 	}
 
@@ -270,7 +270,7 @@ export class RaceSync {
 	onLobby( lobby ) {
 
 		this.lobby = lobby;
-		if ( lobby.state === 'waiting' ) return void leavePage( 'index.html' );
+		if ( lobby.state === 'waiting' ) return void leavePage( 'menu.html' );
 		if ( ! lobby.race ) return;
 
 		const grid = new Set( lobby.race.grid.map( ( g ) => g.id ) );

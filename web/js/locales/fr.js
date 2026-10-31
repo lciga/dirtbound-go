@@ -83,8 +83,8 @@ export default {
 
 	circuits: {
 		kenney: 'Circuit Kenney',
-		official: 'Circuit officiel',
-		officialBy: 'Circuit officiel · par {author}',
+		official: 'Circuit sélectionné',
+		officialBy: 'Circuit sélectionné · par {author}',
 		community: 'Circuit de la communauté',
 		by: 'par {author}',
 		you: 'toi',
@@ -93,7 +93,7 @@ export default {
 		oldEditor: 'Mon circuit (ancien éditeur)',
 		grid: 'Circuit à cases',
 		myCircuit: 'Mon circuit',
-		tabOfficial: 'Officiel',
+		tabOfficial: 'Sélection',
 		tabMine: 'Mes circuits · {n}',
 		tabCommunity: 'Communauté',
 		loading: 'Chargement des circuits publiés…',

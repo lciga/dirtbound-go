@@ -287,12 +287,19 @@ export class Walls {
 			const box = { w: Math.round( spec.w * PX ), h: Math.round( spec.h * PX ), title: Math.round( VIDEO.title * PX ), sub: Math.round( VIDEO.sub * PX ), inset: Math.round( VIDEO.inset * PX ) };
 			canvas.width = box.w + pad * 2;
 			canvas.height = box.h + pad * 2;
-			const video = document.createElement( 'video' );
-			Object.assign( video, { src: spec.src, muted: true, loop: true, playsInline: true, preload: 'auto' } );
-			video.setAttribute( 'muted', '' );
+			const video = spec.src ? document.createElement( 'video' ) : null;
+			if ( video ) {
+				Object.assign( video, { src: spec.src, muted: true, loop: true, playsInline: true, preload: 'auto' } );
+				video.setAttribute( 'muted', '' );
+			}
 			Object.assign( item, { box, pad, video, fresh: true } );
+			if ( spec.cover ) {
+				const image = new Image();
+				image.onload = () => { item.image = image; if ( this.items.includes( item ) ) this.draw( item ); };
+				image.src = spec.cover;
+			}
 			// Drawn again only for a new frame of the clip (30 a second, not every render)
-			if ( video.requestVideoFrameCallback ) {
+			if ( video?.requestVideoFrameCallback ) {
 
 				const next = () => {
 
@@ -302,7 +309,7 @@ export class Walls {
 				};
 				video.requestVideoFrameCallback( next );
 
-			} else item.everyFrame = true;
+			} else if ( video ) item.everyFrame = true;
 
 		} else {
 
@@ -882,12 +889,14 @@ export class Walls {
 		ctx.save();
 		bento( ctx, pad, pad, box.w, box.h, radius, item.skew );
 		ctx.clip();
-		if ( video.readyState >= 2 && video.videoWidth ) {
+		const picture = video?.readyState >= 2 && video.videoWidth ? video : item.image;
+		if ( picture ) {
 
 			const zoom = 1 + item.bar * 0.05;
-			const k = Math.max( box.w / video.videoWidth, box.h / video.videoHeight ) * zoom;
-			const w = video.videoWidth * k, h = video.videoHeight * k;
-			ctx.drawImage( video, pad + ( box.w - w ) / 2, pad + ( box.h - h ) / 2, w, h );
+			const pw = picture.videoWidth || picture.width, ph = picture.videoHeight || picture.height;
+			const k = Math.max( box.w / pw, box.h / ph ) * zoom;
+			const w = pw * k, h = ph * k;
+			ctx.drawImage( picture, pad + ( box.w - w ) / 2, pad + ( box.h - h ) / 2, w, h );
 
 		}
 
@@ -901,10 +910,15 @@ export class Walls {
 
 		const x = right ? pad + box.w - box.inset : pad + box.inset;
 		const base = pad + box.h - box.inset - box.sub * 1.5;
-		ctx.font = `${ box.title }px ${ TITLE_FONT }`;
-		shade( ctx, box.title );
-		ctx.fillStyle = item.hot ? ACCENT : INK;
 		const title = spec.title.toUpperCase();
+		ctx.letterSpacing = '0px';
+		ctx.font = `${ box.title }px ${ TITLE_FONT }`;
+		const metrics = ctx.measureText( title );
+		const inkWidth = Math.max( metrics.width, ( metrics.actualBoundingBoxLeft || 0 ) + ( metrics.actualBoundingBoxRight || 0 ) );
+		const titlePx = Math.floor( box.title * Math.min( 1, ( box.w - box.inset * 2 ) / Math.max( 1, inkWidth ) ) );
+		ctx.font = `${ titlePx }px ${ TITLE_FONT }`;
+		shade( ctx, titlePx );
+		ctx.fillStyle = item.hot ? ACCENT : INK;
 		ctx.fillText( title, right ? x - ctx.measureText( title ).width : x, base );
 
 		if ( spec.sub && item.reveal > 0 ) {

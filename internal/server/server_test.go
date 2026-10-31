@@ -5,22 +5,56 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/coder/websocket"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"io/fs"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 )
 
-func newTest(t *testing.T) (*App, *httptest.Server, *http.Client) {
+func newTestApp(t *testing.T, files fs.FS) *App {
 	t.Helper()
-	a, err := New(fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("DirtBound")}}, t.TempDir())
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("PostgreSQL integration: use tools/test-postgres.py or TEST_DATABASE_URL")
+	}
+	ctx := context.Background()
+	root, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
+	schema := "test_" + id(8)
+	quoted := pgx.Identifier{schema}.Sanitize()
+	if _, err = root.Exec(ctx, "CREATE SCHEMA "+quoted); err != nil {
+		root.Close()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { root.Exec(ctx, "DROP SCHEMA "+quoted+" CASCADE"); root.Close() })
+	scoped, err := url.Parse(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := scoped.Query()
+	query.Set("search_path", schema)
+	scoped.RawQuery = query.Encode()
+	app, err := New(files, scoped.String(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(app.Close)
+	return app
+}
+
+func newTest(t *testing.T) (*App, *httptest.Server, *http.Client) {
+	t.Helper()
+	a := newTestApp(t, fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("DirtBound")}})
 	s := httptest.NewServer(a)
 	t.Cleanup(s.Close)
 	jar, _ := cookiejar.New(nil)
@@ -64,9 +98,14 @@ func TestProfilesCircuitsPersistenceAndOrigin(t *testing.T) {
 	if call(t, c, "POST", s.URL+"/api/circuits/"+key+"/star", map[string]any{})["success"] != true {
 		t.Fatal("star")
 	}
-	restored, err := New(fstest.MapFS{}, a.data)
-	if err != nil || len(restored.store.Circuits) != 1 {
-		t.Fatal("persistence", err)
+	restored, err := New(fstest.MapFS{}, a.db.Config().ConnConfig.ConnString(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(restored.Close)
+	var count int
+	if err = restored.db.QueryRow(context.Background(), "SELECT count(*) FROM circuits").Scan(&count); err != nil || count != 1 {
+		t.Fatal("persistence", err, count)
 	}
 	r = call(t, c, "GET", s.URL+"/api/circuits/"+key, nil)
 	if r["data"].(map[string]any)["data"] != "encoded-track-data" {
@@ -201,10 +240,7 @@ func TestTwoPlayerLobbyRaceAndStateRelay(t *testing.T) {
 	}
 }
 func TestStaticWasmMime(t *testing.T) {
-	a, err := New(fstest.MapFS{"physics.wasm": &fstest.MapFile{Data: []byte{0, 97, 115, 109}}}, t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	a := newTestApp(t, fstest.MapFS{"physics.wasm": &fstest.MapFile{Data: []byte{0, 97, 115, 109}}})
 	r := httptest.NewRecorder()
 	a.ServeHTTP(r, httptest.NewRequest("GET", "/physics.wasm", nil))
 	if r.Header().Get("Content-Type") != "application/wasm" {
@@ -220,7 +256,7 @@ func TestPasswordLoginSessionRevocationAndHash(t *testing.T) {
 		t.Fatal(r)
 	}
 	data := r["data"].(map[string]any)
-	if data["url"] != "/index.html" {
+	if data["url"] != "/menu.html" {
 		t.Fatal("open redirect")
 	}
 	accountID := data["account"].(map[string]any)["id"]
@@ -257,16 +293,18 @@ func TestPasswordLoginSessionRevocationAndHash(t *testing.T) {
 	if logged["success"] != true || logged["data"].(map[string]any)["account"].(map[string]any)["id"] != accountID {
 		t.Fatal("cross-device login")
 	}
-	a.mu.Lock()
-	cred := a.store.Credentials["testdriver"]
-	a.mu.Unlock()
+	var cred Credential
+	if err := a.db.QueryRow(context.Background(), "SELECT salt,hash,iterations FROM credentials WHERE login='testdriver'").Scan(&cred.Salt, &cred.Hash, &cred.Iterations); err != nil {
+		t.Fatal(err)
+	}
 	if cred.Hash == body["password"] || len(cred.Salt) != 32 || cred.Iterations != 600000 {
 		t.Fatal("password storage")
 	}
-	restored, err := New(fstest.MapFS{}, a.data)
+	restored, err := New(fstest.MapFS{}, a.db.Config().ConnConfig.ConnString(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(restored.Close)
 	rr := httptest.NewRecorder()
 	restored.ServeHTTP(rr, httptest.NewRequest("POST", "/api/auth/login", strings.NewReader(`{"username":"TestDriver","password":"Test-only-password-123"}`)))
 	if rr.Code != 200 {
@@ -301,10 +339,7 @@ func TestLobbyReconnectAcrossPageNavigation(t *testing.T) {
 }
 
 func TestRaceRequiresSessionAndPreservesDestination(t *testing.T) {
-	a, err := New(fstest.MapFS{"play.html": &fstest.MapFile{Data: []byte("signed-in race")}}, t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	a := newTestApp(t, fstest.MapFS{"play.html": &fstest.MapFile{Data: []byte("signed-in race")}})
 	for _, target := range []string{"/play.html?rally=123", "//play.html", "/unused/../play.html", "/%70lay.html"} {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest("GET", target, nil)

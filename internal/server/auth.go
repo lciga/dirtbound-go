@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
 	"crypto/pbkdf2"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"net"
 	"net/http"
 	"net/url"
@@ -46,8 +50,26 @@ func passwordKey(password, salt string, iterations int) []byte {
 	return key
 }
 
-// authenticate is called while the store mutex is held. Authentication is kept
-// separate from the race hub; expensive password work never holds the hub lock.
+func (a *App) allowLogin(ip string, now time.Time) bool {
+	a.authMu.Lock()
+	defer a.authMu.Unlock()
+	for key, v := range a.loginAttempts {
+		if now.Sub(v.Start) > 5*time.Minute {
+			delete(a.loginAttempts, key)
+		}
+	}
+	bucket := a.loginAttempts[ip]
+	if bucket == nil {
+		if len(a.loginAttempts) >= 4096 {
+			return false
+		}
+		bucket = &attempts{Start: now}
+		a.loginAttempts[ip] = bucket
+	}
+	bucket.Count++
+	return bucket.Count <= 10
+}
+
 func (a *App) authenticate(w http.ResponseWriter, r *http.Request, action string) {
 	if r.Method != "POST" {
 		failure(w, 405, "POST required")
@@ -58,27 +80,20 @@ func (a *App) authenticate(w http.ResponseWriter, r *http.Request, action string
 		ip = r.RemoteAddr
 	}
 	now := time.Now()
-	for key, v := range a.loginAttempts {
-		if now.Sub(v.Start) > 5*time.Minute {
-			delete(a.loginAttempts, key)
-		}
-	}
-	bucket := a.loginAttempts[ip]
-	if bucket == nil {
-		bucket = &attempts{Start: now}
-		a.loginAttempts[ip] = bucket
-	}
-	bucket.Count++
-	if bucket.Count > 10 {
+	if !a.allowLogin(ip, now) {
 		w.Header().Set("Retry-After", "300")
 		failure(w, 429, "Слишком много попыток. Повторите через 5 минут.")
 		return
 	}
-	var body struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Next     string `json:"next"`
+	select {
+	case a.authSlots <- struct{}{}:
+		defer func() { <-a.authSlots }()
+	default:
+		w.Header().Set("Retry-After", "1")
+		failure(w, 429, "Сервер занят. Повторите через секунду.")
+		return
 	}
+	var body struct{ Username, Password, Next string }
 	if !decode(w, r, &body) {
 		return
 	}
@@ -88,23 +103,22 @@ func (a *App) authenticate(w http.ResponseWriter, r *http.Request, action string
 		return
 	}
 	login := strings.ToLower(body.Username)
-	var account *Account
-	if action == "auth/register" {
-		if _, exists := a.store.Credentials[login]; exists {
-			failure(w, 409, "Этот логин уже занят.")
+	ctx := r.Context()
+	account := Account{}
+	var cred Credential
+	registering := action == "auth/register"
+	if registering {
+		cred = Credential{Salt: id(16), Iterations: passwordIterations}
+		cred.Hash = hex.EncodeToString(passwordKey(body.Password, cred.Salt, cred.Iterations))
+		account = Account{ID: id(12), Username: body.Username, Pseudo: body.Username}
+		cred.Account = account.ID
+	} else {
+		err = a.db.QueryRow(ctx, `SELECT c.account_id,c.salt,c.hash,c.iterations,a.id,a.username,a.pseudo FROM credentials c JOIN accounts a ON a.id=c.account_id WHERE c.login=$1`, login).Scan(&cred.Account, &cred.Salt, &cred.Hash, &cred.Iterations, &account.ID, &account.Username, &account.Pseudo)
+		exists := err == nil
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			databaseFailure(w, err)
 			return
 		}
-		salt := id(16)
-		key := passwordKey(body.Password, salt, passwordIterations)
-		accountID := id(3)
-		for a.store.Accounts[accountID] != nil {
-			accountID = id(3)
-		}
-		account = &Account{ID: accountID, Username: body.Username, Pseudo: body.Username}
-		a.store.Accounts[account.ID] = account
-		a.store.Credentials[login] = Credential{Account: account.ID, Salt: salt, Hash: hex.EncodeToString(key), Iterations: passwordIterations}
-	} else {
-		cred, exists := a.store.Credentials[login]
 		if !exists {
 			cred = Credential{Salt: strings.Repeat("0", 32), Hash: strings.Repeat("0", 64), Iterations: passwordIterations}
 		}
@@ -114,29 +128,51 @@ func (a *App) authenticate(w http.ResponseWriter, r *http.Request, action string
 			failure(w, 401, "Неверный логин или пароль.")
 			return
 		}
-		account = a.store.Accounts[cred.Account]
-		if account == nil {
-			failure(w, 401, "Неверный логин или пароль.")
+	}
+	tx, err := a.db.Begin(ctx)
+	if err != nil {
+		databaseFailure(w, err)
+		return
+	}
+	defer tx.Rollback(context.Background())
+	if registering {
+		_, err = tx.Exec(ctx, `INSERT INTO accounts(id,username,pseudo) VALUES($1,$2,$3)`, account.ID, account.Username, account.Pseudo)
+		if err == nil {
+			_, err = tx.Exec(ctx, `INSERT INTO credentials(login,account_id,salt,hash,iterations) VALUES($1,$2,$3,$4,$5)`, login, account.ID, cred.Salt, cred.Hash, cred.Iterations)
+		}
+		if err != nil {
+			var pgerr *pgconn.PgError
+			if errors.As(err, &pgerr) && pgerr.Code == "23505" {
+				failure(w, 409, "Этот логин уже занят.")
+			} else {
+				databaseFailure(w, err)
+			}
 			return
 		}
 	}
+	// Expensive hashing above never blocks unrelated profiles or game requests.
 	token := id(32)
-	for key, v := range a.store.Sessions {
-		if v.Expires < now.Unix() {
-			delete(a.store.Sessions, key)
+	if old, e := r.Cookie("dirtbound-session"); e == nil {
+		_, err = tx.Exec(ctx, "DELETE FROM sessions WHERE token_hash=$1", sessionKey(old.Value))
+		if err != nil {
+			databaseFailure(w, err)
+			return
 		}
 	}
-	// Rotate the current browser's session without logging out other devices.
-	if old, e := r.Cookie("dirtbound-session"); e == nil {
-		delete(a.store.Sessions, sessionKey(old.Value))
+	if _, err = tx.Exec(ctx, `DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires<$1 LIMIT 1000)`, now.Unix()); err != nil {
+		databaseFailure(w, err)
+		return
 	}
-	a.store.Sessions[sessionKey(token)] = Session{Account: account.ID, Expires: now.Add(sessionLifetime).Unix()}
-	if a.saveLocked() != nil {
-		failure(w, 500, "Не удалось сохранить профиль.")
+	if _, err = tx.Exec(ctx, `INSERT INTO sessions(token_hash,account_id,expires) VALUES($1,$2,$3)`, sessionKey(token), account.ID, now.Add(sessionLifetime).Unix()); err != nil {
+		databaseFailure(w, err)
+		return
+	}
+	if err = tx.Commit(ctx); err != nil {
+		databaseFailure(w, err)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: "dirtbound-session", Value: token, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", MaxAge: int(sessionLifetime.Seconds())})
-	next := "/index.html"
+	next := "/menu.html"
 	if u, e := url.Parse(body.Next); e == nil && u.Host == "" && u.Scheme == "" && strings.HasPrefix(u.Path, "/") && !strings.HasPrefix(u.Path, "//") {
 		next = u.RequestURI()
 		if u.Fragment != "" {

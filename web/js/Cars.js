@@ -1,5 +1,4 @@
 import { RALLY_CARS, loadRallyCar } from './RallyCars.js';
-import { addCarDecal } from './CarDecal.js';
 
 // Every drivable car, for the garage and the game: the Kenney truck (four
 // paint jobs as liveries) and the rally pack (five liveries each).
@@ -28,7 +27,7 @@ export function loadCar( loader, id, livery = 1 ) {
 	const car = findCar( id );
 	if ( ! car ) return Promise.reject( new Error( `Unknown car "${ id }"` ) );
 
-	if ( car.id !== 'truck' ) return loadRallyCar( loader, car.id, livery ).then( addCarDecal );
+	if ( car.id !== 'truck' ) return loadRallyCar( loader, car.id, livery );
 
 	const paint = TRUCK_COLORS[ ( Math.max( 1, Math.round( livery ) || 1 ) - 1 ) % TRUCK_COLORS.length ];
 
@@ -38,7 +37,7 @@ export function loadCar( loader, id, livery = 1 ) {
 
 			// Godot imports vehicle models at root_scale=0.5
 			gltf.scene.scale.setScalar( 0.5 );
-			resolve( addCarDecal( gltf.scene ) );
+			resolve( gltf.scene );
 
 		}, undefined, reject );
 

@@ -22,4 +22,15 @@
 
 Добавленные записи отстрелов `web/audio/backfire/1.wav`–`3.wav`: Jonas Jocys, **Audi R8 Idling Reving Backfire.wav**, 2019, [Freesound №457733](https://freesound.org/people/Jonas_Jocys/sounds/457733/), [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). Источник — публичная HQ MP3-версия записи. Изменения: вырезаны короткие фрагменты заднего микрофона на 71.725, 72.002 и 79.565 секундах; ослаблен гул ниже 90 Гц, нормализована громкость, добавлены краевые затухания, экспорт в mono PCM16 WAV. Скрипт обработки: `tools/cut-backfires.py`. Автор оригинала не связан с этой версией игры.
 
-Наклейка `web/images/iskander-car.jpg` предоставлена пользователем для размещения на дверях автомобилей. Объёмная надпись `1sk4nd3r` использует контуры символов исходного клиентского шрифта Brand; генератор: `tools/build-logo-font.py`.
+Пользовательская наклейка удалена из текущей версии по просьбе пользователя. Объёмная надпись `1sk4nd3r` использует контуры символов исходного клиентского шрифта Brand; генератор: `tools/build-logo-font.py`.
+
+Шесть дополнительных публично опубликованных трасс получены 2026-11-01 через API каталога DirtBound. Это пользовательские адаптации, а не официальные модели автодромов:
+
+- Circuit de Spa-Francorchamps — jega; [исходная трасса](https://dirtbound.fr/play.html?circuit=b409aaff015e8d4f85f167765fbf2ab121c319ddc5f3addb103147de1b941ae4).
+- Monaco — SkyNight; [исходная трасса](https://dirtbound.fr/play.html?circuit=60503d1345e366fd7cb17d0daab6e2cd4667f1544c31b852df267efcbf58f8ba).
+- Nürburgring - Nordschleife — Nightmare; [исходная трасса](https://dirtbound.fr/play.html?circuit=0e117b17e58c3915fe7dcb1ba05034e9348c13b4d0899b1c40ff3918b51b2348).
+- Mountain Circuit — MidNight; [исходная трасса](https://dirtbound.fr/play.html?circuit=889e4be0059c2b5b884a72cc35f43cd1727eb541fbf0ca24143770dc0a50361c).
+- Drift Rally Track — ItsST1; [исходная трасса](https://dirtbound.fr/play.html?circuit=5c4b6f5ceecd8e1b468864e7b03596e43480df2ed451e20bb684dcd66ad031e8).
+- Bridges Meadow — SkyNight; [исходная трасса](https://dirtbound.fr/play.html?circuit=1e3ed8c43a8e2af3c70bfe15073f6895fb4ed296370dd57fe72efa4367235264).
+
+PostgreSQL-драйвер pgx — github.com/jackc/pgx, MIT; используется как модуль Go. Новые SVG-превью и оболочка сайта созданы для этого проекта.

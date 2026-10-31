@@ -6,10 +6,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-dirtbound}
+      PGUSER: ${POSTGRES_USER:-dirtbound}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Run python3 tools/init-env.py first}
+      PGSSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
     volumes:
-      - data:/data
+      - data:/data:ro
     restart: unless-stopped
     init: true
     stop_grace_period: 10s
@@ -24,5 +34,28 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dirtbound}
+      POSTGRES_USER: ${POSTGRES_USER:-dirtbound}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run python3 tools/init-env.py first}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   data:
+  pgdata:

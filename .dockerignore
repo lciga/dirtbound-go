@@ -12,3 +12,6 @@ outputs
 *.log
 web/wasm/physics.wasm
 web/wasm/wasm_exec.js
+
+web/.precompressed/
+backups/

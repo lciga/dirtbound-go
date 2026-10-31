@@ -13,7 +13,6 @@ const SIZE_MAX = 0.55;
 const BIG_CHANCE = 0.12;       // occasional larger puff
 const BIG_SIZE = 0.8;
 
-const _color = new THREE.Color();
 const _blPos = new THREE.Vector3();
 const _brPos = new THREE.Vector3();
 const _dummy = new THREE.Object3D();
@@ -82,6 +81,7 @@ export class SmokeTrails {
 			mesh.instanceMatrix.setUsage( THREE.DynamicDrawUsage );
 			mesh.frustumCulled = false;
 			mesh.castShadow = true;
+			mesh.count = 0;
 			for ( let i = 0; i < perShape; i ++ ) {
 
 				mesh.setMatrixAt( i, _zero );
@@ -106,6 +106,7 @@ export class SmokeTrails {
 					life: 0,
 					maxLife: 1,
 					size: 0,
+					color: new THREE.Color(),
 					position: new THREE.Vector3(),
 					velocity: new THREE.Vector3(),
 					rotation: new THREE.Quaternion(),
@@ -119,6 +120,8 @@ export class SmokeTrails {
 
 		this.emitIndex = 0;
 		this.emitCarry = 0;
+		this.active = 0;
+		this.counts = new Uint16Array( this.meshes.length );
 
 	}
 
@@ -150,21 +153,21 @@ export class SmokeTrails {
 			this.emitCarry = 0;
 
 		}
+		if ( ! this.active ) return;
 
 		const damping = Math.max( 0, 1 - 1.8 * dt );
-		const dirty = new Set();
+		this.counts.fill( 0 );
 
 		for ( const p of this.particles ) {
 
 			if ( p.life <= 0 ) continue;
 
 			const mesh = this.meshes[ p.shape ];
-			dirty.add( mesh );
 			p.life -= dt;
 
 			if ( p.life <= 0 ) {
 
-				mesh.setMatrixAt( p.slot, _zero );
+				this.active --;
 				continue;
 
 			}
@@ -183,17 +186,32 @@ export class SmokeTrails {
 			_dummy.quaternion.copy( p.rotation );
 			_dummy.scale.setScalar( Math.max( 0, p.size * puffScale( t ) ) );
 			_dummy.updateMatrix();
-			mesh.setMatrixAt( p.slot, _dummy.matrix );
+			const slot = this.counts[ p.shape ] ++;
+			mesh.setMatrixAt( slot, _dummy.matrix );
+			mesh.setColorAt( slot, p.color );
 
 		}
 
-		for ( const mesh of dirty ) mesh.instanceMatrix.needsUpdate = true;
+		for ( let i = 0; i < this.meshes.length; i ++ ) {
+			const mesh = this.meshes[ i ];
+			mesh.count = this.counts[ i ];
+			if ( mesh.count ) {
+                // Subsequent GPU uploads cover the dense live prefix only.
+                mesh.instanceMatrix.clearUpdateRanges();
+                mesh.instanceMatrix.addUpdateRange( 0, mesh.count * 16 );
+                mesh.instanceColor.clearUpdateRanges();
+                mesh.instanceColor.addUpdateRange( 0, mesh.count * 3 );
+				mesh.instanceMatrix.needsUpdate = true;
+				mesh.instanceColor.needsUpdate = true;
+			}
+		}
 
 	}
 
 	emitAt( x, y, z ) {
 
 		const p = this.particles[ this.emitIndex ];
+		if ( p.life <= 0 ) this.active ++;
 		// Stride through the pool so consecutive puffs use different shapes
 		this.emitIndex = ( this.emitIndex + this.perShape + 1 ) % this.particles.length;
 
@@ -220,9 +238,7 @@ export class SmokeTrails {
 		p.maxLife = this.life * ( LIFE_MIN + Math.random() * ( LIFE_MAX - LIFE_MIN ) );
 		p.life = p.maxLife;
 
-		const mesh = this.meshes[ p.shape ];
-		mesh.setColorAt( p.slot, _color.set( this.colorAt?.( x, y, z ) ?? this.color ) );
-		mesh.instanceColor.needsUpdate = true;
+		p.color.set( this.colorAt?.( x, y, z ) ?? this.color );
 
 	}
 

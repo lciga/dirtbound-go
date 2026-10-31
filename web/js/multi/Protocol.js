@@ -21,6 +21,12 @@ export const OFFICIAL_PUBLISHED = Object.freeze( [
 	Object.freeze( { id: '8c9a9daf0a18b1c3f2be1901689b35d1955ad365fc2114d7cb5025fba457a363', name: 'Tarte à rivière' } ),
 	Object.freeze( { id: '576bc747bd5bbd9cbed073245d3edff219eb11e2bfe0398fbc9507acda9d4e8b', name: 'Olufsen' } ),
 	Object.freeze( { id: '920a9bf5f0b4814b2b6157bc757e9bc897800e33a232bffa426cb7f842907d1c', name: 'Chantier publique' } ),
+	Object.freeze( { id: 'b409aaff015e8d4f85f167765fbf2ab121c319ddc5f3addb103147de1b941ae4', name: "Circuit de Spa-Francorchamps" } ),
+	Object.freeze( { id: '60503d1345e366fd7cb17d0daab6e2cd4667f1544c31b852df267efcbf58f8ba', name: "Monaco" } ),
+	Object.freeze( { id: '0e117b17e58c3915fe7dcb1ba05034e9348c13b4d0899b1c40ff3918b51b2348', name: "Nürburgring - Nordschleife" } ),
+	Object.freeze( { id: '889e4be0059c2b5b884a72cc35f43cd1727eb541fbf0ca24143770dc0a50361c', name: "Mountain Circuit" } ),
+	Object.freeze( { id: '5c4b6f5ceecd8e1b468864e7b03596e43480df2ed451e20bb684dcd66ad031e8', name: "Drift Rally Track" } ),
+	Object.freeze( { id: '1e3ed8c43a8e2af3c70bfe15073f6895fb4ed296370dd57fe72efa4367235264', name: "Bridges Meadow" } ),
 ] );
 // Promoted circuits show in Officiel only, never again in Communauté (menu, lobby vote)
 export const isOfficialPublished = ( id ) => OFFICIAL_PUBLISHED.some( ( o ) => o.id === id );
@@ -45,7 +51,7 @@ export const BONUS_LEVELS = 3; // a bonus picked again climbs a level, up to 3
 export const BONUS_KINDS = Object.freeze( [ 'rocket', 'lightning', 'boost' ] ); // what a box can give (a shot's `kind`)
 export const FIRE_COOLDOWN = 0.5; // s between two shots of one racer (server)
 // A rocket's id: shooter id . shot number . rocket of that shot
-export const ROCKET_ID = /^[a-z0-9]{6}\.\d{1,6}\.\d$/;
+export const ROCKET_ID = /^[a-z0-9]{6,24}\.\d{1,6}\.\d$/;
 export const rocketId = ( from, shot, i ) => `${ from }.${ shot }.${ i }`;
 
 const CODE = new RegExp( `^[${ CODE_ALPHABET }]{${ CODE_LENGTH }}$` );

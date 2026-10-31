@@ -76,8 +76,8 @@ export default {
 
 	circuits: {
 		kenney: 'Трасса Kenney',
-		official: 'Официальная трасса',
-		officialBy: 'Официальная трасса · автор: {author}',
+		official: 'Трасса из подборки',
+		officialBy: 'Трасса из подборки · автор: {author}',
 		community: 'Трасса сообщества',
 		by: 'автор: {author}',
 		you: 'ты',
@@ -86,7 +86,7 @@ export default {
 		oldEditor: 'Моя трасса (старый редактор)',
 		grid: 'Трасса из клеток',
 		myCircuit: 'Моя трасса',
-		tabOfficial: 'Официальные',
+		tabOfficial: 'Подборка',
 		tabMine: 'Мои трассы · {n}',
 		tabCommunity: 'Сообщество',
 		loading: 'Загрузка опубликованных трасс…',

@@ -24,7 +24,7 @@ def main():
     with socket.socket() as probe:
         probe.bind(('127.0.0.1', 0))
         port = probe.getsockname()[1]
-    env = dict(os.environ, PORT=str(port), BIND_ADDRESS='127.0.0.1')
+    env = dict(os.environ, PORT=str(port), BIND_ADDRESS='127.0.0.1', POSTGRES_PASSWORD=secrets.token_hex(24))
     compose = ['docker', 'compose', '-p', project]
 
     def run(*command, capture=False, timeout=600):
@@ -76,7 +76,11 @@ def main():
         print('Starting isolated Compose project...', flush=True)
         run(*compose, 'up', '--no-build', '--wait', '--wait-timeout', '90')
         assert api('/healthz')['status'] == 'ok'
-        for path in ['/', '/login.html', '/editor.html']:
+        assert api('/healthz')['storage'] == 'postgresql'
+        catalogue = api('/api/circuits?limit=2&page=2')
+        assert catalogue['total'] >= 9 and len(catalogue['circuits']) == 2
+        assert all('data' not in c for c in catalogue['circuits'])
+        for path in ['/', '/login.html', '/editor.html', '/site.html', '/menu.html']:
             _, raw = request(path)
             assert b'DirtBound' in raw, f'Missing page: {path}'
         _, guest_page = request('/play.html?rally=smoke')
@@ -98,10 +102,23 @@ def main():
         password = secrets.token_urlsafe(24)
         account = api('/api/auth/register', {'username': username, 'password': password})['account']
         assert api('/api/me')['id'] == account['id']
+        assert api('/api/me/dashboard')['stats'] == {'circuits': 0, 'records': 0, 'stars': 0}
         _, race_page = request('/play.html?rally=smoke')
         assert b'src="js/main.js"' in race_page, 'Signed-in player cannot load race'
         websocket()
         print('Registration, session and WebSocket upgrade: OK', flush=True)
+        # Restore a real pg_dump into a separate database inside this disposable project.
+        dump = subprocess.check_output([*compose, 'exec', '-T', 'postgres', 'sh', '-c',
+            'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'], cwd=root, env=env)
+        run(*compose, 'exec', '-T', 'postgres', 'sh', '-c',
+            'createdb -U "$POSTGRES_USER" restore_check')
+        subprocess.run([*compose, 'exec', '-T', 'postgres', 'sh', '-c',
+            'pg_restore -U "$POSTGRES_USER" -d restore_check --exit-on-error'],
+            cwd=root, env=env, input=dump, check=True)
+        restored = run(*compose, 'exec', '-T', 'postgres', 'sh', '-c',
+            'psql -U "$POSTGRES_USER" -d restore_check -Atc "SELECT count(*) FROM accounts"', capture=True).stdout.strip()
+        assert restored == '1', 'Backup did not restore account'
+        print('PostgreSQL backup and restore into isolated database: OK', flush=True)
         run(*compose, 'up', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '90')
         assert api('/api/me')['id'] == account['id'], 'Session lost after recreation'
         api('/api/auth/sign-out', {})

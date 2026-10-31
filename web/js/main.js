@@ -34,7 +34,6 @@ import { GameUI } from './GameUI.js';
 import { RaceStart } from './RaceStart.js';
 import { LaunchBurnout } from './LaunchBurnout.js';
 import { themeSeason } from './Theme.js';
-import { addCarDecal } from './CarDecal.js';
 import { AdaptiveResolution } from './AdaptiveResolution.js';
 import { FrameMonitor } from './FrameMonitor.js';
 import { PageLoading, leavePage } from './PageTransition.js';
@@ -193,7 +192,6 @@ async function loadModels() {
 
 				}
 
-				if ( name.startsWith( 'vehicle-' ) ) addCarDecal( models[ name ] );
 				resolve();
 
 			}, undefined, reject );
@@ -458,34 +456,38 @@ async function init() {
 	const side = Math.max( hw, hd ) * 2;
 	const probeSpacing = rallySeed !== null ? 8 : side <= PROBE_SIDE ? 16 : side / BIG_PROBE_CELLS;
 	const probeHeight = 6 + relief.max - relief.min;
-	const probes = new LightProbeGrid(
-		hw * 2, probeHeight, hd * 2,
-		Math.max( 4, Math.round( hw * 2 / probeSpacing ) ),
-		2,
-		Math.max( 4, Math.round( hd * 2 / probeSpacing ) ),
-	);
-	probes.position.set( bounds.centerX, relief.min + probeHeight / 2, bounds.centerZ );
-	// The kit dressing stays out of the bake: a probe that lands under the
-	// arch or inside a stand sees mostly dark and shades a whole probe cell
-	// (a dark square on the ground around the start line)
-	const unbaked = [];
-	scene.traverse( ( o ) => { if ( o.userData.skipProbeBake && o.visible ) unbaked.push( o ); } );
-	for ( const o of unbaked ) o.visible = false;
-	// The cube faces draw into a render target (linear, no tone mapping), so
-	// the bake needs its own shader variants: compiled here in parallel
-	// (KHR_parallel_shader_compile) instead of one by one on the first face
-	const bakeTarget = new THREE.WebGLRenderTarget( 1, 1 );
-	renderer.setRenderTarget( bakeTarget );
-	const bakeShaders = loading.compile( 'bake', renderer, scene, new THREE.PerspectiveCamera() );
-	renderer.setRenderTarget( null );
-	await bakeShaders;
-	bakeTarget.dispose();
-	await loading.paint();
-	probes.bake( renderer, scene, { cubemapSize: 32, near: 0.1, far: Math.min( groundSize, PROBE_FAR ) } );
-	for ( const o of unbaked ) o.visible = true;
-	scene.add( probes );
+	let probes = null;
+	if ( ! lowSpec ) {
+		probes = new LightProbeGrid(
+			hw * 2, probeHeight, hd * 2,
+			Math.max( 4, Math.round( hw * 2 / probeSpacing ) ),
+			2,
+			Math.max( 4, Math.round( hd * 2 / probeSpacing ) ),
+		);
+		probes.position.set( bounds.centerX, relief.min + probeHeight / 2, bounds.centerZ );
+		// The kit dressing stays out of the bake: a probe that lands under the
+		// arch or inside a stand sees mostly dark and shades a whole probe cell
+		// (a dark square on the ground around the start line)
+		const unbaked = [];
+		scene.traverse( ( o ) => { if ( o.userData.skipProbeBake && o.visible ) unbaked.push( o ); } );
+		for ( const o of unbaked ) o.visible = false;
+		// The cube faces draw into a render target (linear, no tone mapping), so
+		// the bake needs its own shader variants: compiled here in parallel
+		// (KHR_parallel_shader_compile) instead of one by one on the first face
+		const bakeTarget = new THREE.WebGLRenderTarget( 1, 1 );
+		renderer.setRenderTarget( bakeTarget );
+		const bakeShaders = loading.compile( 'bake', renderer, scene, new THREE.PerspectiveCamera() );
+		renderer.setRenderTarget( null );
+		await bakeShaders;
+		bakeTarget.dispose();
+		await loading.paint();
+		probes.bake( renderer, scene, { cubemapSize: 32, near: 0.1, far: Math.min( groundSize, PROBE_FAR ) } );
+		for ( const o of unbaked ) o.visible = true;
+		scene.add( probes );
 
-	// scene.add( new LightProbeGridHelper( probes, 0.5 ) );
+		// scene.add( new LightProbeGridHelper( probes, 0.5 ) );
+
+	}
 
 	// Ground: a flat box, or on relief a plane kept tangent to the terrain under the car
 	let groundBody;
@@ -580,7 +582,7 @@ async function init() {
 
 	} else console.warn( car.error.message + ', using the truck' );
 
-	const vehicleGroup = vehicle.init( addCarDecal( carModel ) );
+	const vehicleGroup = vehicle.init( carModel );
 	scene.add( vehicleGroup );
 	vehicle.respawn( vehicle.spawnPosition.toArray(), vehicle.spawnAngle );
 
@@ -732,7 +734,7 @@ async function init() {
 
 		},
 		onRestart: multi ? null : () => location.reload(),
-		onMenu: () => leavePage( 'index.html' ),
+		onMenu: () => leavePage( 'menu.html' ),
 		ghost: online ? {
 			mode: () => online.ghostMode,
 			next: () => {
@@ -1258,8 +1260,10 @@ async function init() {
 			stage.stream( vehicle.spherePos );
 
 			// Uniform scenery: the baked probe volume just travels with the car
-			probes.position.set( _renderSphere.x, _renderSphere.y + 2, _renderSphere.z );
-			probes.updateBoundingBox();
+			if ( probes ) {
+				probes.position.set( _renderSphere.x, _renderSphere.y + 2, _renderSphere.z );
+				probes.updateBoundingBox();
+			}
 
 		}
 
@@ -1313,7 +1317,7 @@ function showLobbyError( message ) {
 	box.appendChild( inner );
 	document.body.appendChild( box );
 	loading.reveal();
-	setTimeout( () => leavePage( 'index.html' ), 2500 );
+	setTimeout( () => leavePage( 'menu.html' ), 2500 );
 
 }
 

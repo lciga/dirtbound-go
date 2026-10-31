@@ -698,8 +698,8 @@ function soloCards() {
 
 	const card = { kind: 'video', w: 1.05, h: 0.66 };
 	return [
-		{ ...card, side: 'left', src: 'video/menu/circuit.mp4', title: t( 'solo.circuit' ), sub: t( 'solo.circuitSub' ), data: { go: 'circuit' } },
-		{ ...card, side: 'right', src: 'video/menu/rally.mp4', title: t( 'solo.rally' ), sub: t( 'solo.rallySub' ), data: { go: 'rally' } },
+		{ ...card, side: 'left', cover: 'images/modes/circuit.svg', title: t( 'solo.circuit' ), sub: t( 'solo.circuitSub' ), data: { go: 'circuit' } },
+		{ ...card, side: 'right', cover: 'images/themes/summer.webp', title: t( 'solo.rally' ), sub: t( 'solo.rallySub' ), data: { go: 'rally' } },
 	];
 
 }
@@ -1573,7 +1573,7 @@ profileEl.addEventListener( 'click', async () => {
 
 	}
 
-	popEl.hidden ? openPseudo() : closePseudo();
+	location.href = 'site.html#profile';
 
 } );
 document.getElementById( 'pseudo-save' ).addEventListener( 'click', savePseudo );

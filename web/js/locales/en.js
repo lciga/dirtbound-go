@@ -80,8 +80,8 @@ export default {
 
 	circuits: {
 		kenney: 'Kenney Circuit',
-		official: 'Official circuit',
-		officialBy: 'Official circuit · by {author}',
+		official: 'Featured circuit',
+		officialBy: 'Featured circuit · by {author}',
 		community: 'Community circuit',
 		by: 'by {author}',
 		you: 'you',
@@ -90,7 +90,7 @@ export default {
 		oldEditor: 'My circuit (old editor)',
 		grid: 'Tile circuit',
 		myCircuit: 'My circuit',
-		tabOfficial: 'Official',
+		tabOfficial: 'Featured',
 		tabMine: 'My circuits · {n}',
 		tabCommunity: 'Community',
 		loading: 'Loading published circuits…',
