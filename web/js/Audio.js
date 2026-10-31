@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EngineSound } from './EngineSound.js';
 import { onAudioFocus, isAway } from './AudioFocus.js';
 import { Gearbox } from './Gearbox.js';
+import { RACE_AUDIO_MIX as MIX } from './AudioMix.js';
 
 function remap( value, inMin, inMax, outMin, outMax ) {
 
@@ -311,7 +312,7 @@ export class GameAudio {
 
 			}
 
-			this.skidSound.gain.gain.setTargetAtTime( skidVol * this.volumes.tyres, now, 0.05 );
+			this.skidSound.gain.gain.setTargetAtTime( skidVol * MIX.tyres * this.volumes.tyres, now, 0.05 );
 
 			const skidPitch = THREE.MathUtils.clamp( Math.abs( speed ), 1, 3 );
 			const curPitch = this.skidSound.getPlaybackRate();
@@ -322,7 +323,7 @@ export class GameAudio {
 			const intensity01 = THREE.MathUtils.clamp(
 				remap( driftIntensity, 0.5, 1.6, 0, 1 ), 0, 1
 			);
-			this.skidTone.frequency.setTargetAtTime( 2500 + intensity01 * 7500, now, 0.1 );
+			this.skidTone.frequency.setTargetAtTime( 2200 + intensity01 * 4300, now, 0.1 );
 
 		}
 

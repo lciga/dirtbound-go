@@ -47,6 +47,11 @@ export class ExhaustBackfire {
 		this.output = output;
 		this.gate = new BackfireGate();
 		this.buffers = [];
+		this.body = ctx.createBiquadFilter();
+		this.body.type = 'lowshelf';
+		this.body.frequency.value = 450;
+		this.body.gain.value = 6;
+		this.body.connect( output );
 
 	}
 
@@ -72,7 +77,7 @@ export class ExhaustBackfire {
 		source.playbackRate.value = 0.97 + Math.random() * 0.06;
 		const gain = this.ctx.createGain();
 		gain.gain.value = this.gate.level * ( 0.9 + Math.random() * 0.1 );
-		source.connect( gain ).connect( this.output );
+		source.connect( gain ).connect( this.body );
 		source.onended = () => { source.disconnect(); gain.disconnect(); };
 		source.start();
 

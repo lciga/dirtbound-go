@@ -23,7 +23,7 @@ for index, (start, duration) in enumerate([(71.725, 0.16), (72.002, 0.14), (79.5
     data = recording[round(start * rate):round((start + duration) * rate)]
     # Remove the low engine rumble underneath the actual exhaust transient.
     low = 0
-    alpha = 1 - math.exp(-2 * math.pi * 180 / rate)
+    alpha = 1 - math.exp(-2 * math.pi * 90 / rate)
     filtered = []
     for value in data:
         low += alpha * (value - low)

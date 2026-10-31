@@ -1,5 +1,6 @@
 import { ExhaustBackfire } from './Backfire.js';
 import { TurboSound } from './TurboSound.js';
+import { RACE_AUDIO_MIX as MIX } from './AudioMix.js';
 
 // Sample-based engine, ported from Overtake (js/audio/engineSound.js).
 //
@@ -147,10 +148,16 @@ export class EngineSound {
 
 		this.output = ctx.createGain();
 		this.combustion = ctx.createGain();
-		this.combustion.gain.value = 0.5;
+		this.combustion.gain.value = 0.5 * MIX.combustion;
 		this.combustion.connect( this.output );
-		this.backfire = new ExhaustBackfire( ctx, this.output );
-		this.turbo = new TurboSound( ctx, this.output );
+		this.exhaustGain = ctx.createGain();
+		this.exhaustGain.gain.value = MIX.backfire;
+		this.exhaustGain.connect( this.output );
+		this.backfire = new ExhaustBackfire( ctx, this.exhaustGain );
+		this.turboGain = ctx.createGain();
+		this.turboGain.gain.value = MIX.turbo;
+		this.turboGain.connect( this.output );
+		this.turbo = new TurboSound( ctx, this.turboGain );
 
 		// One shared wobble source on every loop's playbackRate: same engine,
 		// same tremor, coherent during crossfades.
@@ -250,12 +257,12 @@ export class EngineSound {
 		const offCutoff = 1500 + 12000 * ( 1 - rpmNorm );
 		this.tone.frequency.setTargetAtTime( offCutoff + ( 18000 - offCutoff ) * load, t, 0.06 );
 
-		const baseGain = 0.38 + 0.42 * load + 0.20 * rpmNorm;
+		const baseGain = ( 0.38 + 0.42 * load + 0.20 * rpmNorm ) * MIX.combustion;
 		this.combustion.gain.setTargetAtTime( baseGain, t, baseGain > this.prevBaseGain ? 0.02 : 0.07 );
 		this.prevBaseGain = baseGain;
 
-		// Up to +7 dB above 1.8 kHz while revving up on throttle
-		const raspDb = 7 * load * Math.min( Math.max( this.rpmRateSmooth / 4000, 0 ), 1 );
+		// Leave space for the turbo whistle instead of masking it with rasp.
+		const raspDb = MIX.engineRaspDb * load * Math.min( Math.max( this.rpmRateSmooth / 4000, 0 ), 1 );
 		this.rasp.gain.setTargetAtTime( raspDb, t, 0.06 );
 
 		this.wobbleDepth.gain.setTargetAtTime( 0.004 * ( 1 - 0.8 * rpmNorm ) * ( 1 - 0.5 * load ), t, 0.1 );

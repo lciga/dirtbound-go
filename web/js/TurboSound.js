@@ -61,7 +61,7 @@ export function turboNoise( rate, seconds, valve = false ) {
 				if ( strength > envelope ) {
 
 					envelope = strength;
-					const frequency = 2100 * Math.pow( 0.9, n );
+					const frequency = 1250 * Math.pow( 0.9, n );
 					tone = Math.sin( 2 * Math.PI * frequency * ( 1 - Math.exp( - age * 8 ) ) / 8 );
 
 				}
@@ -131,9 +131,9 @@ export class TurboSound {
 		source.playbackRate.value = 0.92 + Math.random() * 0.12;
 		const filter = this.ctx.createBiquadFilter();
 		filter.type = 'bandpass';
-		filter.frequency.setValueAtTime( 1100 + release * 1500, now );
-		filter.frequency.exponentialRampToValueAtTime( 800, now + 0.5 );
-		filter.Q.value = 1.1;
+		filter.frequency.setValueAtTime( 650 + release * 700, now );
+		filter.frequency.exponentialRampToValueAtTime( 420, now + 0.5 );
+		filter.Q.value = 0.85;
 		const gain = this.ctx.createGain();
 		gain.gain.value = release * 0.55;
 		source.connect( filter ).connect( gain ).connect( this.output );

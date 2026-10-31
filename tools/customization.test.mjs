@@ -137,7 +137,7 @@ test('recorded exhaust WAVs are short, nonempty PCM with faded endpoints', async
 	}
 });
 
-test('roof decal is present on all 17 rally models and all four trucks, and survives cloning', async () => {
+test('both door decals are present on all 17 rally models and four trucks, and survive cloning', async () => {
 	// Actual GLB meshes; image decoding is replaced only for this geometry test.
 	const loader=new GLTFLoader();
 	loader.register(()=>({name:'TEST_TEXTURES',loadTexture:()=>Promise.resolve(new THREE.Texture())}));
@@ -157,8 +157,13 @@ test('roof decal is present on all 17 rally models and all four trucks, and surv
 		gltf.scene.scale.setScalar(0.5);
 		addCarDecal(gltf.scene,sticker);
 		const decal=gltf.scene.getObjectByName('iskander-decal');
-		assert.ok(decal, name+' has a roof decal');
+		assert.ok(decal, name+' has door decals');
+		assert.deepEqual(decal.userData.sides,[-1,1],name+' has both doors');
 		assert.ok(decal.geometry.attributes.position.count>0,name);
+		const normals=decal.geometry.attributes.normal;
+		let left=0,right=0;
+		for(let i=0;i<normals.count;i++){if(normals.getX(i)<-0.55)left++;if(normals.getX(i)>0.55)right++;}
+		assert.ok(left>0&&right>0,name+' faces outwards on both doors');
 		assert.ok(decal.geometry.attributes.position.array.every(Number.isFinite),name);
 		assert.equal(decal.parent.name,'body',name+' follows body suspension');
 		assert.ok(gltf.scene.clone().getObjectByName('iskander-decal'),name+' clone');
