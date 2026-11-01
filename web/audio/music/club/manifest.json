@@ -7,6 +7,83 @@
       "sourceUrl": "https://www.youtube.com/watch?v=E44KatuqqCI",
       "downloadUrl": "https://hypeddit.com/guyarthur/whysthisdealer-remix",
       "src": "audio/music/club/niko-b-whys-this-dealer-guy-arthur-remix.m4a"
+    },
+    {
+      "id": "styles-of-beyond-nine-thou",
+      "artist": "Styles of Beyond",
+      "title": "Nine Thou (Superstars Remix)",
+      "sourceUrl": "https://www.youtube.com/watch?v=M_s95No5E-s",
+      "src": "audio/music/club/styles-of-beyond-nine-thou.m4a"
+    },
+    {
+      "id": "celldweller-shapeshifter",
+      "artist": "Celldweller feat. Styles of Beyond",
+      "title": "Shapeshifter",
+      "sourceUrl": "https://www.youtube.com/watch?v=kRrOq4NipQQ",
+      "src": "audio/music/club/celldweller-shapeshifter.m4a"
+    },
+    {
+      "id": "disturbed-decadence",
+      "artist": "Disturbed",
+      "title": "Decadence",
+      "sourceUrl": "https://www.youtube.com/watch?v=-daTpfB-7K4",
+      "src": "audio/music/club/disturbed-decadence.m4a"
+    },
+    {
+      "id": "static-x-skinnyman",
+      "artist": "Static-X",
+      "title": "Skinnyman",
+      "sourceUrl": "https://www.youtube.com/watch?v=EIZa5k7Wgsk",
+      "src": "audio/music/club/static-x-skinnyman.m4a"
+    },
+    {
+      "id": "the-prodigy-under-my-wheels",
+      "artist": "The Prodigy",
+      "title": "You’ll Be Under My Wheels",
+      "sourceUrl": "https://www.youtube.com/watch?v=wFAA0_Acvqw",
+      "src": "audio/music/club/the-prodigy-under-my-wheels.m4a"
+    },
+    {
+      "id": "bullet-for-my-valentine-hand-of-blood",
+      "artist": "Bullet for My Valentine",
+      "title": "Hand of Blood",
+      "sourceUrl": "https://www.youtube.com/watch?v=c0SrxSMHDmE",
+      "src": "audio/music/club/bullet-for-my-valentine-hand-of-blood.m4a"
+    },
+    {
+      "id": "avenged-sevenfold-blinded-in-chains",
+      "artist": "Avenged Sevenfold",
+      "title": "Blinded in Chains",
+      "sourceUrl": "https://www.youtube.com/watch?v=TYgxM_suaUw",
+      "src": "audio/music/club/avenged-sevenfold-blinded-in-chains.m4a"
+    },
+    {
+      "id": "dave-rodgers-deja-vu",
+      "artist": "Dave Rodgers",
+      "title": "Déjà Vu",
+      "sourceUrl": "https://www.youtube.com/watch?v=UT7O7FyUbxA",
+      "src": "audio/music/club/dave-rodgers-deja-vu.m4a"
+    },
+    {
+      "id": "max-coveri-running-in-the-90s",
+      "artist": "Max Coveri",
+      "title": "Running in the 90’s",
+      "sourceUrl": "https://www.youtube.com/watch?v=NNaJxMutEIE",
+      "src": "audio/music/club/max-coveri-running-in-the-90s.m4a"
+    },
+    {
+      "id": "manuel-gas-gas-gas",
+      "artist": "Manuel",
+      "title": "Gas Gas Gas",
+      "sourceUrl": "https://www.youtube.com/watch?v=_nJBYFea2E8",
+      "src": "audio/music/club/manuel-gas-gas-gas.m4a"
+    },
+    {
+      "id": "dave-rodgers-beat-of-the-rising-sun",
+      "artist": "Dave Rodgers",
+      "title": "Beat of the Rising Sun",
+      "sourceUrl": "https://www.youtube.com/watch?v=5WyN2y2FPnQ",
+      "src": "audio/music/club/dave-rodgers-beat-of-the-rising-sun.m4a"
     }
   ]
 }

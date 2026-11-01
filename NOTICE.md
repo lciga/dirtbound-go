@@ -36,3 +36,19 @@
 - Bridges Meadow — SkyNight; [исходная трасса](https://dirtbound.fr/play.html?circuit=1e3ed8c43a8e2af3c70bfe15073f6895fb4ed296370dd57fe72efa4367235264).
 
 PostgreSQL-драйвер pgx — github.com/jackc/pgx, MIT; используется как модуль Go. Новые SVG-превью и панель личного кабинета созданы для этого проекта.
+
+Дополнительные записи локального плейлиста меню скачаны 2026-11-01 с YouTube по прямому запросу пользователя. Источники — публикации исполнителей, лейблов и автоматические публикации дистрибьюторов. Для всех файлов AAC перепакован в M4A с быстрым началом загрузки без перекодирования, добавлены исполнитель и название. Записи не объявляются свободно лицензированными; они воспроизводятся только в меню.
+
+| Запись | Источник |
+| --- | --- |
+| Styles of Beyond — Nine Thou (Superstars Remix) | [YouTube](https://www.youtube.com/watch?v=M_s95No5E-s) |
+| Celldweller feat. Styles of Beyond — Shapeshifter | [YouTube](https://www.youtube.com/watch?v=kRrOq4NipQQ) |
+| Disturbed — Decadence | [YouTube](https://www.youtube.com/watch?v=-daTpfB-7K4) |
+| Static-X — Skinnyman | [YouTube](https://www.youtube.com/watch?v=EIZa5k7Wgsk) |
+| The Prodigy — You’ll Be Under My Wheels | [YouTube](https://www.youtube.com/watch?v=wFAA0_Acvqw) |
+| Bullet for My Valentine — Hand of Blood | [YouTube](https://www.youtube.com/watch?v=c0SrxSMHDmE) |
+| Avenged Sevenfold — Blinded in Chains | [YouTube](https://www.youtube.com/watch?v=TYgxM_suaUw) |
+| Dave Rodgers — Déjà Vu | [YouTube](https://www.youtube.com/watch?v=UT7O7FyUbxA) |
+| Max Coveri — Running in the 90’s | [YouTube](https://www.youtube.com/watch?v=NNaJxMutEIE) |
+| Manuel — Gas Gas Gas | [YouTube](https://www.youtube.com/watch?v=_nJBYFea2E8) |
+| Dave Rodgers — Beat of the Rising Sun | [YouTube](https://www.youtube.com/watch?v=5WyN2y2FPnQ) |
