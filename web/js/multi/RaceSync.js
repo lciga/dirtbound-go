@@ -18,6 +18,9 @@ import { collisionActive, pushLimit, pushBaseline, COLLISION } from './Collision
 import { leavePage } from '../PageTransition.js';
 import { t } from '../i18n.js';
 import { YARIS_CAR, stretchYaris } from '../YarisMode.js';
+import { debugLog } from '../DebugLog.js';
+
+const log = debugLog( 'lobby' );
 
 const NO_INPUT = Object.freeze( { x: 0, z: 0, handbrake: false, touchActive: false } );
 const SEND_EVERY = 1 / STATES_PER_SECOND; // s of race time
@@ -234,6 +237,7 @@ export class RaceSync {
 
 		if ( this.leaving ) return;
 		this.leaving = true;
+		log.warn( `race: back to the menu: ${ message } (socket status: ${ this.client.status })` );
 		this.hud.showCard( message, t( 'race.backToMenu' ) );
 		setTimeout( () => leavePage( 'menu.html' ), 2500 );
 
@@ -275,7 +279,12 @@ export class RaceSync {
 	onLobby( lobby ) {
 
 		this.lobby = lobby;
-		if ( lobby.state === 'waiting' ) return void leavePage( 'menu.html' );
+		if ( lobby.state === 'waiting' ) {
+
+			log( 'race: the lobby is waiting again (results over): back to the menu' );
+			return void leavePage( 'menu.html' );
+
+		}
 		if ( ! lobby.race ) return;
 
 		const grid = new Set( lobby.race.grid.map( ( g ) => g.id ) );

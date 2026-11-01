@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"math"
 	"net/http"
 	"sort"
@@ -104,10 +105,25 @@ func (p *peer) emit(msg any) {
 		go p.conn.Close(websocket.StatusPolicyViolation, "Slow consumer")
 	}
 }
+
+// Close codes of a socket accepted only to be refused (see socket).
+const (
+	closeSignIn        websocket.StatusCode = 4001
+	closeOtherTab      websocket.StatusCode = 4000
+	closeTryAgainLater websocket.StatusCode = 1013
+)
+
 func (h *Hub) socket(w http.ResponseWriter, r *http.Request) {
 	a, authErr := h.app.account(r)
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	// Refusals happen after the upgrade: Firefox delays every later handshake
+	// to this URL (up to 60 s) after each one answered with an HTTP error.
 	if authErr != nil {
-		databaseFailure(w, authErr)
+		log.Printf("lobby socket refused: database operation failed (%T)", authErr)
+		conn.Close(closeTryAgainLater, "Storage unavailable")
 		return
 	}
 	var user Account
@@ -115,11 +131,7 @@ func (h *Hub) socket(w http.ResponseWriter, r *http.Request) {
 		user = *a
 	}
 	if user.ID == "" || user.Pseudo == "" {
-		failure(w, 401, "Choose a profile name first")
-		return
-	}
-	conn, err := websocket.Accept(w, r, nil)
-	if err != nil {
+		conn.Close(closeSignIn, "Choose a profile name first")
 		return
 	}
 	conn.SetReadLimit(65536)
@@ -130,7 +142,7 @@ func (h *Hub) socket(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	if old := h.peers[p.id]; old != nil {
 		p.room = old.room
-		go old.conn.Close(4000, "Connected from another tab")
+		go old.conn.Close(closeOtherTab, "Connected from another tab")
 	}
 	h.peers[p.id] = p
 	// Navigation from the menu to play.html closes the old WebSocket before
@@ -293,10 +305,13 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 	l := h.rooms[p.room]
 	switch t {
 	case "hello":
-		p.emit(map[string]any{"t": "welcome", "player": p.id})
-		if l != nil {
-			h.sendLobby(p, l)
+		// player null: this account has no lobby here (gone, or never joined)
+		if l == nil {
+			p.emit(map[string]any{"t": "welcome", "player": nil})
+			return
 		}
+		p.emit(map[string]any{"t": "welcome", "player": p.id})
+		h.sendLobby(p, l)
 		return
 	case "ping":
 		p.emit(map[string]any{"t": "pong", "c": number(m, "c"), "s": time.Now().UnixMilli()})

@@ -9,6 +9,9 @@ import { LAPS, STAGE_M, MIN_PLAYERS, MAX_PLAYERS, OFFICIAL_CIRCUITS, OFFICIAL_PU
 import { LANDSCAPE_IDS } from '../RallyBiomes.js';
 import { t } from '../i18n.js';
 import { YARIS_CAR } from '../YarisMode.js';
+import { debugLog } from '../DebugLog.js';
+
+const log = debugLog( 'lobby' );
 
 const COMMUNITY_SHOWN = 12;
 const CAMERA_LABELS = Object.fromEntries( CAMERAS.map( ( id ) => [ id, t( 'lobby.cameras.' + id ) ] ) );
@@ -107,6 +110,8 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 		const list = client.lobbies;
 		if ( ! can ) out.push( caption( player.offline ? t( 'multi.accountsDown' ) : player.signedIn ? t( 'multi.needPseudo' ) : t( 'multi.needSignIn' ) ) );
+		// Given up reconnecting: say so (not an endless "loading") and let the player try again
+		else if ( client.status === 'lost' ) out.push( caption( t( 'lobby.lost' ) ), { ...L, kind: 'tab', w: COLUMN, h: 0.1, title: t( 'account.retry' ), accent: true, data: { act: 'multi-retry' } } );
 		else if ( list === null ) out.push( caption( t( 'multi.loading' ) ) );
 		else if ( list.length === 0 ) { if ( mode !== 'yaris' ) out.push( caption( t( 'multi.none' ) ) ); }
 		else {
@@ -180,7 +185,13 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 			after: () => {
 
 				stopCountdown();
-				if ( named() && client.watching !== mode ) client.watch( mode );
+				if ( ! named() ) log( `${ mode } screen: not connecting yet (${ player.offline ? 'accounts unavailable' : player.signedIn ? 'no profile name' : 'account not known yet or signed out' })` );
+				else if ( client.watching !== mode ) {
+
+					log( `${ mode } screen: listing its public lobbies` );
+					client.watch( mode );
+
+				}
 				const input = document.getElementById( 'lobby-name' );
 				input?.addEventListener( 'input', () => { browse.name = input.value; } );
 				( input || document.getElementById( 'lobby-code' ) )?.focus();
@@ -198,6 +209,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 	function stopBrowsing() {
 
 		if ( client.watching === null ) return;
+		log( 'left the multiplayer screens: no more lobby list' + ( client.lobby ? '' : ', socket closed' ) );
 		client.watch( null );
 		if ( ! client.lobby ) client.close();
 
@@ -378,6 +390,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		message = '';
 
 		if ( action === 'multi-solo' ) { stopBrowsing(); onYarisSolo(); return true; }
+		else if ( action === 'multi-retry' ) client.retry();
 		else if ( action === 'multi-new' ) Object.assign( browse, { creating: true, codeOpen: false } );
 		else if ( action === 'multi-new-cancel' ) browse.creating = false;
 		else if ( action === 'multi-vis' ) {
@@ -454,7 +467,12 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 	// Back on the menu after a race or a reload: reconnect to the lobby
 	function resume() {
 
-		if ( LobbyClient.wasInLobby() ) client.resume();
+		if ( LobbyClient.wasInLobby() ) {
+
+			log( 'this tab was in a lobby: reconnecting to find it again' );
+			client.resume();
+
+		}
 
 	}
 

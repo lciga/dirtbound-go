@@ -9,30 +9,40 @@ import { computeSpawnPosition, TRACK_CELLS } from '../Track.js';
 import { roadPieces } from '../SplineTrack.js';
 import { t } from '../i18n.js';
 import { YARIS_CAR } from '../YarisMode.js';
+import { debugLog } from '../DebugLog.js';
 
-export function joinLobbyRace( { timeoutMs = 10000 } = {} ) {
+const log = debugLog( 'lobby' );
+
+export function joinLobbyRace( { timeoutMs = 15000 } = {} ) {
 
 	const client = new LobbyClient( { url: lobbyUrl( location ) } );
 
 	return new Promise( ( resolve, reject ) => {
 
-		const fail = ( message ) => {
+		let done = false;
+		// The first reason wins: close() below would otherwise report 'idle' as "gone"
+		const fail = ( message, why ) => {
 
+			if ( done ) return;
+			done = true;
+			log.warn( `race page: cannot join the lobby race: ${ why }` );
 			clearTimeout( timer );
 			client.close();
 			reject( new Error( message ) );
 
 		};
 
-		const timer = setTimeout( () => fail( t( 'lobby.unreachable' ) ), timeoutMs );
-		const onLeft = ( e ) => fail( e.detail.reason );
-		const onStatus = () => { if ( client.status === 'idle' ) fail( t( 'lobby.gone' ) ); };
+		const timer = setTimeout( () => fail( t( 'lobby.unreachable' ), `no lobby received within ${ timeoutMs / 1000 } s (socket status: ${ client.status })` ), timeoutMs );
+		const onLeft = ( e ) => fail( e.detail.reason, `the server says we left the lobby (${ e.detail.reason || 'no reason' })` );
+		const onStatus = () => { if ( client.status === 'idle' ) fail( t( 'lobby.gone' ), 'the server has no lobby for this account any more' ); };
+		const onError = ( e ) => { if ( client.status === 'lost' ) fail( e.detail.message, `connection given up: ${ e.detail.message }` ); };
 		// After joining, RaceSync takes over these events
 		const detach = () => {
 
 			client.removeEventListener( 'lobby', onLobby );
 			client.removeEventListener( 'left', onLeft );
 			client.removeEventListener( 'status', onStatus );
+			client.removeEventListener( 'error', onError );
 
 		};
 
@@ -43,18 +53,22 @@ export function joinLobbyRace( { timeoutMs = 10000 } = {} ) {
 
 			if ( ( lobby.state === 'loading' || lobby.state === 'racing' ) && slot >= 0 ) {
 
+				done = true;
+				log( `race page: joined lobby ${ lobby.code } (${ lobby.state }), grid slot ${ slot + 1 } of ${ lobby.race.grid.length }` );
 				clearTimeout( timer );
 				detach();
 				resolve( { client, lobby, you, race: lobby.race, slot } );
 
-			} else if ( lobby.state !== 'loading' && lobby.state !== 'racing' ) fail( t( 'race.noRace' ) );
-			else fail( t( 'race.leftWithout' ) );
+			} else if ( lobby.state !== 'loading' && lobby.state !== 'racing' ) fail( t( 'race.noRace' ), `lobby ${ lobby.code } is ${ lobby.state }, not loading or racing` );
+			else fail( t( 'race.leftWithout' ), `lobby ${ lobby.code } is ${ lobby.state } but this player is not on the grid` );
 
 		};
 
 		client.addEventListener( 'lobby', onLobby );
 		client.addEventListener( 'left', onLeft );
 		client.addEventListener( 'status', onStatus );
+		client.addEventListener( 'error', onError );
+		log( 'race page: reconnecting to the lobby' );
 		client.resume();
 
 	} );

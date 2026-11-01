@@ -200,7 +200,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		if me != nil {
 			a.hub.mu.Lock()
 			if p := a.hub.peers[me.ID]; p != nil {
-				go p.conn.Close(4001, "Signed out")
+				go p.conn.Close(closeSignIn, "Signed out")
 			}
 			a.hub.mu.Unlock()
 		}

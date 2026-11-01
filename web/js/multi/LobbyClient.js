@@ -1,18 +1,34 @@
-// The game's side of the lobby WebSocket (server/lib/lobby/socket.mjs).
+// The game's side of the lobby WebSocket (internal/server/lobby.go).
 // Keeps one connection, says hello (the account and its pseudo come from the
-// session cookie, checked by the server when the socket opens), queues messages until the socket is open, reconnects on its own after a
-// network drop (the server keeps the place 20 s) and remembers in
-// sessionStorage that this tab is in a lobby, so the next page reconnects.
+// session cookie, checked by the server once the socket is open), queues
+// messages until the socket is open, reconnects on its own after a network
+// drop (the server keeps the place 20 s) and remembers in sessionStorage that
+// this tab is in a lobby, so the next page reconnects.
 
 import { LOBBY_PATH, normalizeCode } from './Protocol.js';
 import { t, serverText } from '../i18n.js';
+import { debugLog } from '../DebugLog.js';
+
+const log = debugLog( 'net' );
+
+// Close codes (lobby.go): the server accepts every handshake and refuses
+// afterwards, since Firefox slows down handshakes after HTTP errors
+const CLOSE_OTHER_TAB = 4000;
+const CLOSE_SIGN_IN = 4001;
+const CLOSE_TRY_LATER = 1013;
+const CLOSE_MEANING = {
+	1000: 'normal close', 1001: 'page leaving or server shutting down', 1005: 'closed without a code',
+	1006: 'connection dropped (network, proxy or server down)', 1008: 'policy violation (slow consumer)',
+	[ CLOSE_TRY_LATER ]: 'server storage unavailable, retrying', [ CLOSE_OTHER_TAB ]: 'this account connected from another tab or page',
+	[ CLOSE_SIGN_IN ]: 'not signed in, or no profile name',
+};
+const QUIET = new Set( [ 'ping', 'pong', 'state', 'states' ] ); // too frequent to log one by one
 
 const IN_LOBBY_KEY = 'dirtbound.lobby';
 const PINGS_AT_OPEN = 5; // quick pings to learn the server clock
 const PING_GAP = 150; // ms between them
 const PING_EVERY = 10000; // ms, afterwards
 const OFFSETS_KEPT = 8;
-const REFUSED_TRIES = 2; // sockets refused before opening (signed out) before giving up
 
 export function lobbyUrl( location ) {
 
@@ -61,7 +77,6 @@ export class LobbyClient extends EventTarget {
 		this.you = null;
 		this.status = 'idle';
 		this.identified = false; // the server welcomed this socket
-		this.refused = 0; // sockets in a row closed before they opened
 		this.offsets = [];
 		this.offset = 0; // server clock - local clock, ms
 		this.pingTimer = null;
@@ -76,17 +91,24 @@ export class LobbyClient extends EventTarget {
 		if ( this.socket ) return;
 
 		this.setStatus( 'connecting' );
+		const started = performance.now();
+		log( `connecting to ${ this.url }` + ( this.queue.length ? ` (${ this.queue.length } message(s) waiting)` : '' ) );
 		const socket = new this.WebSocketImpl( this.url );
 		this.socket = socket;
 		let opened = false;
+		const slow = setTimeout( () => {
+
+			if ( this.socket === socket && ! opened ) log.warn( 'still connecting after 5 s: the browser has not finished the handshake. Firefox delays handshakes (up to 60 s) after earlier failed ones; the request appears in DevTools only once it is sent' );
+
+		}, 5000 );
 
 		// A socket replaced by close() + connect() must not touch the new one
 		socket.addEventListener( 'open', () => {
 
+			clearTimeout( slow );
 			if ( this.socket !== socket ) return;
 			opened = true;
-			this.refused = 0;
-			this.retries = 0;
+			log( `open after ${ Math.round( performance.now() - started ) } ms; saying hello` + ( this.queue.length ? `, then ${ this.queue.length } queued message(s)` : '' ) );
 			this.setStatus( 'open' );
 			this.identified = false;
 			this.sendHello();
@@ -96,8 +118,15 @@ export class LobbyClient extends EventTarget {
 		} );
 
 		socket.addEventListener( 'message', ( e ) => { if ( this.socket === socket ) this.receive( e.data ); } );
-		socket.addEventListener( 'close', ( e ) => { if ( this.socket === socket ) this.onClose( e.code, opened ); } );
-		socket.addEventListener( 'error', () => {} ); // a refused handshake: handled on close
+		socket.addEventListener( 'close', ( e ) => {
+
+			clearTimeout( slow );
+			if ( this.socket !== socket ) return;
+			log( `closed ${ e.code } (${ CLOSE_MEANING[ e.code ] || 'unknown code' })${ e.reason ? ` "${ e.reason }"` : '' } after ${ Math.round( performance.now() - started ) } ms` + ( opened ? '' : ', before it opened' ) );
+			this.onClose( e.code, opened );
+
+		} );
+		socket.addEventListener( 'error', () => {} ); // handled on close
 
 	}
 
@@ -112,12 +141,22 @@ export class LobbyClient extends EventTarget {
 
 	close() {
 
+		if ( this.socket || this.status !== 'idle' ) log( 'closing the socket (no longer needed)' );
 		this.closedByUser = true;
 		clearTimeout( this.retryTimer );
 		clearTimeout( this.pingTimer );
 		this.socket?.close();
 		this.socket = null;
 		this.setStatus( 'idle' );
+
+	}
+
+	// After 'lost': a fresh series of attempts, asked by the player
+	retry() {
+
+		log( 'retry asked: new connection attempts' );
+		this.retries = 0;
+		this.connect();
 
 	}
 
@@ -129,8 +168,12 @@ export class LobbyClient extends EventTarget {
 
 		this.watching = mode;
 		this.lobbies = null;
-		if ( mode !== null ) this.send( { t: 'watch', mode } );
-		else this.rawSend( { t: 'watch', mode: null } );
+		log( mode === null ? 'stop listing public lobbies' : `list the public ${ mode } lobbies` + ( this.identified && this.socket?.readyState === 1 ? '' : ' (sent once the server welcomes this socket)' ) );
+		if ( mode === null ) return this.rawSend( { t: 'watch', mode: null } );
+		this.asked = true;
+		// Not welcomed yet: the welcome sends it (queued too, it would be listed twice)
+		if ( this.identified && this.socket?.readyState === 1 ) this.rawSend( { t: 'watch', mode } );
+		else this.connect();
 
 	}
 
@@ -205,6 +248,7 @@ export class LobbyClient extends EventTarget {
 		const rtt = Date.now() - c;
 		this.offsets = [ ...this.offsets.slice( - ( OFFSETS_KEPT - 1 ) ), { rtt, offset: s - ( c + rtt / 2 ) } ];
 		this.offset = this.offsets.reduce( ( best, o ) => o.rtt < best.rtt ? o : best ).offset;
+		if ( this.offsets.length === PINGS_AT_OPEN ) log( `clock synced: best round trip ${ Math.min( ...this.offsets.map( ( o ) => o.rtt ) ) } ms, server clock ${ Math.round( this.offset ) } ms from ours` );
 
 	}
 
@@ -220,6 +264,7 @@ export class LobbyClient extends EventTarget {
 
 		this.asked = true; // the player did something: a resume must not hang up on it
 		const text = JSON.stringify( msg );
+		if ( ! QUIET.has( msg.t ) ) log( `send ${ msg.t }` + ( this.socket?.readyState === 1 ? '' : ' (queued until the socket opens)' ), msg );
 
 		if ( this.socket && this.socket.readyState === 1 ) {
 
@@ -241,6 +286,7 @@ export class LobbyClient extends EventTarget {
 
 		const msg = safe( () => JSON.parse( data ) );
 		if ( ! msg || typeof msg.t !== 'string' ) return;
+		if ( ! QUIET.has( msg.t ) ) log( `received ${ msg.t }`, msg.t === 'lobby' ? { code: msg.lobby?.code, state: msg.lobby?.state, players: msg.lobby?.players?.length } : msg );
 
 		if ( msg.t === 'lobby' ) {
 
@@ -270,15 +316,17 @@ export class LobbyClient extends EventTarget {
 		else if ( msg.t === 'welcome' ) {
 
 			this.identified = true;
+			this.retries = 0; // only a welcome proves the server took us (it may accept, then refuse)
 			if ( this.watching !== null ) this.rawSend( { t: 'watch', mode: this.watching } );
 
 			const resuming = this.resuming;
 			this.resuming = false;
-			if ( msg.player !== null ) return;
+			if ( msg.player !== null ) return log( 'welcomed back into a lobby' );
 
 			// The server no longer knows us (restart, timeout): the lobby is gone
 			if ( this.lobby ) {
 
+				log( 'the server has no lobby for us any more: it is gone' );
 				this.lobby = null;
 				this.you = null;
 				this.remember( false );
@@ -287,6 +335,7 @@ export class LobbyClient extends EventTarget {
 			} else if ( resuming && ! this.asked ) {
 
 				// Nothing to rejoin and nothing asked: don't hold one of the server's places
+				log( 'nothing to rejoin: hanging up' );
 				this.remember( false );
 				this.close();
 
@@ -302,28 +351,38 @@ export class LobbyClient extends EventTarget {
 		clearTimeout( this.pingTimer );
 		if ( this.closedByUser ) return;
 
-		// The server refuses the handshake without a session (or a pseudo); a
-		// browser cannot see the status, so a few refusals in a row end it
-		this.refused = opened ? 0 : this.refused + 1;
-		if ( this.refused >= REFUSED_TRIES ) {
+		if ( code === CLOSE_SIGN_IN ) {
 
+			log( 'giving up: sign in (and choose a profile name) to play online' );
 			this.setStatus( 'lost' );
 			this.emit( 'error', { message: t( 'multi.signInToPlay' ) } );
 			return;
 
 		}
 
-		// 4000: this token connected from another tab, don't fight over it
-		if ( code === 4000 || this.retries >= this.retryDelays.length ) {
+		// This account connected from another tab: don't fight over it
+		if ( code === CLOSE_OTHER_TAB ) {
 
+			log( 'giving up: another tab or page took over this account\'s connection' );
 			this.setStatus( 'lost' );
-			if ( code === 4000 ) this.emit( 'error', { message: t( 'lobby.otherTab' ) } );
+			this.emit( 'error', { message: t( 'lobby.otherTab' ) } );
 			return;
 
 		}
 
+		if ( this.retries >= this.retryDelays.length ) {
+
+			log.warn( `giving up after ${ this.retries } attempts in a row` + ( opened ? '' : ' that never opened (server or proxy unreachable)' ) );
+			this.setStatus( 'lost' );
+			this.emit( 'error', { message: t( 'lobby.unreachable' ) } );
+			return;
+
+		}
+
+		const delay = this.retryDelays[ this.retries ++ ];
+		log( `reconnecting in ${ delay } ms (attempt ${ this.retries } of ${ this.retryDelays.length })` );
 		this.setStatus( 'connecting' );
-		this.retryTimer = setTimeout( () => this.connect(), this.retryDelays[ this.retries ++ ] );
+		this.retryTimer = setTimeout( () => this.connect(), delay );
 
 	}
 
@@ -336,6 +395,7 @@ export class LobbyClient extends EventTarget {
 	setStatus( status ) {
 
 		if ( this.status === status ) return;
+		log( `status ${ this.status } → ${ status }` );
 		this.status = status;
 		this.emit( 'status', { status } );
 
