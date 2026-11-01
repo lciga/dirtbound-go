@@ -8,6 +8,7 @@ import { RALLY_GRID_S } from './StartGrid.js';
 import { computeSpawnPosition, TRACK_CELLS } from '../Track.js';
 import { roadPieces } from '../SplineTrack.js';
 import { t } from '../i18n.js';
+import { YARIS_CAR } from '../YarisMode.js';
 
 export function joinLobbyRace( { timeoutMs = 10000 } = {} ) {
 
@@ -74,6 +75,11 @@ export function raceParams( race, you ) {
 
 	if ( me && me.car ) params.set( 'car', me.car );
 	if ( me ) params.set( 'color', me.color );
+	if ( race.mode === 'yaris' ) {
+		params.set( 'mode', 'yaris' );
+		params.set( 'car', YARIS_CAR );
+		params.set( 'color', '1' );
+	}
 	return params;
 
 }

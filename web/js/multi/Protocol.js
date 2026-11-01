@@ -14,7 +14,7 @@ export const DEFAULT_SETTINGS = Object.freeze( { laps: 3, length: 3000, collisio
 // The view of a race: from above only, third person only, or each racer's choice (key C)
 export const CAMERAS = Object.freeze( [ 'iso', 'chase', 'both' ] );
 export const VOTE_KINDS = Object.freeze( [ 'official', 'circuit', 'rally', 'loop' ] );
-export const OFFICIAL_CIRCUITS = Object.freeze( { default: 'Circuit Kenney' } );
+export const OFFICIAL_CIRCUITS = Object.freeze( { default: 'Club Circuit' } );
 // Published circuits promoted to official (menu tab Officiel, lobby vote's
 // Officiel section): still played, voted and ranked as the published circuit
 export const OFFICIAL_PUBLISHED = Object.freeze( [
@@ -38,7 +38,7 @@ export const STATES_PER_SECOND = 20;
 export const LOOP_AVAILABLE = true; // vote kind 'loop' = « Circuit aléatoire »: the server draws one of the existing circuits when the vote closes (lobbies.mjs closeVote)
 // Lobby modes: 'classic' (the races above) or 'bonus' (menu Expérimental:
 // circuits only, item boxes and rockets, js/bonus/)
-export const LOBBY_MODES = Object.freeze( [ 'classic', 'bonus' ] );
+export const LOBBY_MODES = Object.freeze( [ 'classic', 'bonus', 'yaris' ] );
 // Public lobbies are listed in the menu's grid (with their name); private ones join by code only
 export const VISIBILITIES = Object.freeze( [ 'public', 'private' ] );
 export const LOBBY_NAME = /^[\p{L}\p{N} .,'!?&#()+-]{1,24}$/u;

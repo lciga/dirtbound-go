@@ -25,6 +25,7 @@ import { landscapeOf } from './RallyBiomes.js';
 import { loadCar, findCar } from './Cars.js';
 import { loadSettings, saveSettings, saveBest, loadBest } from './Settings.js';
 import { MenuMusic } from './menu/MenuMusic.js';
+import { YARIS_CAR, YARIS_TRACK_ID, stretchYaris } from './YarisMode.js';
 import { createUltraEffects, createDofPass, setDof, setFocus } from './Ultra.js';
 import { season, applySeasonLight, seasonScenery, SEASONS } from './Seasons.js';
 import { CircuitOnline } from './CircuitOnline.js';
@@ -253,12 +254,13 @@ async function init() {
 	}
 
 	const params = multi ? multi.params : pageParams;
+	const yarisMode = multi ? multi.race.mode === 'yaris' : params.get( 'mode' ) === 'yaris';
 
 	// The car chosen in the garage (Settings.js), or ?car=<name>&color=<livery>:
 	// fetched and decrypted while the circuit is built
 	const settings = loadSettings();
-	const carId = params.get( 'car' ) || settings.car;
-	const carColor = Number( params.get( 'color' ) ) || settings.color;
+	const carId = yarisMode ? YARIS_CAR : params.get( 'car' ) || settings.car;
+	const carColor = yarisMode ? 1 : Number( params.get( 'color' ) ) || settings.color;
 	const carRequest = loadCar( loader, carId, carColor ).then( ( model ) => ( { model } ), ( error ) => ( { error } ) );
 
 	let trackParam = params.get( 'track' );
@@ -296,7 +298,7 @@ async function init() {
 	// challenge's own leaderboard (its id, not the circuit's own) — solo only
 	const dailyMode = ! multi && ! testMode && pageParams.has( 'daily' );
 	// What is raced, for the audience stats (Stats.js)
-	const raceMode = testMode ? 'test' : dailyMode ? 'daily' : multi ? ( multi.race.bonus ? 'bonus' : 'multi' ) : rallyParam !== null ? 'rally'
+	const raceMode = yarisMode ? 'yaris' : testMode ? 'test' : dailyMode ? 'daily' : multi ? ( multi.race.bonus ? 'bonus' : 'multi' ) : rallyParam !== null ? 'rally'
 		: circuitParam ? ( isOfficialPublished( circuitParam ) ? 'official' : 'community' ) : trackParam || mapParam ? 'drawn' : 'official';
 
 	if ( testMode ) {
@@ -481,12 +483,13 @@ async function init() {
 		renderer.setRenderTarget( bakeTarget );
 		const bakeShaders = loading.compile( 'bake', renderer, scene, new THREE.PerspectiveCamera() );
 		renderer.setRenderTarget( null );
-		await bakeShaders;
+		const bakeReady = await bakeShaders;
 		bakeTarget.dispose();
 		await loading.paint();
-		probes.bake( renderer, scene, { cubemapSize: 32, near: 0.1, far: Math.min( groundSize, PROBE_FAR ) } );
+		if ( bakeReady ) probes.bake( renderer, scene, { cubemapSize: 32, near: 0.1, far: Math.min( groundSize, PROBE_FAR ) } );
 		for ( const o of unbaked ) o.visible = true;
-		scene.add( probes );
+		if ( bakeReady ) scene.add( probes );
+		else { probes.dispose?.(); probes = null; }
 
 		// scene.add( new LightProbeGridHelper( probes, 0.5 ) );
 
@@ -583,7 +586,10 @@ async function init() {
 		carModel = car.model;
 		playerCar = { id: findCar( carId ).id, color: carColor };
 
-	} else console.warn( car.error.message + ', using the truck' );
+	} else {
+		if ( yarisMode ) throw car.error; // Never silently race another model in this mode.
+		console.warn( car.error.message + ', using the truck' );
+	}
 
 	const vehicleGroup = vehicle.init( carModel );
 	scene.add( vehicleGroup );
@@ -677,9 +683,11 @@ async function init() {
 	const audio = new GameAudio( settings.volume );
 	audio.init( cam.camera, vehicleGroup );
 
-	// The menu track during the race, if ticked (menu Paramètres → Son); starts
-	// with the first key like the rest of the sound
-	const raceMusic = settings.raceMusic ? new MenuMusic( { volume: settings.volume.music } ) : null;
+	const raceMusic = new MenuMusic( {
+		enabled: settings.raceMusic, volume: settings.volume.raceMusic, localPlaylist: true,
+		trackIds: yarisMode ? [ YARIS_TRACK_ID ] : null,
+	} );
+	let yarisTime = 0;
 
 	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), trackId );
 
@@ -729,11 +737,26 @@ async function init() {
 	// Pause menu and arrival screen
 	const ui = new GameUI( {
 		camera: { mode: () => view, select: selectView, locked: () => viewLocked, multiplayer: !!multi },
+		music: {
+			volume: () => settings.volume.raceMusic,
+			enabled: () => settings.raceMusic,
+			track: () => raceMusic.currentTrack,
+			setVolume: value => {
+				settings.volume.raceMusic = value;
+				raceMusic.setVolume( value );
+				const fresh = loadSettings();
+				fresh.volume.raceMusic = value;
+				saveSettings( fresh );
+			},
+			toggle: () => {
+				settings.raceMusic = ! settings.raceMusic;
+				raceMusic.setEnabled( settings.raceMusic );
+				saveSettings( { ...loadSettings(), raceMusic: settings.raceMusic } );
+			},
+		},
 		onPause: ( paused ) => {
 
 			audio.setPaused( paused );
-			if ( raceMusic && paused ) raceMusic.fadeOut( 0.2 );
-			else if ( raceMusic && raceMusic.ctx ) raceMusic.start();
 
 		},
 		onRestart: multi ? null : () => location.reload(),
@@ -766,6 +789,7 @@ async function init() {
 	} );
 
 	refreshCameraUI = () => ui.updateCameraControls();
+	raceMusic.audio.addEventListener( 'playing', () => ui.updateMusicControls() );
 
 	// Secret accelerator (Konami code → Shift), solo only. Unless COUNT_BOOSTED,
 	// a lap counts only if the boost was not used during it (flag cleared at each line)
@@ -1237,6 +1261,11 @@ async function init() {
 		const mv = vehicle.modelVelocity;
 		_camLead.set( 0, 0, 1 ).applyQuaternion( vehicle.container.quaternion ).multiplyScalar( Math.sqrt( mv.x * mv.x + mv.z * mv.z ) );
 		const effects = () => {
+			if ( yarisMode ) {
+				if ( sync ) yarisTime = Math.max( 0, sync.raceTime ?? 0 );
+				else if ( sceneReady && ! start?.blocked ) yarisTime += dt;
+				stretchYaris( vehicle.visualModel, yarisTime );
+			}
 
 			const burnout = launchBurnout.update( frameTime, sceneReady && ( sync ? sync.started : ! start.blocked ), input.z, sync ? sync.raceTime : null );
 			if ( burnout ) for ( const wheel of vehicle.wheels ) wheel.rotation.x += dt * 40 * burnout;

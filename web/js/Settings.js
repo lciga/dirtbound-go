@@ -35,8 +35,9 @@ export const DEFAULT_SETTINGS = {
 	view: 'iso', // Camera.js VIEWS: 'iso' (from above) or 'chase' (third person, Trackmania style)
 	ghost: 'off', // circuits: see-through car of 'record' (online best lap) or 'tas' (computed best, Kenney circuit), or 'off'
 	music: true, // menu music (starts with the first click or key)
-	raceMusic: false, // the same track during races
-	volume: { engine: 1, tyres: 1, music: 1 }, // 0..1, on top of the mix
+	raceMusic: true,
+	audioVersion: 2,
+	volume: { engine: 1, tyres: 1, menuMusic: 1, raceMusic: 0.7 }, // independent 0..1 levels
 	dof: { on: true, strength: 50 }, // Ultra depth of field on the car, strength 0..100
 	keys: DEFAULT_KEYS,
 	rally: {
@@ -52,6 +53,15 @@ export function rallySettings( stored = {} ) {
 	const { style: _style, ...rest } = stored || {};
 	return { ...DEFAULT_SETTINGS.rally, ...rest, landscape: landscapeOf( rest.landscape ) };
 
+}
+
+export function audioVolumes( stored = {} ) {
+	const bounded = ( value, fallback ) => Number.isFinite( value ) ? Math.max( 0, Math.min( 1, value ) ) : fallback;
+	return {
+		engine: bounded( stored.engine, 1 ), tyres: bounded( stored.tyres, 1 ),
+		menuMusic: bounded( stored.menuMusic ?? stored.music, 1 ),
+		raceMusic: bounded( stored.raceMusic, 0.7 ),
+	};
 }
 
 export function loadSettings() {
@@ -80,7 +90,10 @@ export function loadSettings() {
 		homeSeason: season,
 		graphics,
 		performance: graphics === 'low',
-		volume: { ...DEFAULT_SETTINGS.volume, ...stored.volume },
+		// Enable the new race player once for older saves; later mute choices persist.
+		raceMusic: stored.audioVersion >= 2 ? stored.raceMusic !== false : true,
+		audioVersion: 2,
+		volume: audioVolumes( stored.volume || {} ),
 		dof: { ...DEFAULT_SETTINGS.dof, ...stored.dof },
 		keys,
 		rally: { ...rallySettings( stored.rally ), season },

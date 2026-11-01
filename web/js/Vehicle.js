@@ -66,6 +66,7 @@ export class Vehicle {
 	init( model ) {
 
 		const vehicleModel = model.clone();
+		this.visualModel = vehicleModel;
 
 		// Models can declare their own body rest height (rally cars: 0)
 		if ( model.userData.bodyY !== undefined ) this.bodyRestY = model.userData.bodyY;

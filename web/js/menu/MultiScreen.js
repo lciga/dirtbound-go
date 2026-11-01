@@ -8,12 +8,13 @@ import { formatTime } from '../Settings.js';
 import { LAPS, STAGE_M, MIN_PLAYERS, MAX_PLAYERS, OFFICIAL_CIRCUITS, OFFICIAL_PUBLISHED, isOfficialPublished, LOOP_AVAILABLE, choiceKey, choiceLabel, CAMERAS } from '../multi/Protocol.js';
 import { LANDSCAPE_IDS } from '../RallyBiomes.js';
 import { t } from '../i18n.js';
+import { YARIS_CAR } from '../YarisMode.js';
 
 const COMMUNITY_SHOWN = 12;
 const CAMERA_LABELS = Object.fromEntries( CAMERAS.map( ( id ) => [ id, t( 'lobby.cameras.' + id ) ] ) );
 const CROWN = '<svg class="crown" viewBox="0 0 24 24"><path d="M3 18h18l-1.5-10-5 4L12 5l-2.5 7-5-4z"/></svg>';
 
-export function createMulti( { player, settings, escapeHtml, segmented, listPublished, findCar, onChange, onWalls, onEnterLobby, onLeaveLobby, onRace, onTest } ) {
+export function createMulti( { player, settings, escapeHtml, segmented, listPublished, findCar, onChange, onWalls, onEnterLobby, onLeaveLobby, onRace, onTest, onYarisSolo } ) {
 
 	const client = new LobbyClient( { url: lobbyUrl( location ) } );
 	let message = ''; // last error or reason shown on the screens
@@ -98,13 +99,16 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		const out = [
 			{ ...L, kind: 'tab', row: 'act', w: across( 2 ), h: 0.12, title: t( 'multi.create' ), accent: can, big: true, off: ! can, data: { act: 'multi-new' } },
 			{ ...L, kind: 'tab', row: 'act', w: across( 2 ), h: 0.12, title: t( 'multi.joinCode' ), off: ! can, data: { act: 'multi-code' } },
-			caption( bonus ? t( 'multi.bonusCaption' ) : t( 'multi.publicCaption', { min: MIN_PLAYERS, max: MAX_PLAYERS } ) ),
+			...( mode === 'yaris' ? [] : [ caption( bonus ? t( 'multi.bonusCaption' ) : t( 'multi.publicCaption', { min: MIN_PLAYERS, max: MAX_PLAYERS } ) ) ] ),
 		];
+		if ( mode === 'yaris' ) out.unshift(
+			{ ...L, kind: 'tab', w: COLUMN, h: 0.13, title: t( 'club.yarisSolo' ), big: true, accent: true, data: { act: 'multi-solo' } },
+		);
 
 		const list = client.lobbies;
 		if ( ! can ) out.push( caption( player.offline ? t( 'multi.accountsDown' ) : player.signedIn ? t( 'multi.needPseudo' ) : t( 'multi.needSignIn' ) ) );
 		else if ( list === null ) out.push( caption( t( 'multi.loading' ) ) );
-		else if ( list.length === 0 ) out.push( caption( t( 'multi.none' ) ) );
+		else if ( list.length === 0 ) { if ( mode !== 'yaris' ) out.push( caption( t( 'multi.none' ) ) ); }
 		else {
 
 			const pages = Math.ceil( list.length / PAGE );
@@ -146,7 +150,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 					`<input id="lobby-name" maxlength="24" autocomplete="off" spellcheck="false" placeholder="${ escapeHtml( t( 'multi.defaultName', { name: player.name } ) ) }" value="${ escapeHtml( browse.name ) }">` +
 					`<p class="note">${ t( 'multi.publicNote' ) }</p>`
 				: `<p class="note">${ t( 'multi.privateNote' ) }</p>` ) +
-			( bonus ? '' : `<p class="note mode-note">${ t( 'multi.tryBonusHint' ) }</p>` ) +
+			( bonus || browse.mode === 'yaris' ? '' : `<p class="note mode-note">${ t( 'multi.tryBonusHint' ) }</p>` ) +
 			`<div class="row actions"><button data-act="multi-new-cancel">${ t( 'common.cancel' ) }</button><button class="go" data-act="multi-create-go">${ t( 'multi.createGo' ) }</button></div>` +
 			'</div>';
 
@@ -172,7 +176,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 		return {
 			view: 'menu',
-			title: bonus ? t( 'home.experimental' ) : t( 'home.multi' ),
+			title: mode === 'yaris' ? 'Yaris Mode' : bonus ? t( 'home.experimental' ) : t( 'home.multi' ),
 			after: () => {
 
 				stopCountdown();
@@ -207,7 +211,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		const badges = ( pl.id === client.lobby.host ? CROWN : '' ) + ( pl.connected ? '' : `<em class="off">${ t( 'lobby.disconnected' ) }</em>` );
 		const state = pl.ready ? `<span class="ready on">${ t( 'lobby.ready' ) }</span>` : `<span class="ready">${ t( 'lobby.notReady' ) }</span>`;
 		const kick = isHost() && pl.id !== client.you ? `<button class="mini-btn" data-act="multi-kick:${ pl.id }" title="${ t( 'lobby.kick' ) }">✕</button>` : '';
-		return `<li class="${ pl.id === client.you ? 'me' : '' }"><b>${ escapeHtml( pl.name ) }</b>${ badges }<small>${ car ? escapeHtml( t( 'lobby.carLine', { car: car.label, n: pl.color } ) ) : '–' }</small>${ state }${ kick }</li>`;
+		return `<li class="${ pl.id === client.you ? 'me' : '' }"><b>${ escapeHtml( pl.name ) }</b>${ badges }<small>${ client.lobby.mode === 'yaris' ? '' : car ? escapeHtml( t( 'lobby.carLine', { car: car.label, n: pl.color } ) ) : '–' }</small>${ state }${ kick }</li>`;
 
 	}
 
@@ -373,7 +377,8 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		const [ action, a, b ] = name.split( ':' );
 		message = '';
 
-		if ( action === 'multi-new' ) Object.assign( browse, { creating: true, codeOpen: false } );
+		if ( action === 'multi-solo' ) { stopBrowsing(); onYarisSolo(); return true; }
+		else if ( action === 'multi-new' ) Object.assign( browse, { creating: true, codeOpen: false } );
 		else if ( action === 'multi-new-cancel' ) browse.creating = false;
 		else if ( action === 'multi-vis' ) {
 
@@ -406,7 +411,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 		}
 		else if ( action === 'multi-copy' ) navigator.clipboard?.writeText( client.lobby.code ).catch( () => {} );
-		else if ( action === 'multi-ready' ) client.setReady( { car: settings.car, color: settings.color, ready: ! me()?.ready } );
+		else if ( action === 'multi-ready' ) client.setReady( { car: client.lobby.mode === 'yaris' ? YARIS_CAR : settings.car, color: client.lobby.mode === 'yaris' ? 1 : settings.color, ready: ! me()?.ready } );
 		else if ( action === 'multi-vote-start' ) client.startVote();
 		else if ( action === 'multi-leave' ) leave();
 		else if ( action === 'multi-rejoin' ) {
@@ -453,6 +458,6 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 	}
 
-	return { screens: { multi: () => multiScreen(), experimental: () => multiScreen( 'bonus' ), lobby: lobbyScreen }, wall, act, leave, resume, stopBrowsing, client };
+	return { screens: { multi: () => multiScreen(), experimental: () => multiScreen( 'bonus' ), yaris: () => multiScreen( 'yaris' ), lobby: lobbyScreen }, wall, act, leave, resume, stopBrowsing, client };
 
 }

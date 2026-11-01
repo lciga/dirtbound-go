@@ -22,6 +22,18 @@ const UI_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const reduced = () => matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
 const wait = ( ms ) => new Promise( ( resolve ) => setTimeout( resolve, ms ) );
 
+// Some drivers never complete KHR_parallel_shader_compile. Warmup is optional:
+// ordinary rendering can finish those programs on demand instead of blocking entry.
+export async function warmupShaders( renderer, scene, camera, timeoutMs = 2500 ) {
+	let deadline;
+	try {
+		return await Promise.race( [
+			renderer.compileAsync( scene, camera ).then( () => true ),
+			new Promise( resolve => { deadline = setTimeout( () => resolve( false ), timeoutMs ); } ),
+		] );
+	} finally { clearTimeout( deadline ); }
+}
+
 let leaving = false;
 
 // Covers the page with the white rectangle, then opens url
@@ -188,13 +200,17 @@ export class PageLoading {
 	async compile( step, renderer, scene, camera ) {
 
 		const before = new Set( renderer.info.programs );
-		const ready = renderer.compileAsync( scene, camera );
+		if ( this.el ) this.el.dataset.loadingStep = step;
+		const ready = warmupShaders( renderer, scene, camera );
 		const fresh = renderer.info.programs.filter( ( p ) => ! before.has( p ) );
 		const count = () => this.set( step, fresh.length ? fresh.filter( ( p ) => p.isReady() ).length / fresh.length : 1 );
 		const timer = setInterval( count, 30 );
-		await ready;
-		clearInterval( timer );
+		let compiled;
+		try { compiled = await ready; }
+		finally { clearInterval( timer ); }
 		this.set( step, 1 );
+		if ( ! compiled ) console.info( '[shader-warmup] Deferred: ' + step );
+		return compiled;
 
 	}
 

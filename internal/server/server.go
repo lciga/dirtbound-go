@@ -560,7 +560,13 @@ func (a *App) tracks(w http.ResponseWriter, r *http.Request, p []string, me *Acc
 			databaseFailure(w, err)
 			return
 		}
-		success(w, map[string]any{"improved": tag.RowsAffected() > 0, "rank": rank, "time": lap.Time})
+		var total int
+		if err := a.db.QueryRow(ctx, `SELECT count(*) FROM lap_records WHERE track_key=$1`, key).Scan(&total); err != nil {
+			databaseFailure(w, err)
+			return
+		}
+		improved := tag.RowsAffected() > 0
+		success(w, map[string]any{"improved": improved, "rank": rank, "time": lap.Time, "record": improved && rank == 1, "leaderboard": map[string]int{"total": total}})
 		return
 	}
 	failure(w, 405, "Method not allowed")

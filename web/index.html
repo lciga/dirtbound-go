@@ -2,15 +2,10 @@
 <html lang="fr" data-ui="wait">
 <head>
 	<meta charset="utf-8">
-	<script>
-		// One address for the site: www and the old domain go to dirtbound.fr (the Google
-		// sign-in only trusts it, and the session cookie is its own)
-		if ( /^(www\.dirtbound\.fr|dirtbound\.victorboutros\.fr)$/.test( location.hostname ) ) location.replace( 'https://dirtbound.fr' + location.pathname + location.search + location.hash );
-	</script>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 	<title>Racing Club 1sk4nd3r</title>
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
-	<link rel="icon" href="favicon.ico" sizes="48x48">
+
 	<!-- Share preview (images/og.jpg: made with the photo lab, now lab/studio.html, format Partage 1200 × 630) -->
 	<meta name="description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
 	<meta name="theme-color" content="#e8590c">
@@ -18,8 +13,7 @@
 	<meta property="og:site_name" content="Racing Club 1sk4nd3r">
 	<meta property="og:title" content="Racing Club 1sk4nd3r">
 	<meta property="og:description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
-	<meta property="og:url" content="https://dirtbound.fr/">
-	<meta property="og:image" content="https://dirtbound.fr/images/og.jpg">
+	<meta property="og:image" content="images/racing-club-social.svg">
 	<meta property="og:image:width" content="1200">
 	<meta property="og:image:height" content="630">
 	<meta property="og:image:alt" content="Des voitures de rallye en glisse sur une spéciale de terre, dans un nuage de poussière">
@@ -27,7 +21,7 @@
 	<meta name="twitter:card" content="summary_large_image">
 	<meta name="twitter:title" content="Racing Club 1sk4nd3r">
 	<meta name="twitter:description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
-	<meta name="twitter:image" content="https://dirtbound.fr/images/og.jpg">
+	<meta name="twitter:image" content="images/racing-club-social.svg">
 	<script>
 		// Old shared links (index.html?rally=..., ?track=..., #track=..., ?map=...) now live in play.html
 		if ( /[?&#](rally|track|map|car|circuit)=/.test( location.search + location.hash ) ) location.replace( 'play.html' + location.search + location.hash );
@@ -407,13 +401,13 @@
 		#screen .lobby-float { position: fixed; right: 40px; top: 50%; width: 340px; box-sizing: border-box; padding: 20px 22px; transform: translateY(-50%) perspective(700px) rotateY(-10deg); transform-origin: right center; border-radius: 10px; }
 		#screen .lobby-float h3 { font-family: 'brand', sans-serif; font-weight: 400; font-style: normal; text-transform: uppercase; font-size: 30px; margin: 0 0 4px; }
 		#screen .lobby-float input { width: 100%; box-sizing: border-box; margin-top: 4px; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) #crumbs { background: none; box-shadow: none; border-radius: 0; filter: drop-shadow(0 6px 14px rgba(8, 10, 16, 0.22)); perspective: 600px; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb { position: relative; overflow: hidden; isolation: isolate; gap: 10px; padding: 13px 20px 13px 15px; border-radius: 9px; background: var(--card); color: var(--ink); font-size: 18px; font-style: normal; font-weight: 900; letter-spacing: var(--track); transform: rotateY(14deg) rotateZ(-0.8deg); transform-origin: left center; transition: color 0.25s; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent); transform: scaleY(0); transform-origin: bottom; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:focus-visible { color: #fff; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover::before, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:focus-visible::before { transform: scaleY(1); }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb .back { width: auto; height: auto; background: none; font-size: 18px; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover .back { background: none; transform: translateX(-4px); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) #crumbs { background: none; box-shadow: none; border-radius: 0; filter: drop-shadow(0 6px 14px rgba(8, 10, 16, 0.22)); perspective: 600px; }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb { position: relative; overflow: hidden; isolation: isolate; gap: 10px; padding: 13px 20px 13px 15px; border-radius: 9px; background: var(--card); color: var(--ink); font-size: 18px; font-style: normal; font-weight: 900; letter-spacing: var(--track); transform: rotateY(14deg) rotateZ(-0.8deg); transform-origin: left center; transition: color 0.25s; }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent); transform: scaleY(0); transform-origin: bottom; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:focus-visible { color: #fff; }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover::before, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:focus-visible::before { transform: scaleY(1); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb .back { width: auto; height: auto; background: none; font-size: 18px; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=yaris], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover .back { background: none; transform: translateX(-4px); }
 		#music .eq { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
 		#music .eq i { width: 4px; border-radius: 2px; background: var(--accent); height: calc(4px + var(--kick) * 14px); transition: height 0.06s; }
 		#music .eq i:nth-child(2) { height: calc(6px + var(--kick) * 9px); }

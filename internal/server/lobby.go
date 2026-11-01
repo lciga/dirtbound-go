@@ -40,6 +40,7 @@ type Finish struct {
 }
 type Race struct {
 	Choice
+	Mode       string             `json:"mode"`
 	Seed       string             `json:"seed,omitempty"`
 	Laps       int                `json:"laps"`
 	Length     int                `json:"length"`
@@ -78,6 +79,16 @@ type Hub struct {
 	app   *App
 	rooms map[string]*Lobby
 	peers map[string]*peer
+}
+
+func forceYaris(l *Lobby) {
+	if l.Mode != "yaris" {
+		return
+	}
+	for _, player := range l.Players {
+		player.Car = "Toyota Yaris"
+		player.Color = 1
+	}
 }
 
 func newHub(a *App) *Hub   { return &Hub{app: a, rooms: map[string]*Lobby{}, peers: map[string]*peer{}} }
@@ -313,7 +324,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 			code = ""
 		}
 		mode := str(m, "mode")
-		if mode != "bonus" {
+		if mode != "bonus" && mode != "yaris" {
 			mode = "classic"
 		}
 		visibility := str(m, "visibility")
@@ -328,6 +339,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 			name = p.name
 		}
 		l = &Lobby{Code: code, Name: name, Mode: mode, Visibility: visibility, Host: p.id, State: "waiting", Players: []*Player{{ID: p.id, Name: p.name, Car: "Audi Quattro S1", Color: 1, Connected: true}}, Settings: LobbySettings{Laps: 3, Length: 3000, Landscape: "varied", Camera: "iso"}, Votes: map[string]Choice{}}
+		forceYaris(l)
 		h.rooms[code] = l
 		p.room = code
 		h.broadcast(l)
@@ -342,6 +354,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 		h.leave(p)
 		p.room = code
 		target.Players = append(target.Players, &Player{ID: p.id, Name: p.name, Car: "Audi Quattro S1", Color: 1, Connected: true})
+		forceYaris(target)
 		h.broadcast(target)
 		return
 	case "leave":
@@ -371,6 +384,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 				}
 			}
 		}
+		forceYaris(l)
 		h.broadcast(l)
 	case "settings":
 		if l.Host != p.id || l.State != "waiting" {
@@ -526,6 +540,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 	}
 }
 func (h *Hub) closeVote(l *Lobby) {
+	forceYaris(l)
 	counts := map[Choice]int{}
 	winner := Choice{Kind: "official", ID: "default"}
 	best := 0
@@ -549,7 +564,7 @@ func (h *Hub) closeVote(l *Lobby) {
 			grid = append(grid, &copy)
 		}
 	}
-	l.Race = &Race{Choice: winner, Seed: id(8), Laps: l.Settings.Laps, Length: l.Settings.Length, Landscape: l.Settings.Landscape, Camera: l.Settings.Camera, Collisions: l.Settings.Collisions || l.Mode == "bonus", Bonus: l.Mode == "bonus", Grid: grid, Finishes: map[string]float64{}, Results: []Finish{}, Loaded: map[string]bool{}}
+	l.Race = &Race{Choice: winner, Mode: l.Mode, Seed: id(8), Laps: l.Settings.Laps, Length: l.Settings.Length, Landscape: l.Settings.Landscape, Camera: l.Settings.Camera, Collisions: l.Settings.Collisions || l.Mode == "bonus", Bonus: l.Mode == "bonus", Grid: grid, Finishes: map[string]float64{}, Results: []Finish{}, Loaded: map[string]bool{}}
 	l.State = "loading"
 	l.Deadline = time.Now().Add(90 * time.Second).UnixMilli()
 	h.broadcast(l)

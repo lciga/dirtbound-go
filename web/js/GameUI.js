@@ -40,13 +40,18 @@ const CSS = `
 	}
 	.ui-overlay.open { display: flex; }
 	.ui-card {
-		width: 340px; padding: 24px; border-radius: var(--radius);
+		width: min(380px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 24px; border-radius: var(--radius);
 		background: var(--card); color: var(--ink); box-shadow: var(--shadow);
 		display: flex; flex-direction: column; gap: 8px;
 	}
 	.ui-card h2 { margin: 0 0 8px; font: 46px/1 var(--brand); color: var(--accent); text-transform: uppercase; letter-spacing: 0; }
 	.ui-card .big { font-size: 48px; line-height: 1.05; margin: 0; }
 	.ui-card .sub { color: var(--muted); font-size: 14px; }
+	.ui-music { border-block: 1px solid var(--soft); padding: 12px 0; margin: 4px 0; }
+	.ui-music-title { font-size: 12px; color: var(--muted); margin: 6px 0 10px; }
+	.ui-music label { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 13px; }
+	.ui-music input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+	.ui-card .ui-music button { margin-top: 8px; width: 100%; padding: 8px; font-size: 12px; }
 	.ui-card .record { align-self: flex-start; margin: 2px 0 8px; padding: 4px 12px; border-radius: 999px; background: #ffd35c; color: #6b4a00; font-weight: 900; }
 	.ui-card .sub + .sub { margin-bottom: 8px; }
 	.ui-card button {
@@ -104,11 +109,20 @@ export class GameUI {
 				CAMERA_VIEWS.map( ( view ) => `<button data-camera="${ view }">${ t( 'lobby.cameras.' + view ) }</button>` ).join( '' ) + '</div>' : '' ) +
 			( actions.ghost ? '<button data-a="ghost"></button>' : '' ) +
 			( actions.performance ? `<button data-a="performance">${ t( actions.performance.enabled() ? 'pause.performanceOn' : 'pause.performanceOff' ) }</button>` : '' ) +
+			( actions.music ? `<div class="ui-music"><b>${ t( 'club.racePlayer' ) }</b><div class="ui-music-title"></div>` +
+				`<label><span>${ t( 'club.playerVolume' ) }</span><output data-music-level></output><input data-music-volume type="range" min="0" max="100" step="1" aria-label="${ t( 'club.playerVolume' ) }"></label>` +
+				'<button data-a="music"></button></div>' : '' ) +
 			( actions.onRestart ? `<button data-a="restart">${ t( 'pause.restart' ) }</button>` : '' ) +
 			`<button data-a="menu">${ t( 'pause.menu' ) }</button>`
 		);
 		this.updateGhostButton();
 		this.updateCameraControls();
+		this.updateMusicControls();
+		this.pauseEl.addEventListener( 'input', event => {
+			if ( ! event.target.matches( '[data-music-volume]' ) ) return;
+			this.actions.music.setVolume( Number( event.target.value ) / 100 );
+			this.updateMusicControls();
+		} );
 
 		this.resultEl = this.overlay( '' );
 
@@ -162,6 +176,10 @@ export class GameUI {
 			this.updateGhostButton();
 
 		}
+		if ( a === 'music' ) {
+			this.actions.music.toggle();
+			this.updateMusicControls();
+		}
 
 	}
 
@@ -170,6 +188,19 @@ export class GameUI {
 		const button = this.pauseEl.querySelector( '[data-a="ghost"]' );
 		if ( button ) button.textContent = t( 'pause.ghost', { mode: GHOST_LABELS[ this.actions.ghost.mode() ] } );
 
+	}
+
+	updateMusicControls() {
+		const player = this.actions.music;
+		if ( ! player ) return;
+		const value = Math.round( player.volume() * 100 );
+		this.pauseEl.querySelector( '[data-music-volume]' ).value = value;
+		this.pauseEl.querySelector( '[data-music-level]' ).textContent = value + ' %';
+		const button = this.pauseEl.querySelector( '[data-a="music"]' );
+		button.textContent = t( player.enabled() ? 'music.mute' : 'music.unmute' );
+		button.setAttribute( 'aria-pressed', String( player.enabled() ) );
+		const track = player.track();
+		this.pauseEl.querySelector( '.ui-music-title' ).textContent = track?.title ? `${ track.artist } — ${ track.title }` : '';
 	}
 
 	updateCameraControls() {
@@ -194,6 +225,7 @@ export class GameUI {
 		if ( this.locked ) return;
 		this.paused = paused;
 		this.pauseEl.classList.toggle( 'open', paused );
+		if ( paused ) this.updateMusicControls();
 		if ( paused ) this.pauseEl.querySelector( 'button' ).focus();
 		this.actions.onPause( paused );
 

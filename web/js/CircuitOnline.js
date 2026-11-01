@@ -1,4 +1,5 @@
 import { loadCar } from './Cars.js';
+import { YARIS_CAR } from './YarisMode.js';
 import { GhostRecorder, GhostCar } from './Ghost.js';
 import { decodeGhost } from './GhostCodec.js';
 import { circuitId, fetchLeaderboard, fetchRecordGhost, fetchTasGhost, submitLap, archiveLap } from './Leaderboard.js';
@@ -137,15 +138,21 @@ export class CircuitOnline {
 	// Swaps the ghost car for this lap (loads its car model if it changed)
 	async showGhost( lap ) {
 
-		const sameCar = this.ghostCar && this.ghostCar.car === lap.car && this.ghostCar.color === lap.color;
+		const yaris = this.car.id === YARIS_CAR;
+		const carId = yaris ? YARIS_CAR : lap.car;
+		const color = yaris ? 1 : lap.color;
+		const sameCar = this.ghostCar && this.ghostCar.car === carId && this.ghostCar.color === color;
 
 		if ( ! sameCar ) {
 
-			const model = await loadCar( this.loader, lap.car, lap.color ).catch( () => loadCar( this.loader, 'truck', 1 ) );
+			const model = await loadCar( this.loader, carId, color ).catch( error => {
+				if ( yaris ) throw error;
+				return loadCar( this.loader, 'truck', 1 );
+			} );
 			if ( this.ghostCar ) this.scene.remove( this.ghostCar.container );
 			this.ghostCar = new GhostCar( model );
-			this.ghostCar.car = lap.car;
-			this.ghostCar.color = lap.color;
+			this.ghostCar.car = carId;
+			this.ghostCar.color = color;
 			this.scene.add( this.ghostCar.container );
 			if ( this.prepare ) await this.prepare( this.ghostCar.container );
 

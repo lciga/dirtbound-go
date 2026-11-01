@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GHOST_RATE, GHOST_MAX_TIME, encodeGhost, sampleGhost, keyCode } from './GhostCodec.js';
+import { stretchYaris } from './YarisMode.js';
 
 // Ghost of the record lap, Trackmania style: the lap being driven is recorded
 // (GhostRecorder), and the record lap is replayed as a see-through car
@@ -125,6 +126,7 @@ export class GhostCar {
 		this.container.visible = false;
 
 		const car = model.clone();
+		this.visual = car;
 		this.materials = materialSets( car );
 		this.seeThrough = null;
 		this.setSeeThrough( seeThrough );
@@ -179,6 +181,7 @@ export class GhostCar {
 		_quat.set( frame[ 3 ], frame[ 4 ], frame[ 5 ], frame[ 6 ] ).normalize();
 		this.container.quaternion.copy( _quat );
 		for ( const wheel of this.frontWheels ) wheel.rotation.y = frame[ 7 ];
+		stretchYaris( this.visual, lapTime );
 
 	}
 

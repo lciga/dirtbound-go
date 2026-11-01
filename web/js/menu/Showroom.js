@@ -1006,7 +1006,7 @@ export class Showroom {
 	async loadOthers() {
 
 		if ( this.othersLoading ) return this.othersLoading;
-		const pool = CARS.filter( ( c ) => c.id !== 'truck' && ! this.carKey.startsWith( c.id + '#' ) );
+		const pool = CARS.filter( ( c ) => c.id !== 'truck' && ! c.modeOnly && ! this.carKey.startsWith( c.id + '#' ) );
 		const picks = [];
 		while ( picks.length < 2 && pool.length ) picks.push( pool.splice( Math.floor( Math.random() * pool.length ), 1 )[ 0 ] );
 

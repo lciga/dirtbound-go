@@ -13,6 +13,7 @@
 // so the edit and the pulses carry on in silence.
 
 import { onAudioFocus } from '../AudioFocus.js';
+import { YARIS_TRACK_ID, YARIS_TRACK } from '../YarisMode.js';
 
 const TRACKS = [
 	{ src: 'audio/music/menu-guitar-1.mp3', bpm: 124, offset: 0.215, calm: [] },
@@ -24,15 +25,32 @@ export const BEAT = 60 / BPM; // s
 const VOLUME = 0.275;
 const FADE_IN = 2; // s
 
+// A fresh permutation per pass; the boundary never repeats the last song.
+export function shuffleTracks( tracks, previousSrc = null, random = Math.random ) {
+	const shuffled = [ ...tracks ];
+	for ( let i = shuffled.length - 1; i > 0; -- i ) {
+		const j = Math.floor( random() * ( i + 1 ) );
+		[ shuffled[ i ], shuffled[ j ] ] = [ shuffled[ j ], shuffled[ i ] ];
+	}
+	if ( shuffled.length > 1 && shuffled[ 0 ].src === previousSrc ) {
+		const next = 1 + Math.floor( random() * ( shuffled.length - 1 ) );
+		[ shuffled[ 0 ], shuffled[ next ] ] = [ shuffled[ next ], shuffled[ 0 ] ];
+	}
+	return shuffled;
+}
+
 export class MenuMusic {
 
 	// volume: 0..1 on top of VOLUME (menu Paramètres → Son)
-	constructor( { enabled = true, volume = 1, localPlaylist = false } = {} ) {
+	constructor( { enabled = true, volume = 1, localPlaylist = false, trackIds = null } = {} ) {
 
 		this.enabled = enabled;
-        this.tracks = TRACKS;
+		this.trackIds = trackIds;
+		this.catalog = TRACKS;
+		this.tracks = trackIds ? [ YARIS_TRACK ] : TRACKS;
+		this.fadeSerial = 0;
 		this.volume = volume;
-		this.track = Math.floor( Math.random() * TRACKS.length );
+		this.track = Math.floor( Math.random() * this.tracks.length );
 		this.audio = new Audio( this.tracks[ this.track ].src );
 		this.audio.preload = 'metadata';
         if(localPlaylist)this.localReady=this.loadLocalPlaylist();
@@ -40,7 +58,11 @@ export class MenuMusic {
 		// The next track when one ends (the last one goes back to the first)
 		this.audio.addEventListener( 'ended', () => {
 
-			this.track = ( this.track + 1 ) % this.tracks.length;
+			const previous = this.currentTrack.src;
+			if ( ++ this.track >= this.tracks.length ) {
+				this.tracks = shuffleTracks( this.tracks, previous );
+				this.track = 0;
+			}
 			this.audio.src = this.tracks[ this.track ].src;
 			if ( this.enabled ) this.audio.play().catch( () => {} );
 
@@ -101,14 +123,33 @@ export class MenuMusic {
             const {tracks}=await response.json();
             const available=tracks.filter(t=>/^audio\/music\/club\/[a-z0-9-]+\.(mp3|ogg|wav|m4a)$/.test(t.src));
             if(!available.length)return;
-            const resume=this.playing;
-            this.audio.pause();
-            this.tracks=available.map(t=>({...t,bpm:Number(t.bpm)||BPM,offset:Number(t.offset)||0,calm:[]}));
-            this.track=0; // Niko B first, followed by the approved order.
-            this.audio.src=this.tracks[0].src;
-            if(resume&&this.enabled)this.start();
+            this.catalog=available.map(t=>({...t,bpm:Number(t.bpm)||BPM,offset:Number(t.offset)||0,calm:[]}));
+            this.applyPlaylist();
         } catch(error) { console.warn('Local menu music unavailable:',error.message); }
     }
+
+	setTrackIds( ids = null ) {
+		if ( JSON.stringify( ids ) === JSON.stringify( this.trackIds ) ) return;
+		this.trackIds = ids;
+		this.applyPlaylist();
+	}
+
+	applyPlaylist() {
+		const available = this.trackIds ? this.catalog.filter( t => this.trackIds.includes( t.id ) ) : this.catalog;
+		let selected = available.length ? available : this.trackIds?.includes( YARIS_TRACK_ID ) ? [ YARIS_TRACK ] : TRACKS;
+		const previous = this.tracks[ this.track ];
+		const resume = this.playing;
+		if ( ! this.trackIds ) selected = shuffleTracks( selected, previous?.src );
+		const retained = this.trackIds ? selected.findIndex( t => t.src === previous?.src ) : -1;
+		this.tracks = selected;
+		this.track = Math.max( 0, retained );
+		if ( retained >= 0 ) return;
+		this.audio.pause();
+		this.audio.src = selected[ 0 ].src;
+		if ( resume && this.enabled ) this.start();
+	}
+
+	get currentTrack() { return this.tracks[ this.track ]; }
 
 	get playing() {
 
@@ -117,6 +158,7 @@ export class MenuMusic {
 	}
 
 	start() {
+		++ this.fadeSerial;
 
 		if ( ! this.ctx ) {
 
@@ -146,12 +188,13 @@ export class MenuMusic {
 
 		if ( ! this.playing ) return Promise.resolve();
 		const t = this.ctx.currentTime;
+		const serial = ++ this.fadeSerial;
 		this.gain.gain.cancelScheduledValues( t );
 		this.gain.gain.setValueAtTime( this.gain.gain.value, t );
 		this.gain.gain.linearRampToValueAtTime( 0, t + seconds );
 		return new Promise( ( r ) => setTimeout( () => {
 
-			this.audio.pause();
+			if ( serial === this.fadeSerial ) this.audio.pause();
 			r();
 
 		}, seconds * 1000 ) );

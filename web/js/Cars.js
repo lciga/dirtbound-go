@@ -1,4 +1,6 @@
 import { RALLY_CARS, loadRallyCar } from './RallyCars.js';
+import { loadYaris } from './YarisCar.js';
+import { YARIS_CAR } from './YarisMode.js';
 
 // Every drivable car, for the garage and the game: the Kenney truck (four
 // paint jobs as liveries) and the rally pack (five liveries each).
@@ -6,13 +8,14 @@ import { RALLY_CARS, loadRallyCar } from './RallyCars.js';
 export const TRUCK_COLORS = [ 'yellow', 'green', 'purple', 'red' ];
 
 export const CARS = [
-	{ id: 'truck', label: 'Pick-up Kenney', liveries: TRUCK_COLORS.length },
+	{ id: 'truck', label: 'Club Pick-up', liveries: TRUCK_COLORS.length },
+	{ id: YARIS_CAR, label: YARIS_CAR, liveries: 1, modeOnly: 'yaris' },
 	...RALLY_CARS.map( ( name ) => ( { id: name, label: name, liveries: 5 } ) ),
 ];
 
 // What the garage offers: the rally pack only (the truck still drives
 // through ?car=truck and old saves are moved onto a rally car)
-export const GARAGE_CARS = CARS.filter( ( c ) => c.id !== 'truck' );
+export const GARAGE_CARS = CARS.filter( ( c ) => c.id !== 'truck' && ! c.modeOnly );
 
 export function findCar( id ) {
 
@@ -26,6 +29,7 @@ export function loadCar( loader, id, livery = 1 ) {
 
 	const car = findCar( id );
 	if ( ! car ) return Promise.reject( new Error( `Unknown car "${ id }"` ) );
+	if ( car.id === YARIS_CAR ) return loadYaris( loader );
 
 	if ( car.id !== 'truck' ) return loadRallyCar( loader, car.id, livery );
 

@@ -132,8 +132,17 @@ func TestLapGhostAndRanking(t *testing.T) {
 	submit := func(seconds float64) map[string]any {
 		return call(t, c, "POST", s.URL+"/api/tracks/default/laps", map[string]any{"time": seconds, "car": "Audi Quattro S1", "color": 1, "ghost": ghost})
 	}
-	if submit(1)["success"] != true {
+	result := submit(1)
+	if result["success"] != true {
 		t.Fatal("valid ghost")
+	}
+	data := result["data"].(map[string]any)
+	if data["record"] != true || data["rank"] != float64(1) || data["leaderboard"].(map[string]any)["total"] != float64(1) {
+		t.Fatal("lap response must include the HUD ranking and record fields", data)
+	}
+	again := submit(1)["data"].(map[string]any)
+	if again["improved"] != false || again["record"] != false {
+		t.Fatal("same lap is not a new record", again)
 	}
 	if submit(100)["success"] != false {
 		t.Fatal("duration mismatch")

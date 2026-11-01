@@ -4,6 +4,7 @@
 // (picked by the `n` parameter); a list is an array (i18n.js `list`).
 
 export default {
+	club: {"yarisSub": "Toyota Yaris · Why’s This Dealer?", "yarisSolo": "Course solo", "yarisNote": "Une Toyota Yaris pour tous. Why’s This Dealer? en boucle.", "racePlayer": "Musique en course", "playerVolume": "Volume du lecteur", "about": "Racing Club 1sk4nd3r — circuits, rallye et courses entre amis.", "privacy": "Votre profil et vos résultats sont conservés sur le serveur du club. Les réglages restent sur cet appareil."},
 
 	common: { cancel: 'Annuler', yes: 'Oui', no: 'Non' },
 	pager: { prev: '‹ Précédents', next: 'Suivants ›' },
@@ -104,7 +105,7 @@ export default {
 	},
 
 	circuits: {
-		kenney: 'Circuit Kenney',
+		kenney: 'Circuit du club',
 		official: 'Circuit sélectionné',
 		officialBy: 'Circuit sélectionné · par {author}',
 		community: 'Circuit de la communauté',
@@ -150,11 +151,11 @@ export default {
 	themes: { summer: 'Val-Guimauve', spring: 'Prébouton', autumn: 'Bois-Roussi', winter: 'Givreval' },
 
 	legal: {
-		link: 'Mentions légales · Crédits',
+		link: 'À propos',
 		title: 'Mentions légales',
-		tabs: { legal: 'Mentions légales', credits: 'Crédits' },
+		tabs: { legal: 'Mentions légales', credits: 'Licences' },
 		publisher: 'Éditeurs',
-		publisherText: 'DirtBound est un jeu gratuit, édité par deux particuliers :',
+		publisherText: 'Racing Club 1sk4nd3r',
 		director: 'Directeur de la publication',
 		host: 'Hébergement',
 		hostText: 'Serveur personnel de {name}, en France.',
@@ -165,7 +166,6 @@ export default {
 		privacyText: 'Ce que le jeu garde et comment le faire supprimer :',
 		privacyLink: 'Confidentialité',
 		team: 'Équipe',
-		roles: { luke: 'Direction artistique, interface, 3D, développement', victor: 'Serveur, infrastructure, développement' },
 		basedOn: 'Basé sur',
 		basedOnText: '{kit}, porté en JavaScript par {mrdoob}, d’après le kit de {kenney}',
 		models: 'Modèles 3D',
@@ -213,11 +213,11 @@ export default {
 		ultraOnly: 'Disponible avec les graphismes Ultra.',
 		percent: '{v} %',
 		volumesTitle: 'Volumes',
-		volumes: { engine: 'Moteur', tyres: 'Pneus', music: 'Musique' },
+		volumes: { engine: 'Moteur', tyres: 'Pneus', music: 'Musique', menuMusic: "Musique du menu", raceMusic: "Musique en course" },
 		musicTitle: 'Musique',
 		musicMenu: 'Dans le menu',
 		musicRace: 'En course',
-		musicRaceNote: 'Le même morceau pendant la course',
+		musicRaceNote: "La playlist du club pendant la course",
 		soundNote: 'Relâche un curseur pour entendre le son.',
 		keyboard: 'Clavier',
 		actions: {

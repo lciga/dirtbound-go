@@ -2,6 +2,7 @@
 // Plurals: one (1, 21…), few (2–4, 22–24…), many (5–20, 25…).
 
 export default {
+	club: {"yarisSub": "Toyota Yaris · Why’s This Dealer?", "yarisSolo": "Одиночный заезд", "yarisNote": "Toyota Yaris у всех. Why’s This Dealer? по кругу.", "racePlayer": "Музыка в гонке", "playerVolume": "Громкость плеера", "about": "Racing Club 1sk4nd3r — кольцевые гонки, спецучастки и заезды с друзьями.", "privacy": "Профиль и результаты хранятся на сервере клуба. Настройки звука и графики сохраняются на этом устройстве."},
 
 	common: { cancel: 'Отмена', yes: 'Да', no: 'Нет' },
 	pager: { prev: '‹ Назад', next: 'Далее ›' },
@@ -97,7 +98,7 @@ export default {
 	},
 
 	circuits: {
-		kenney: 'Трасса Kenney',
+		kenney: 'Трасса клуба',
 		official: 'Трасса из подборки',
 		officialBy: 'Трасса из подборки · автор: {author}',
 		community: 'Трасса сообщества',
@@ -139,11 +140,11 @@ export default {
 	themes: { summer: 'Зефирная долина', spring: 'Лютиковый луг', autumn: 'Рыжая роща', winter: 'Инеевая долина' },
 
 	legal: {
-		link: 'Правовая информация · Авторы',
+		link: 'Об игре',
 		title: 'Правовая информация',
-		tabs: { legal: 'Правовая информация', credits: 'Авторы' },
+		tabs: { legal: 'Правовая информация', credits: 'Лицензии' },
 		publisher: 'Издатели',
-		publisherText: 'DirtBound — бесплатная игра, которую издают два частных лица:',
+		publisherText: 'Racing Club 1sk4nd3r',
 		director: 'Ответственный за публикацию',
 		host: 'Хостинг',
 		hostText: 'Личный сервер {name}, во Франции.',
@@ -154,7 +155,6 @@ export default {
 		privacyText: 'Что хранит игра и как попросить удалить данные:',
 		privacyLink: 'Конфиденциальность (на французском)',
 		team: 'Команда',
-		roles: { luke: 'Арт-дирекшн, интерфейс, 3D, разработка', victor: 'Сервер, инфраструктура, разработка' },
 		basedOn: 'Основано на',
 		basedOnText: '{kit}, перенесено на JavaScript: {mrdoob}, по набору {kenney}',
 		models: '3D-модели',
@@ -202,11 +202,11 @@ export default {
 		ultraOnly: 'Доступно с графикой Ультра.',
 		percent: '{v} %',
 		volumesTitle: 'Громкость',
-		volumes: { engine: 'Двигатель', tyres: 'Шины', music: 'Музыка' },
+		volumes: { engine: 'Двигатель', tyres: 'Шины', music: 'Музыка', menuMusic: "Музыка в меню", raceMusic: "Музыка в гонке" },
 		musicTitle: 'Музыка',
 		musicMenu: 'В меню',
 		musicRace: 'В гонке',
-		musicRaceNote: 'Тот же трек во время гонки',
+		musicRaceNote: "Плейлист клуба во время заезда",
 		soundNote: 'Отпусти ползунок, чтобы услышать звук.',
 		keyboard: 'Клавиатура',
 		actions: {

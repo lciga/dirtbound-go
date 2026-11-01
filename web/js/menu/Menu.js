@@ -10,6 +10,7 @@ import { splineThumb, gridThumb, mapThumb, rallyThumb } from './Thumbs.js';
 import { LANDSCAPE_IDS, landscapeOf } from '../RallyBiomes.js';
 import { ghostMode } from '../CircuitOnline.js';
 import { MenuMusic } from './MenuMusic.js';
+import { YARIS_CAR, YARIS_TRACK_ID, stretchYaris } from '../YarisMode.js';
 import { UiSounds } from './UiSounds.js';
 import { Fx } from './Fx.js';
 import { createProfileScreen } from './ProfileScreen.js';
@@ -49,9 +50,9 @@ const ICONS = {
 
 // Where each screen stands (Showroom.goTo): home at the start of a stage, the
 // white garage, racing down the stage (solo), with two more cars (multiplayer)
-const PLACES = { home: 'home', settings: 'home', legal: 'home', garage: 'garage', solo: 'home', circuit: 'home', rally: 'home', multi: 'home', experimental: 'home', daily: 'home', lobby: 'multi' }; // solo, circuit, rally: the home stays, only its walls change (and the camera slides for the last two)
-const placeOf = ( name ) => PLACES[ name ] || 'home';
-const WALL_SCREENS = [ 'home', 'solo', 'circuit', 'rally', 'multi', 'experimental', 'daily' ]; // their choices are on the home's walls
+const PLACES = { home: 'home', settings: 'home', legal: 'home', garage: 'garage', solo: 'home', circuit: 'home', rally: 'home', multi: 'home', experimental: 'home', yaris: 'home', daily: 'home', lobby: 'multi' }; // solo, circuit, rally: the home stays, only its walls change (and the camera slides for the last two)
+const placeOf = ( name ) => name === 'lobby' && inYarisMode() ? 'home' : PLACES[ name ] || 'home';
+const WALL_SCREENS = [ 'home', 'solo', 'circuit', 'rally', 'multi', 'experimental', 'yaris', 'daily' ]; // their choices are on the home's walls
 const PANEL_SCREENS = [ 'settings', 'legal', 'profile' ]; // a panel of their own on the home: reached by a slide like Solo's, not the wipe
 const CIRCUIT_COLS = 3; // tiles across on a row of the circuit menu
 const PAGE = CIRCUIT_COLS * 2; // circuits on a page of the circuit menu (2 rows)
@@ -115,7 +116,7 @@ new GamepadUI( { hint: t( 'pad.menuHint' ) } );
 
 // Music, beat clock and effects: the camera cuts on the bars, every cut plays
 // a mask, the UI pulses on the kick
-const music = new MenuMusic( { enabled: settings.music !== false, volume: settings.volume.music, localPlaylist: true } );
+const music = new MenuMusic( { enabled: settings.music !== false, volume: settings.volume.menuMusic, localPlaylist: true } );
 const ui = new UiSounds(); // a pop on clicks, another when a popup opens
 showroom.onSeasonFlow = ( passAt ) => ui.woosh( passAt, { overlap: true } ); // the home's season: a woosh as its front sweeps under the camera (clicked in a row: they overlap, mixed)
 if ( window.showroom ) window.music = music; // ?debug
@@ -126,6 +127,8 @@ showroom.onCut = () => fx.cut();
 showroom.onFrame = ( canvas, p ) => fx.frame( canvas, p );
 
 let stack = [ 'home' ];
+if ( new URLSearchParams( location.search ).get( 'mode' ) === 'yaris' ) stack.push( 'yaris' );
+const inYarisMode = () => stack.includes( 'yaris' ) || ( stack.at( -1 ) === 'lobby' && multi.client.lobby?.mode === 'yaris' );
 if ( location.hash === '#profile' ) stack.push( 'profile' );
 if ( [ '#catalog', '#leaderboard' ].includes( location.hash ) ) stack.push( 'solo', 'circuit' ); // navigation history, last = current screen
 let current = null;
@@ -185,6 +188,11 @@ function leave( url ) {
 }
 
 function play( query ) {
+	if ( inYarisMode() ) {
+		const params = new URLSearchParams( query );
+		params.set( 'mode', 'yaris' );
+		query = params.toString();
+	}
 
 	// A drawn circuit (track=, map=) goes after the #, never sent to the server: no size limit
 	const sep = /^(track|map)=/.test( query ) ? '#' : '?';
@@ -316,8 +324,6 @@ const screens = {
 	// The choices are titles in the scene (homeTitles → Walls.js); nothing in #screen
 	home: () => ( { view: 'center', html:
 		'<div class="corner-links">' +
-			`<a class="legal-link" href="https://ko-fi.com/dirtbound" target="_blank" rel="noopener">${ t( 'home.coffee' ) }</a>` +
-			`<a class="legal-link" href="mailto:${ PEOPLE.victor.mail }?subject=${ encodeURIComponent( 'DirtBound - avis' ) }">${ t( 'home.feedback' ) }</a>` +
 			`<button class="legal-link" data-go="legal">${ t( 'legal.link' ) }</button>` +
 		'</div>' } ),
 
@@ -328,7 +334,7 @@ const screens = {
 	// rallyWall → Walls.js), the view shifted so the car stands on the right
 	circuit: () => ( {
 		view: 'menu',
-		title: t( 'solo.circuit' ),
+		title: inYarisMode() ? 'Yaris Mode · ' + t( 'solo.circuit' ) : t( 'solo.circuit' ),
 		html: '',
 		after: ( screen ) => {
 
@@ -421,6 +427,7 @@ function homeTitles() {
 	return [
 		{ side: 'left', title: t( 'home.solo' ), sub: t( 'home.soloSub' ), size: 0.21, accent: true, data: { go: 'solo' } },
 		{ side: 'left', title: t( 'home.multi' ), sub: t( 'home.multiSub' ), size: 0.12, data: { go: 'multi' } },
+		{ side: 'left', title: 'Yaris Mode', size: 0.13, accent: true, data: { go: 'yaris' } },
 		{ side: 'left', title: t( 'home.daily' ), sub: t( 'home.dailySub' ), size: 0.1, data: { go: 'daily' } },
 		{ side: 'left', title: t( 'home.experimental' ), sub: t( 'home.experimentalSub' ), size: 0.15, accent: true, data: { go: 'experimental' } },
 		{ side: 'right', title: t( 'home.garage' ), sub: t( 'home.garageSub', { car: car.label, n: settings.color } ), size: 0.13, above: true, grow: 1.2, data: { go: 'garage' } }, // its line above it: the tiles right under; the whole right wall ×1.2
@@ -805,34 +812,14 @@ function chooseCar( id, livery = null ) {
 // ─── Mentions légales ─────────────────────────────────────
 // Names and contacts are not translated; everything around them is (legal.* in the locales)
 
-const PEOPLE = {
-	victor: { name: 'Victor Boutros', mail: 'boutros.victor.005@gmail.com' },
-	luke: { name: 'Luke Baffait', mail: 'luke.baffait@yahoo.com', site: 'www.lukebaffait.fr' },
-};
-
 const link = ( href, text ) => `<a href="${ href }" target="_blank" rel="noopener">${ escapeHtml( text ) }</a>`;
 const block = ( title, body ) => `<div class="preset legal-block"><span class="preset-head"><b>${ title }</b></span>${ body }</div>`;
 
-function contact( id ) {
-
-	const p = PEOPLE[ id ];
-	const lines = [ `<a href="mailto:${ p.mail }">${ p.mail }</a>` ];
-	if ( p.phone ) lines.push( `<a href="tel:${ p.tel }">${ p.phone }</a>` );
-	if ( p.site ) lines.push( link( 'https://' + p.site, p.site ) );
-	return `<p><strong>${ p.name }</strong><br>${ lines.join( '<br>' ) }</p>`;
-
-}
-
 function legalBody() {
-
-	return '<div class="presets">' +
-		block( t( 'legal.publisher' ), `<p>${ t( 'legal.publisherText' ) }</p>${ contact( 'victor' ) }${ contact( 'luke' ) }` ) +
-		block( t( 'legal.director' ), `<p>${ PEOPLE.victor.name }</p>` ) +
-		block( t( 'legal.host' ), `<p>${ t( 'legal.hostText', { name: PEOPLE.victor.name } ) }</p>${ contact( 'victor' ) }<p>${ t( 'legal.cdn' ) }</p>` ) +
-		block( t( 'legal.ip' ), `<p>${ t( 'legal.ipText' ) }</p>` ) +
-		block( t( 'legal.privacy' ), `<p>${ t( 'legal.privacyText' ) } <a href="confidentialite.html">${ t( 'legal.privacyLink' ) }</a></p>` ) +
-		'</div>';
-
+ return '<div class="presets">' +
+  block( 'Racing Club 1sk4nd3r', '<p>' + t( 'club.about' ) + '</p>' ) +
+  block( t( 'legal.privacy' ), '<p>' + t( 'club.privacy' ) + ' <a href="confidentialite.html">' + t( 'legal.privacyLink' ) + '</a></p>' ) +
+  '</div>';
 }
 
 function creditsBody() {
@@ -841,7 +828,7 @@ function creditsBody() {
 	const credit = ( title, text, licence ) => block( title, `<p>${ text }</p>${ licence ? `<small>${ t( 'legal.licence', { name: licence } ) }</small>` : '' }` );
 
 	return '<div class="presets">' +
-		block( t( 'legal.team' ), [ 'luke', 'victor' ].map( ( id ) => `<p><strong>${ PEOPLE[ id ].name }</strong><br>${ t( 'legal.roles.' + id ) }</p>` ).join( '' ) ) +
+		block( 'Racing Club 1sk4nd3r', '<p>' + t( 'club.about' ) + '</p>' ) +
 		credit( t( 'legal.basedOn' ), t( 'legal.basedOnText', { kit: link( 'https://github.com/mrdoob/Starter-Kit-Racing', 'Starter Kit Racing' ), mrdoob: link( 'https://github.com/mrdoob', 'mrdoob' ), kenney } ), 'MIT' ) +
 		credit( t( 'legal.models' ), t( 'legal.modelsText', { kenney } ), 'CC0' ) +
 		credit( t( 'legal.physics' ), t( 'legal.physicsText', { crashcat: link( 'https://github.com/isaac-mason/crashcat', 'crashcat' ) } ), 'MIT' ) +
@@ -865,7 +852,7 @@ const GRAPHICS_PRESETS = [ 'low', 'normal', 'ultra' ].map( ( id ) => ( {
 	id, label: t( `settings.presets.${ id }.label` ), tag: t( `settings.presets.${ id }.tag` ), items: list( `settings.presets.${ id }.items` ),
 } ) );
 
-const VOLUMES = [ 'engine', 'tyres', 'music' ].map( ( k ) => [ k, t( 'settings.volumes.' + k ) ] );
+const VOLUMES = [ 'engine', 'tyres', 'menuMusic', 'raceMusic' ].map( ( k ) => [ k, t( 'settings.volumes.' + k ) ] );
 
 const ACTIONS = [ 'accelerate', 'brake', 'left', 'right', 'handbrake', 'pause', 'reset', 'restart', 'fire', 'camera' ].map( ( k ) => [ k, t( 'settings.actions.' + k ) ] );
 let binding = null; // { action, slot } while waiting for a key
@@ -923,7 +910,7 @@ const SETTINGS_BODIES = {
 		} ).join( '' ) +
 		`<label class="field">${ t( 'settings.musicTitle' ) }</label>` +
 		toggle( 'music', t( 'settings.musicMenu' ), settings.music !== false ) +
-		toggle( 'raceMusic', t( 'settings.musicRace' ), !! settings.raceMusic, t( 'settings.musicRaceNote' ) ) +
+		toggle( 'raceMusic', t( 'settings.musicRace' ), !! settings.raceMusic ) +
 		`<p class="note">${ t( 'settings.soundNote' ) }</p>`,
 
 	controls: () =>
@@ -960,7 +947,7 @@ let previewEl = null;
 
 function preview( kind ) {
 
-	if ( kind === 'music' ) return;
+	if ( kind === 'menuMusic' || kind === 'raceMusic' ) return;
 	if ( previewEl ) previewEl.pause();
 	previewEl = new Audio( kind === 'engine' ? 'audio/nsx/4700.wav' : 'audio/skid.ogg' );
 	const el = previewEl;
@@ -1030,23 +1017,24 @@ let lobbyParent = 'multi';
 
 const multi = createMulti( {
 	player, settings, escapeHtml, segmented, listPublished, findCar,
-	onChange: () => { if ( [ 'lobby', 'multi', 'experimental' ].includes( stack[ stack.length - 1 ] ) ) render(); },
+	onChange: () => { if ( [ 'lobby', 'multi', 'experimental', 'yaris' ].includes( stack[ stack.length - 1 ] ) ) render(); },
 	// The lobbies list changed: only the wall (a form being typed in keeps its focus)
 	onWalls: () => {
 
 		const name = stack[ stack.length - 1 ];
-		if ( name === 'multi' || name === 'experimental' ) showroom.swapWalls( multi.wall( name === 'experimental' ? 'bonus' : 'classic' ), 1, true );
+		if ( name === 'multi' || name === 'experimental' || name === 'yaris' ) showroom.swapWalls( multi.wall( name === 'yaris' ? 'yaris' : name === 'experimental' ? 'bonus' : 'classic' ), 1, true );
 
 	},
 	onEnterLobby: () => fx.transition( () => {
 
-		lobbyParent = multi.client.lobby?.mode === 'bonus' ? 'experimental' : 'multi';
+		lobbyParent = multi.client.lobby?.mode === 'yaris' ? 'yaris' : multi.client.lobby?.mode === 'bonus' ? 'experimental' : 'multi';
 		stack.splice( 0, stack.length, 'home', lobbyParent, 'lobby' );
 		render( true );
 
 	} ),
 	onRace: ( code ) => leave( 'play.html?lobby=' + encodeURIComponent( code ) ),
 	onTest: () => leave( 'play.html?test' ),
+	onYarisSolo: () => go( 'circuit' ),
 	onLeaveLobby: () => fx.transition( () => {
 
 		stack.splice( 0, stack.length, 'home', lobbyParent );
@@ -1072,13 +1060,18 @@ const accountScreen = createProfileScreen( {
 function render( entering = false ) {
 
 	const name = stack[ stack.length - 1 ];
-	if ( name !== 'multi' && name !== 'experimental' ) multi.stopBrowsing();
+	if ( name !== 'multi' && name !== 'experimental' && name !== 'yaris' ) multi.stopBrowsing();
+	const yaris = inYarisMode();
+	music.setTrackIds( yaris ? [ YARIS_TRACK_ID ] : null );
+	const previewId = yaris ? YARIS_CAR : settings.car;
+	const previewColor = yaris ? 1 : settings.color;
+	if ( showroom.carKey !== previewId + '#' + previewColor ) showroom.setCar( previewId, previewColor );
 	searchEl.hidden = ! ( name === 'circuit' && circuitTab === 'community' );
 	if ( searchInputEl.value !== circuitSearch ) searchInputEl.value = circuitSearch;
 	current = screens[ name ]();
 	showroom.setView( current.view );
 	showroom.goTo( placeOf( name ), { walls: WALL_SCREENS.includes( name ) } );
-	const wall = { home: homeTitles, solo: soloCards, circuit: circuitWall, rally: rallyWall, daily: dailyWall, multi: () => multi.wall( 'classic' ), experimental: () => multi.wall( 'bonus' ) }[ name ];
+	const wall = { home: homeTitles, solo: soloCards, circuit: circuitWall, rally: rallyWall, daily: dailyWall, multi: () => multi.wall( 'classic' ), experimental: () => multi.wall( 'bonus' ), yaris: () => multi.wall( 'yaris' ) }[ name ];
 	if ( wall ) {
 
 		if ( showroom.walls ) {
@@ -1447,7 +1440,7 @@ screenEl.addEventListener( 'input', ( e ) => {
 		settings.volume[ kind ] = v / 100;
 		e.target.style.setProperty( '--v', v + '%' );
 		e.target.nextElementSibling.textContent = t( 'settings.percent', { v } );
-		if ( kind === 'music' ) music.setVolume( v / 100 );
+		if ( kind === 'menuMusic' ) music.setVolume( v / 100 );
 
 	}
 
@@ -1678,6 +1671,7 @@ document.addEventListener( 'pointermove', ( e ) => {
 function beatLoop() {
 
 	beatInfo = music.info();
+	if ( inYarisMode() ) stretchYaris( showroom.car, beatInfo.time );
 	fx.pulse( beatInfo.kick );
 	showroom.walls?.setLive( { music: settings.music !== false, kick: beatInfo.kick, season: showroom.sets?.home?.seasonId } );
 	requestAnimationFrame( beatLoop );

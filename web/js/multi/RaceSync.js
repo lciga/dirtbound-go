@@ -17,6 +17,7 @@ import { STATES_PER_SECOND } from './Protocol.js';
 import { collisionActive, pushLimit, pushBaseline, COLLISION } from './Collisions.js';
 import { leavePage } from '../PageTransition.js';
 import { t } from '../i18n.js';
+import { YARIS_CAR, stretchYaris } from '../YarisMode.js';
 
 const NO_INPUT = Object.freeze( { x: 0, z: 0, handbrake: false, touchActive: false } );
 const SEND_EVERY = 1 / STATES_PER_SECOND; // s of race time
@@ -82,7 +83,11 @@ export class RaceSync {
 		for ( const g of this.race.grid ) {
 
 			if ( g.id === this.you ) continue;
-			const model = await this.loadCar( g.car || 'truck', g.color ).catch( () => this.loadCar( 'truck', 1 ) );
+			const id = this.race.mode === 'yaris' ? YARIS_CAR : g.car || 'truck';
+			const model = await this.loadCar( id, g.color ).catch( error => {
+				if ( this.race.mode === 'yaris' ) throw error;
+				return this.loadCar( 'truck', 1 );
+			} );
 			const ghost = new GhostCar( model, { seeThrough: ! solid } );
 			if ( this.bodies ) this.bodies.add( g.id );
 			this.scene.add( ghost.container );
@@ -329,6 +334,7 @@ export class RaceSync {
 			const target = this.target( remote, rt );
 			const state = target && { ...target, x: target.x + o[ 0 ], y: target.y + o[ 1 ], z: target.z + o[ 2 ] };
 			remote.ghost.place( state );
+			stretchYaris( remote.ghost.visual, rt );
 			this.placeLabel( remote, state );
 			entries.push( { id, progress: remote.track.latest()?.p ?? 0, time: finishes[ id ] ?? null } );
 

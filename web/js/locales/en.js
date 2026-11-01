@@ -1,6 +1,7 @@
 // English. Same keys as fr.js (the source); a key missing here shows in French.
 
 export default {
+	club: {"yarisSub": "Toyota Yaris · Why’s This Dealer?", "yarisSolo": "Solo race", "yarisNote": "Toyota Yaris for everyone. Why’s This Dealer? on repeat.", "racePlayer": "Race music", "playerVolume": "Player volume", "about": "Racing Club 1sk4nd3r — circuits, rally stages and racing with friends.", "privacy": "Your profile and results are stored on the club server. Sound and graphics preferences stay on this device."},
 
 	common: { cancel: 'Cancel', yes: 'Yes', no: 'No' },
 	pager: { prev: '‹ Previous', next: 'Next ›' },
@@ -101,7 +102,7 @@ export default {
 	},
 
 	circuits: {
-		kenney: 'Kenney Circuit',
+		kenney: 'Club Circuit',
 		official: 'Featured circuit',
 		officialBy: 'Featured circuit · by {author}',
 		community: 'Community circuit',
@@ -146,11 +147,11 @@ export default {
 	themes: { summer: 'Marshmallow Vale', spring: 'Buttercup Meadow', autumn: 'Russet Wood', winter: 'Frostvale' },
 
 	legal: {
-		link: 'Legal notice · Credits',
+		link: 'About',
 		title: 'Legal notice',
-		tabs: { legal: 'Legal notice', credits: 'Credits' },
+		tabs: { legal: 'Legal notice', credits: 'Licences' },
 		publisher: 'Publishers',
-		publisherText: 'DirtBound is a free game published by two individuals:',
+		publisherText: 'Racing Club 1sk4nd3r',
 		director: 'Publication director',
 		host: 'Hosting',
 		hostText: 'Personal server of {name}, in France.',
@@ -161,7 +162,6 @@ export default {
 		privacyText: 'What the game keeps and how to have it deleted:',
 		privacyLink: 'Privacy (in French)',
 		team: 'Team',
-		roles: { luke: 'Art direction, interface, 3D, development', victor: 'Server, infrastructure, development' },
 		basedOn: 'Based on',
 		basedOnText: '{kit}, ported to JavaScript by {mrdoob}, from the kit by {kenney}',
 		models: '3D models',
@@ -209,11 +209,11 @@ export default {
 		ultraOnly: 'Available with Ultra graphics.',
 		percent: '{v}%',
 		volumesTitle: 'Volume',
-		volumes: { engine: 'Engine', tyres: 'Tyres', music: 'Music' },
+		volumes: { engine: 'Engine', tyres: 'Tyres', music: 'Music', menuMusic: "Menu music", raceMusic: "Race music" },
 		musicTitle: 'Music',
 		musicMenu: 'In the menu',
 		musicRace: 'While racing',
-		musicRaceNote: 'The same track during the race',
+		musicRaceNote: "Club playlist during the race",
 		soundNote: 'Release a slider to hear the sound.',
 		keyboard: 'Keyboard',
 		actions: {
