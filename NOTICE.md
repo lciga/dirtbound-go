@@ -33,4 +33,4 @@
 - Drift Rally Track — ItsST1; [исходная трасса](https://dirtbound.fr/play.html?circuit=5c4b6f5ceecd8e1b468864e7b03596e43480df2ed451e20bb684dcd66ad031e8).
 - Bridges Meadow — SkyNight; [исходная трасса](https://dirtbound.fr/play.html?circuit=1e3ed8c43a8e2af3c70bfe15073f6895fb4ed296370dd57fe72efa4367235264).
 
-PostgreSQL-драйвер pgx — github.com/jackc/pgx, MIT; используется как модуль Go. Новые SVG-превью и оболочка сайта созданы для этого проекта.
+PostgreSQL-драйвер pgx — github.com/jackc/pgx, MIT; используется как модуль Go. Новые SVG-превью и панель личного кабинета созданы для этого проекта.

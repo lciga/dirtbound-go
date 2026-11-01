@@ -72,12 +72,16 @@ func httpFiles(files fs.FS) http.Handler {
 		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Keep old portal bookmarks useful without a separate page.
+		if r.URL.Path == "/site.html" {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Redirect(w, r, "/menu.html", http.StatusSeeOther)
+			return
+		}
 		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
 		if name == "" {
 			name = "index.html"
-			if _, exists := assets["site.html"]; exists {
-				name = "site.html"
-			}
+
 		}
 		for _, component := range strings.Split(name, "/") {
 			if strings.HasPrefix(component, ".") {

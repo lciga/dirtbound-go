@@ -12,6 +12,7 @@ import { ghostMode } from '../CircuitOnline.js';
 import { MenuMusic } from './MenuMusic.js';
 import { UiSounds } from './UiSounds.js';
 import { Fx } from './Fx.js';
+import { createProfileScreen } from './ProfileScreen.js';
 import { createMulti } from './MultiScreen.js';
 import { OFFICIAL_PUBLISHED, isOfficialPublished } from '../multi/Protocol.js';
 import { PageLoading, leavePage } from '../PageTransition.js';
@@ -51,7 +52,7 @@ const ICONS = {
 const PLACES = { home: 'home', settings: 'home', legal: 'home', garage: 'garage', solo: 'home', circuit: 'home', rally: 'home', multi: 'home', experimental: 'home', daily: 'home', lobby: 'multi' }; // solo, circuit, rally: the home stays, only its walls change (and the camera slides for the last two)
 const placeOf = ( name ) => PLACES[ name ] || 'home';
 const WALL_SCREENS = [ 'home', 'solo', 'circuit', 'rally', 'multi', 'experimental', 'daily' ]; // their choices are on the home's walls
-const PANEL_SCREENS = [ 'settings', 'legal' ]; // a panel of their own on the home: reached by a slide like Solo's, not the wipe
+const PANEL_SCREENS = [ 'settings', 'legal', 'profile' ]; // a panel of their own on the home: reached by a slide like Solo's, not the wipe
 const CIRCUIT_COLS = 3; // tiles across on a row of the circuit menu
 const PAGE = CIRCUIT_COLS * 2; // circuits on a page of the circuit menu (2 rows)
 let lastWallScreen = null; // the walls' screen last shown: the same one again = an update, no slide
@@ -124,7 +125,9 @@ showroom.setClock( { info: () => beatInfo, calm: () => music.calm( beatInfo.time
 showroom.onCut = () => fx.cut();
 showroom.onFrame = ( canvas, p ) => fx.frame( canvas, p );
 
-let stack = [ 'home' ]; // navigation history, last = current screen
+let stack = [ 'home' ];
+if ( location.hash === '#profile' ) stack.push( 'profile' );
+if ( [ '#catalog', '#leaderboard' ].includes( location.hash ) ) stack.push( 'solo', 'circuit' ); // navigation history, last = current screen
 let current = null;
 let rallySeed = randomSeed(); // rolled up front so the preview is the stage you get
 // First-ever stage on this browser: shorter and gentler (low landscape, no
@@ -308,6 +311,7 @@ async function star( id ) {
 // Each returns { view, title, html, after } — view is the showroom framing.
 
 const screens = {
+	profile: () => accountScreen.screen(),
 
 	// The choices are titles in the scene (homeTitles → Walls.js); nothing in #screen
 	home: () => ( { view: 'center', html:
@@ -1053,6 +1057,15 @@ const multi = createMulti( {
 
 Object.assign( screens, multi.screens );
 
+const accountScreen = createProfileScreen( {
+ escapeHtml,
+ onChange: () => { if ( stack.at( -1 ) === 'profile' ) render(); },
+ onName: name => { player.name = name; renderProfile(); },
+ onPlay: id => play( id === 'default' ? '' : 'circuit=' + id ),
+ onSignOut: async () => { await signOut(); location.href = 'menu.html'; },
+ onCircuits: () => { circuitTab = 'official'; go( 'circuit' ); },
+} );
+
 // ─── Rendering & navigation ───────────────────────────────
 
 // entering: play the entrance cascade (navigation), not on in-screen updates
@@ -1492,7 +1505,7 @@ function accountText() {
 	if ( player.offline ) return { initial, title: t( 'account.offline' ), sub: t( 'account.retry' ) };
 	if ( ! player.signedIn ) return { initial, title: t( 'account.signIn' ), sub: t( 'account.withGoogle' ) };
 	if ( ! player.name ) return { initial, title: t( 'account.choosePseudo' ), sub: t( 'account.googleAccount' ) };
-	return { initial, title: player.name, sub: t( 'account.online' ) };
+	return { initial, title: player.name, sub: t( 'profileMenu.title' ) };
 
 }
 
@@ -1573,7 +1586,8 @@ profileEl.addEventListener( 'click', async () => {
 
 	}
 
-	location.href = 'site.html#profile';
+	accountScreen.invalidate();
+	go( 'profile' );
 
 } );
 document.getElementById( 'pseudo-save' ).addEventListener( 'click', savePseudo );

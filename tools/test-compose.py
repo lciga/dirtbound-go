@@ -80,9 +80,11 @@ def main():
         catalogue = api('/api/circuits?limit=2&page=2')
         assert catalogue['total'] >= 9 and len(catalogue['circuits']) == 2
         assert all('data' not in c for c in catalogue['circuits'])
-        for path in ['/', '/login.html', '/editor.html', '/site.html', '/menu.html']:
+        for path in ['/', '/login.html', '/editor.html', '/menu.html']:
             _, raw = request(path)
             assert b'DirtBound' in raw, f'Missing page: {path}'
+        _, menu = request('/menu.html')
+        assert b'js/menu/Menu.js' in menu and b'site.html' not in menu
         _, guest_page = request('/play.html?rally=smoke')
         assert b'id="auth"' in guest_page, 'Guest race did not require sign-in'
         headers, wasm = request('/wasm/physics.wasm')

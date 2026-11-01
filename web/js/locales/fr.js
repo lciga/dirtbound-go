@@ -38,6 +38,28 @@ export default {
 
 	seasons: { summer: 'Été', autumn: 'Automne', winter: 'Hiver', spring: 'Printemps' },
 
+	profileMenu: {
+  "title": "Mon compte",
+  "profile": "Profil",
+  "records": "Records",
+  "tracks": "Mes circuits",
+  "circuits": "circuits",
+  "stars": "étoiles",
+  "save": "Enregistrer",
+  "saved": "Pseudo enregistré",
+  "storage": "Le profil, les circuits publiés et les records sont enregistrés sur le serveur. Les réglages et brouillons restent sur cet appareil.",
+  "refresh": "Actualiser",
+  "recordsNote": "Tes 50 derniers records personnels. Le numéro près de la voiture est ton rang au classement.",
+  "noRecords": "Termine un tour pour enregistrer ton premier record.",
+  "noTracks": "Aucun circuit publié. Crée le tien dans l’éditeur.",
+  "drive": "Course",
+  "remove": "Supprimer",
+  "confirmRemove": "Confirmer la suppression",
+  "editor": "Éditeur",
+  "catalog": "Tous les circuits",
+  "loading": "Chargement du profil…"
+},
+
 	account: {
 		buttonTitle: 'Ton compte pour les classements et le multijoueur',
 		signIn: 'Se connecter',

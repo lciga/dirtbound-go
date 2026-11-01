@@ -5,13 +5,12 @@ import { createHash } from "node:crypto";
 import * as THREE from "three";
 import { SmokeTrails } from "../web/js/Particles.js";
 import { decodeTrack, TrackPath } from "../web/js/SplineTrack.js";
-import { trackOutline } from "../web/js/SiteThumb.js";
 import {
   ROCKET_ID,
   rocketId,
   OFFICIAL_PUBLISHED,
 } from "../web/js/multi/Protocol.js";
-test("all nine supplied circuits decode and have matching lightweight outlines and content IDs", async () => {
+test("all nine supplied circuits decode and have matching content IDs", async () => {
   const {
     data: { circuits },
   } = JSON.parse(await fs.readFile("web/seed-circuits.json", "utf8"));
@@ -24,16 +23,12 @@ test("all nine supplied circuits decode and have matching lightweight outlines a
       c.id,
     );
     const decoded = await decodeTrack(c.data),
-      outline = trackOutline(c.shape),
       path = new TrackPath(decoded.nodes, decoded.closed);
-    assert.equal(outline.nodes, decoded.nodes.length);
-    assert.equal(outline.closed, true);
-    assert.ok(!/NaN|Infinity/.test(outline.d));
+    assert.equal(decoded.closed, true);
     assert.ok(path.sampleCount > 100);
     assert.ok([...path.px, ...path.pz].every(Number.isFinite));
     assert.ok(OFFICIAL_PUBLISHED.some((o) => o.id === c.id));
   }
-  assert.throws(() => trackOutline("AA"));
 });
 test("smoke draws only live instances, expires completely, and idle frames upload nothing", () => {
   const smoke = new SmokeTrails(new THREE.Scene(), 0xffffff, { perShape: 4 }),

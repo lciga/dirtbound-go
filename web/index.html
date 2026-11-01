@@ -222,7 +222,7 @@
 		/* Paramètres: tabs Graphismes / Son / Contrôles. No card: bento tiles in a column on the left like the
 		   Circuit / Spéciale walls (white, dark = chosen, orange = active, white captions over the screen's shaded side),
 		   the column turned a little into the depth like the back button */
-		body:is([data-screen=settings], [data-screen=legal])::before { content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(90deg, rgba(12, 16, 24, 0.62) 0%, rgba(12, 16, 24, 0.4) 30%, rgba(12, 16, 24, 0) 52%); }
+		body:is([data-screen=settings], [data-screen=legal], [data-screen=profile])::before { content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(90deg, rgba(12, 16, 24, 0.62) 0%, rgba(12, 16, 24, 0.4) 30%, rgba(12, 16, 24, 0) 52%); }
 		.settings-panel { position: fixed; top: 96px; left: 32px; width: 440px; max-height: calc(100vh - 128px); overflow-y: auto; padding: 4px 14px 18px 4px; background: none; box-shadow: none; border-radius: 0; backdrop-filter: none; -webkit-backdrop-filter: none; transform: perspective(1400px) rotateY(8deg); transform-origin: left center; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.5) transparent; }
 		.settings-panel .tabs { gap: 8px; padding: 0; background: none; border-radius: 0; }
 		.settings-panel .tabs button, .settings-panel .preset, .settings-panel .switch, .settings-panel .slider, .settings-panel .binds, .settings-panel .chip { position: relative; overflow: hidden; isolation: isolate; border-radius: 9px; background: var(--card); box-shadow: 0 6px 14px rgba(8, 10, 16, 0.22); }
@@ -407,13 +407,13 @@
 		#screen .lobby-float { position: fixed; right: 40px; top: 50%; width: 340px; box-sizing: border-box; padding: 20px 22px; transform: translateY(-50%) perspective(700px) rotateY(-10deg); transform-origin: right center; border-radius: 10px; }
 		#screen .lobby-float h3 { font-family: 'brand', sans-serif; font-weight: 400; font-style: normal; text-transform: uppercase; font-size: 30px; margin: 0 0 4px; }
 		#screen .lobby-float input { width: 100%; box-sizing: border-box; margin-top: 4px; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) #crumbs { background: none; box-shadow: none; border-radius: 0; filter: drop-shadow(0 6px 14px rgba(8, 10, 16, 0.22)); perspective: 600px; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb { position: relative; overflow: hidden; isolation: isolate; gap: 10px; padding: 13px 20px 13px 15px; border-radius: 9px; background: var(--card); color: var(--ink); font-size: 18px; font-style: normal; font-weight: 900; letter-spacing: var(--track); transform: rotateY(14deg) rotateZ(-0.8deg); transform-origin: left center; transition: color 0.25s; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent); transform: scaleY(0); transform-origin: bottom; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb:hover, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb:focus-visible { color: #fff; }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb:hover::before, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb:focus-visible::before { transform: scaleY(1); }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb .back { width: auto; height: auto; background: none; font-size: 18px; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal]) .crumb:hover .back { background: none; transform: translateX(-4px); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) #crumbs { background: none; box-shadow: none; border-radius: 0; filter: drop-shadow(0 6px 14px rgba(8, 10, 16, 0.22)); perspective: 600px; }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb { position: relative; overflow: hidden; isolation: isolate; gap: 10px; padding: 13px 20px 13px 15px; border-radius: 9px; background: var(--card); color: var(--ink); font-size: 18px; font-style: normal; font-weight: 900; letter-spacing: var(--track); transform: rotateY(14deg) rotateZ(-0.8deg); transform-origin: left center; transition: color 0.25s; }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--accent); transform: scaleY(0); transform-origin: bottom; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:focus-visible { color: #fff; }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover::before, body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:focus-visible::before { transform: scaleY(1); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb .back { width: auto; height: auto; background: none; font-size: 18px; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+		body:is([data-screen=garage], [data-screen=solo], [data-screen=circuit], [data-screen=rally], [data-screen=multi], [data-screen=experimental], [data-screen=settings], [data-screen=legal], [data-screen=profile]) .crumb:hover .back { background: none; transform: translateX(-4px); }
 		#music .eq { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
 		#music .eq i { width: 4px; border-radius: 2px; background: var(--accent); height: calc(4px + var(--kick) * 14px); transition: height 0.06s; }
 		#music .eq i:nth-child(2) { height: calc(6px + var(--kick) * 9px); }
@@ -427,6 +427,20 @@
 			#fx-grain, #fx-cut, #fx-wipe { display: none; }
 			.enter .mode, .enter .mini, .enter .panel, .enter .card, .enter .car-grid button, .enter .car-title, #crumbs.enter, .mode.primary, .enter .wheel button, .enter .liveries-wheel button, .enter .car-name { animation: none !important; }		}
 
+
+        .account-card { padding: 15px; margin-bottom: 10px; border-radius: 9px; background: var(--card); box-shadow: 0 6px 14px rgba(8,10,16,.22); }
+        .account-card > b { display: block; overflow-wrap: anywhere; }
+        .account-card small { display: block; color: var(--muted); margin-top: 4px; }
+        .account-card .note { color: var(--muted); text-shadow: none; font-weight: 600; }
+        .account-card .chip { box-shadow: none; background: var(--soft); }
+        .account-card input { min-width: 0; flex: 1; width: 100px; }
+        .account-stats { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; }
+        .account-stats strong { font-size: 25px; }
+        .account-record { display: flex; align-items: center; gap: 12px; }
+        .account-record > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .account-record > strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .account-record .chip { padding: 8px; font-size: 12px; }
+
 		/* ─── Narrow screens ─── */
 		@media (max-width: 900px) {
 			#topbar { top: 12px; left: 14px; right: 14px; }
@@ -439,7 +453,7 @@
 			.browser, .settings, .detail { width: 100%; max-height: none; }
 			.garage { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 55vh; }
 			.settings-panel { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 62vh; transform: none; }
-			body:is([data-screen=settings], [data-screen=legal])::before { background: linear-gradient(0deg, rgba(12, 16, 24, 0.62) 0%, rgba(12, 16, 24, 0.35) 55%, rgba(12, 16, 24, 0) 75%); }
+			body:is([data-screen=settings], [data-screen=legal], [data-screen=profile])::before { background: linear-gradient(0deg, rgba(12, 16, 24, 0.62) 0%, rgba(12, 16, 24, 0.35) 55%, rgba(12, 16, 24, 0) 75%); }
 			.bind { grid-template-columns: 1fr 84px 84px; }
 			.car-title { display: none; }
 			.wheel { width: 62vw; }
@@ -488,7 +502,6 @@
 	</style>
 </head>
 <body>
-<a href="site.html" style="position:fixed;bottom:16px;left:20px;z-index:8;font:600 13px system-ui;color:#fff;background:#182126cc;padding:10px 15px;border-radius:8px;text-decoration:none">1sk4nd3r · Трассы и кабинет ↗</a>
 	<div id="page-loader" aria-hidden="true"><div><i></i></div></div>
 	<div id="showroom"></div>
 

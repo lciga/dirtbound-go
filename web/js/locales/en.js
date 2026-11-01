@@ -35,6 +35,28 @@ export default {
 
 	seasons: { summer: 'Summer', autumn: 'Autumn', winter: 'Winter', spring: 'Spring' },
 
+	profileMenu: {
+  "title": "My account",
+  "profile": "Profile",
+  "records": "Records",
+  "tracks": "My circuits",
+  "circuits": "circuits",
+  "stars": "stars",
+  "save": "Save",
+  "saved": "Name saved",
+  "storage": "Your profile, published circuits and records are saved on the server. Settings and drafts stay on this device.",
+  "refresh": "Refresh",
+  "recordsNote": "Your latest 50 personal records. The number beside the car is your leaderboard rank.",
+  "noRecords": "Finish a lap to save your first record.",
+  "noTracks": "No published circuits yet. Create one in the editor.",
+  "drive": "Race",
+  "remove": "Delete",
+  "confirmRemove": "Confirm deletion",
+  "editor": "Editor",
+  "catalog": "All circuits",
+  "loading": "Loading profile…"
+},
+
 	account: {
 		buttonTitle: 'Your account for leaderboards and multiplayer',
 		signIn: 'Sign in',

@@ -62,13 +62,22 @@ func TestStaticCompressionConditionalAndRanges(t *testing.T) {
 	}
 }
 
-func TestHomeAndMenuHaveSeparateRoutes(t *testing.T) {
+func TestHomeOpensGameAndOldPortalRedirects(t *testing.T) {
 	handler := httpFiles(fstest.MapFS{"site.html": {Data: []byte("portal")}, "index.html": {Data: []byte("3d menu")}})
-	for _, route := range []struct{ path, body string }{{"/", "portal"}, {"/site.html", "portal"}, {"/menu.html", "3d menu"}, {"/index.html", "3d menu"}} {
+	for _, route := range []struct{ path, body string }{{"/", "3d menu"}, {"/menu.html", "3d menu"}, {"/index.html", "3d menu"}} {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, httptest.NewRequest("GET", route.path, nil))
 		if w.Code != 200 || w.Body.String() != route.body {
 			t.Fatal(route.path, w.Code, w.Body.String())
 		}
+	}
+}
+
+func TestOldPortalRedirectsIntoMenu(t *testing.T) {
+	handler := httpFiles(fstest.MapFS{"index.html": {Data: []byte("game")}})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest("GET", "/site.html", nil))
+	if w.Code != 303 || w.Header().Get("Location") != "/menu.html" {
+		t.Fatal(w.Code, w.Header())
 	}
 }
