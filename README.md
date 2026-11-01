@@ -2,6 +2,14 @@
 
 Приватная версия [DirtBound](https://dirtbound.fr/index.html): Go-сервер, PostgreSQL, управление автомобилем на Go → WebAssembly и исходный 3D-клиент. Снимок клиента — 31 октября 2026 года. Репозиторий: `lciga/dirtbound-go`.
 
+## Скриншоты
+
+| Главное меню | Yaris Mode |
+| --- | --- |
+| ![Главное меню с полным списком режимов](docs/screenshots/main-menu.jpg) | ![GR Yaris в меню Yaris Mode](docs/screenshots/yaris-mode.jpg) |
+| **Кольцевая гонка — изометрия** | **Музыка в меню паузы** |
+| ![Летняя трасса с изометрической камерой](docs/screenshots/race.jpg) | ![Плеер и регулировка громкости во время паузы](docs/screenshots/race-player.jpg) |
+
 ## Запуск Docker Compose
 
 Нужны Docker и Compose с поддержкой `--wait`, а также Python 3 для однократного создания `.env`. Go и Node.js на хосте для запуска не нужны.

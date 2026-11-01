@@ -999,14 +999,22 @@ export class Walls {
 			const pair = this.items.some( ( i ) => i.kind === 'video' ); // Solo's two clips: the same size on both sides
 			// (a side's own `grow`: that wall bigger again, the home's right one)
 			const grow = this.items.find( ( i ) => i.spec.side === side && i.spec.grow )?.spec.grow ?? 1;
-			const scale = ( narrow ? 0.7 : 1 ) * ( side === 'right' && ! pair ? RIGHT_SCALE : 1 ) * grow;
+			let scale = ( narrow ? 0.7 : 1 ) * ( side === 'right' && ! pair ? RIGHT_SCALE : 1 ) * grow;
+			const sideRows = rows( this.items.filter( ( i ) => i.spec.side === side ) );
+			// Home can gain modes: fit the complete title column above the bottom edge.
+			// Keep its top anchor and the other screens' tile/card sizes unchanged.
+			if ( sideRows.length && sideRows.every( row => row.every( it => it.kind === 'title' ) ) ) {
+				const height = sideRows.reduce( ( sum, row ) => sum + Math.max( ...row.map( it => it.h ) ), 0 );
+				const available = 2 * tanV * DEPTH * ( narrow ? 0.43 : 0.67 );
+				scale = Math.min( scale, Math.max( 0.1, ( available - 0.04 * ( sideRows.length - 1 ) ) / height ) );
+			}
 			// Rows from a bit above the middle down to near the bottom
 			let y = tanV * DEPTH * ( narrow ? - 0.01 : 0.53 );
 			// Tiles overlap their shadow margins: BENTO.gap apart, across and down
 			const tight = ( 2 * PAD - BENTO.gap ) * scale;
 			let above = null, head = null;
 
-			for ( const row of rows( this.items.filter( ( i ) => i.spec.side === side ) ) ) {
+			for ( const row of sideRows ) {
 
 				const tiles = row[ 0 ].kind !== 'title';
 				const h = Math.max( ...row.map( ( it ) => it.h ) ) * scale;
