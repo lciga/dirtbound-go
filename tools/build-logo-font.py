@@ -37,7 +37,7 @@ class Outline(BasePen):
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('font', type=Path)
-parser.add_argument('--text', default='1sk4nd3r')
+parser.add_argument('--text', default='Racing Club 1sk4nd3r')
 parser.add_argument('--output', type=Path, default=Path('web/fonts/brand-logo.typeface.json'))
 args = parser.parse_args()
 font = TTFont(args.font)

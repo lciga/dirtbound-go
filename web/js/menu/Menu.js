@@ -115,7 +115,7 @@ new GamepadUI( { hint: t( 'pad.menuHint' ) } );
 
 // Music, beat clock and effects: the camera cuts on the bars, every cut plays
 // a mask, the UI pulses on the kick
-const music = new MenuMusic( { enabled: settings.music !== false, volume: settings.volume.music } );
+const music = new MenuMusic( { enabled: settings.music !== false, volume: settings.volume.music, localPlaylist: true } );
 const ui = new UiSounds(); // a pop on clicks, another when a popup opens
 showroom.onSeasonFlow = ( passAt ) => ui.woosh( passAt, { overlap: true } ); // the home's season: a woosh as its front sweeps under the camera (clicked in a row: they overlap, mixed)
 if ( window.showroom ) window.music = music; // ?debug
@@ -210,7 +210,7 @@ function circuitItems( tab ) {
 
 			const c = community?.circuits?.find( ( e ) => e.id === o.id ) || null;
 			if ( community?.circuits && ! c ) return null;
-			return { key: 'off:' + o.id, name: o.name, sub: c ? t( 'circuits.officialBy', { author: c.mine ? t( 'circuits.you' ) : c.author } ) : t( 'circuits.official' ), query: 'circuit=' + o.id, board: o.id, best: null, published: c, thumb: () => c?.shape ? splineThumb( c.shape ) : '' };
+			return { key: 'off:' + o.id, name: o.name, sub: t( 'circuits.official' ), query: 'circuit=' + o.id, board: o.id, best: null, published: c, thumb: () => c?.shape ? splineThumb( c.shape ) : '' };
 
 		} ).filter( Boolean );
 		return [ kenney, ...promoted ];

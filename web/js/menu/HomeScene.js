@@ -276,7 +276,7 @@ export function buildHome( data, models, { ultra = false } = {} ) {
 }
 
 // ─── The logo ──────────────────────────────────────────────
-// DIRTBOUND in big white letters standing right behind the car, Brand
+// Racing Club 1sk4nd3r in big white letters standing right behind the car, Brand
 // extruded (fonts/brand-logo.typeface.json: just those letters, made by
 // tools/typeface.mjs). data.logo: { height (m, of the letters), depth (m),
 // gap (m between the car's far side and the letters) }; it faces the camera.
@@ -362,6 +362,20 @@ export async function buildLogo( spec = LOGO ) {
 
 	} );
 
+ // The club name sits above the existing movable driver-name letters.
+ const headingGeometry = new TextGeometry('Racing Club',options);
+ headingGeometry.computeBoundingBox();
+ const headingBox=headingGeometry.boundingBox;
+ const headingScale=spec.height*0.23/(headingBox.max.y-headingBox.min.y);
+ headingGeometry.translate(-(headingBox.min.x+headingBox.max.x)/2,-headingBox.min.y,-zMiddle);
+ headingGeometry.scale(headingScale,headingScale,kz*0.5);
+ headingGeometry.computeVertexNormals();
+ dropDegenerate(headingGeometry);
+ const heading=new THREE.Mesh(headingGeometry,new THREE.MeshStandardMaterial({color:0xe8590c,roughness:0.55,metalness:0}));
+ heading.position.y=spec.height*1.12;
+ heading.castShadow=heading.receiveShadow=true;
+ logo.add(heading);
+ logo.userData.name='Racing Club 1sk4nd3r';
 	logo.userData.letters = letters;
 	logo.userData.box = new THREE.Box3().setFromObject( logo );
 	logo.userData.gaps = letters.slice( 0, - 1 ).map( ( m, i ) => ( letters[ i + 1 ].position.x + letters[ i + 1 ].geometry.boundingBox.min.x ) - ( m.position.x + m.geometry.boundingBox.max.x ) );

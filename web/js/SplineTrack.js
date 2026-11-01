@@ -960,11 +960,11 @@ const _f = {};
 // finishGeo goes on the first tile, or on the last one with finishAtEnd
 // (the arrival of a rally stage). cornerGeo (extractCornerGeometry) draws the
 // one-tile quarter turns; without it they are bent tiles like any curve.
-export function buildRoadGeometry( path, straightGeo, finishGeo = null, finishAtEnd = false, cornerGeo = null ) {
+export function buildRoadGeometry( path, straightGeo, finishGeo = null, finishAtEnd = false, cornerGeo = null, subset = null ) {
 
 	if ( path.length < 0.01 ) return null;
 
-	const { pieces } = roadPieces( path, !! finishGeo, finishAtEnd, !! cornerGeo );
+	const pieces = subset || roadPieces( path, !! finishGeo, finishAtEnd, !! cornerGeo ).pieces;
 	const geoOf = ( p ) => p.corner !== undefined ? cornerGeo : p.finish ? finishGeo : straightGeo;
 
 	let vertCount = 0, indexCount = 0;
@@ -1047,6 +1047,18 @@ export function buildRoadGeometry( path, straightGeo, finishGeo = null, finishAt
 
 	return geometry;
 
+}
+
+// The exact same tiles, partitioned into spatial cells for frustum culling.
+export function buildRoadChunks( path, straight, finish, corner, cell = 64 ) {
+ const groups = new Map(), frame = {};
+ for ( const piece of roadPieces( path, !!finish, false, !!corner ).pieces ) {
+  path.frameAt( (piece.s0+piece.s1)/2, frame );
+  const key = Math.floor(frame.x/cell)+','+Math.floor(frame.z/cell);
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(piece);
+ }
+ return [...groups.values()].map(pieces=>buildRoadGeometry(path,straight,finish,false,corner,pieces));
 }
 
 // ─── Game helpers ─────────────────────────────────────────

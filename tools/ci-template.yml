@@ -37,3 +37,4 @@ jobs:
       - run: npm run test:race-start
       - run: npm run test:customization
       - run: npm run test:catalog
+      - run: npm run test:performance

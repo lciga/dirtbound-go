@@ -1,0 +1,71 @@
+{
+  "name": "Racing Club 1sk4nd3r",
+  "scope": "menu-only",
+  "tracks": [
+    {
+      "id": "niko-b-whys-this-dealer",
+      "artist": "Niko B",
+      "title": "Why’s This Dealer?"
+    },
+    {
+      "id": "styles-of-beyond-nine-thou",
+      "artist": "Styles of Beyond",
+      "title": "Nine Thou (Superstars Remix)"
+    },
+    {
+      "id": "celldweller-shapeshifter",
+      "artist": "Celldweller feat. Styles of Beyond",
+      "title": "Shapeshifter"
+    },
+    {
+      "id": "celldweller-one-good-reason",
+      "artist": "Celldweller",
+      "title": "One Good Reason (Instrumental)"
+    },
+    {
+      "id": "disturbed-decadence",
+      "artist": "Disturbed",
+      "title": "Decadence"
+    },
+    {
+      "id": "static-x-skinnyman",
+      "artist": "Static-X",
+      "title": "Skinnyman"
+    },
+    {
+      "id": "the-prodigy-under-my-wheels",
+      "artist": "The Prodigy",
+      "title": "You’ll Be Under My Wheels"
+    },
+    {
+      "id": "bullet-for-my-valentine-hand-of-blood",
+      "artist": "Bullet for My Valentine",
+      "title": "Hand of Blood"
+    },
+    {
+      "id": "avenged-sevenfold-blinded-in-chains",
+      "artist": "Avenged Sevenfold",
+      "title": "Blinded in Chains"
+    },
+    {
+      "id": "dave-rodgers-deja-vu",
+      "artist": "Dave Rodgers",
+      "title": "Déjà Vu"
+    },
+    {
+      "id": "max-coveri-running-in-the-90s",
+      "artist": "Max Coveri",
+      "title": "Running in the 90’s"
+    },
+    {
+      "id": "manuel-gas-gas-gas",
+      "artist": "Manuel",
+      "title": "Gas Gas Gas"
+    },
+    {
+      "id": "dave-rodgers-beat-of-the-rising-sun",
+      "artist": "Dave Rodgers",
+      "title": "Beat of the Rising Sun"
+    }
+  ]
+}

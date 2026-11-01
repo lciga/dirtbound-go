@@ -82,7 +82,7 @@ def main():
         assert all('data' not in c for c in catalogue['circuits'])
         for path in ['/', '/login.html', '/editor.html', '/menu.html']:
             _, raw = request(path)
-            assert b'DirtBound' in raw, f'Missing page: {path}'
+            assert b'Racing Club 1sk4nd3r' in raw, f'Missing page: {path}'
         _, menu = request('/menu.html')
         assert b'js/menu/Menu.js' in menu and b'site.html' not in menu
         _, guest_page = request('/play.html?rally=smoke')

@@ -27,19 +27,21 @@ const FADE_IN = 2; // s
 export class MenuMusic {
 
 	// volume: 0..1 on top of VOLUME (menu Paramètres → Son)
-	constructor( { enabled = true, volume = 1 } = {} ) {
+	constructor( { enabled = true, volume = 1, localPlaylist = false } = {} ) {
 
 		this.enabled = enabled;
+        this.tracks = TRACKS;
 		this.volume = volume;
 		this.track = Math.floor( Math.random() * TRACKS.length );
-		this.audio = new Audio( TRACKS[ this.track ].src );
-		this.audio.preload = 'auto';
+		this.audio = new Audio( this.tracks[ this.track ].src );
+		this.audio.preload = 'metadata';
+        if(localPlaylist)this.localReady=this.loadLocalPlaylist();
 
 		// The next track when one ends (the last one goes back to the first)
 		this.audio.addEventListener( 'ended', () => {
 
-			this.track = ( this.track + 1 ) % TRACKS.length;
-			this.audio.src = TRACKS[ this.track ].src;
+			this.track = ( this.track + 1 ) % this.tracks.length;
+			this.audio.src = this.tracks[ this.track ].src;
 			if ( this.enabled ) this.audio.play().catch( () => {} );
 
 		} );
@@ -90,6 +92,23 @@ export class MenuMusic {
 		} );
 
 	}
+
+    async loadLocalPlaylist() {
+        // One small manifest, no external services and no eager loading of songs.
+        try {
+            const response=await fetch('audio/music/club/manifest.json');
+            if(!response.ok)return;
+            const {tracks}=await response.json();
+            const available=tracks.filter(t=>/^audio\/music\/club\/[a-z0-9-]+\.(mp3|ogg|wav|m4a)$/.test(t.src));
+            if(!available.length)return;
+            const resume=this.playing;
+            this.audio.pause();
+            this.tracks=available.map(t=>({...t,bpm:Number(t.bpm)||BPM,offset:Number(t.offset)||0,calm:[]}));
+            this.track=0; // Niko B first, followed by the approved order.
+            this.audio.src=this.tracks[0].src;
+            if(resume&&this.enabled)this.start();
+        } catch(error) { console.warn('Local menu music unavailable:',error.message); }
+    }
 
 	get playing() {
 
@@ -167,7 +186,7 @@ export class MenuMusic {
 
 	calm( time = this.time() ) {
 
-		return this.playing && TRACKS[ this.track ].calm.some( ( [ a, b ] ) => time >= a && time < b );
+		return this.playing && this.tracks[ this.track ].calm.some( ( [ a, b ] ) => time >= a && time < b );
 
 	}
 
@@ -176,7 +195,7 @@ export class MenuMusic {
 	info() {
 
 		const time = this.time();
-		const track = TRACKS[ this.track ];
+		const track = this.tracks[ this.track ];
 		const beatLength = this.playing ? 60 / track.bpm : BEAT;
 		const beat = ( time - ( this.playing ? track.offset : 0 ) ) / beatLength;
 		const phase = beat - Math.floor( beat );

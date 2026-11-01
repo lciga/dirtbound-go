@@ -1279,3 +1279,23 @@ export function buildGroundGeometry( terrain, { grass, yOffset = 0, centre = [ 0
 	return geometry;
 
 }
+
+// Indexed, independently culled ground chunks. Same positions, normals,
+// rock weights and triangles as buildGroundGeometry; no full-map vertex copy.
+export function buildGroundChunks(terrain,{grass,yOffset=0,centre=[0,0]}) {
+ const geometries=[],drawn=new Map();
+ const decorate=g=>{
+  const count=g.attributes.position.count,uv=new Float32Array(count*2),rock=new Float32Array(count);
+  for(let i=0;i<count;i++){uv.set(grass,i*2);rock[i]=rockOf(g.attributes.normal.getY(i));}
+  g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  g.setAttribute('aRock',new THREE.BufferAttribute(rock,1));
+  return g;
+ };
+ for(const [key,[ci,cj]] of meshKeys(terrain)){
+  const geometry=chunkGeometry(terrain,ci,cj,{yOffset});if(!geometry)continue;
+  drawn.set(key,[ci,cj]);geometries.push(decorate(geometry));
+ }
+ const flat=flatPositions(flatQuads(drawn,centre),ROAD_Y+yOffset);
+ if(flat.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(flat,3));g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();geometries.push(decorate(g));}
+ return geometries;
+}

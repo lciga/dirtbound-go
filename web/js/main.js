@@ -10,6 +10,7 @@ import { Controls } from './Controls.js';
 import { buildTrack, decodeCells, computeSpawnPosition, computeTrackBounds, TRACK_CELLS } from './Track.js';
 import { buildWallColliders, buildSplineWallColliders, createGroundProxy, createSphereBody } from './Physics.js';
 import { TrackPath, decodeTrack, splineSpawn, splineBounds, splineLapConfig, roadPieces, ROAD_Y } from './SplineTrack.js';
+import { CIRCUIT_BUDGET, shouldBakeCircuitProbes } from './CircuitBudget.js';
 import { buildSplineTrack } from './TrackScene.js';
 import { dressGridTrack, gridTrackModels, gridForest, pathFromCells } from './CircuitDressing.js';
 import { Terrain } from './Terrain.js';
@@ -67,7 +68,7 @@ const MAX_FRAME_TIME = 1 / 30; // s
 
 const RALLY_SHADOW_EXTENT = 30; // m around the car
 const RALLY_SHADOW_MAP = 2048;
-const CIRCUIT_SHADOW_EXTENT = 210; // m around the car at most (a 400 m circuit's whole area)
+const CIRCUIT_SHADOW_EXTENT = 65; // shadow radius around the car, independent of circuit size
 const PROBE_SIDE = 420; // m: circuits up to the old 400 m terrain keep a probe every 16 m
 const BIG_PROBE_CELLS = 10; // past it, this many probes along the longest side (a cube map each: 1 350 took 35 s)
 const PROBE_FAR = 450; // m, what a probe sees at most
@@ -214,6 +215,8 @@ const loading = new PageLoading( { files: 40, build: 15, bake: 20, shaders: 20, 
 } );
 
 async function init() {
+ const loadStarted = performance.now();
+ let circuitPerformance = null;
 
 	trackView( 'play' );
 	registerAll();
@@ -391,7 +394,7 @@ async function init() {
 
 	// Rally: see down into the valley below the cliffs
 	if ( rallySeed !== null ) setFogRange( scene, 45, 110 );
-	else setFogRange( scene, groundSize * 0.4, groundSize * 0.8 );
+	else setFogRange( scene, Math.min(groundSize * 0.4,90), Math.min(groundSize * 0.8,180) );
 
 	// Performance mode: decoration tiles become plain grass (no trees, no tents)
 	// Test mode: the bare ground, no decoration tiles (their trees) and no dressing
@@ -401,7 +404,7 @@ async function init() {
 	const sceneModels = testMode ? { ...models, kit: null, nature: null, 'decoration-forest': null, 'decoration-empty': null }
 		: lowSpec ? { ...models, 'decoration-forest': models[ 'decoration-empty' ] } : models;
 	let bridges = null; // spline circuits: they fade while the car is under them
-	if ( path ) bridges = buildSplineTrack( scene, sceneModels, path, terrain, rallySeason ).userData.bridges;
+	if ( path ) { const layout = await buildSplineTrack( scene, sceneModels, path, terrain, rallySeason, () => loading.paint() ); bridges = layout.userData.bridges; circuitPerformance = layout.userData.performance; }
 	else if ( rallySeed === null ) {
 
 		const gridModels = gridTrackModels( sceneModels, customCells ); // the kit's arch replaces the finish tile's
@@ -457,12 +460,12 @@ async function init() {
 	const probeSpacing = rallySeed !== null ? 8 : side <= PROBE_SIDE ? 16 : side / BIG_PROBE_CELLS;
 	const probeHeight = 6 + relief.max - relief.min;
 	let probes = null;
-	if ( ! lowSpec ) {
+	if ( ! lowSpec && shouldBakeCircuitProbes(path,terrain) ) {
 		probes = new LightProbeGrid(
 			hw * 2, probeHeight, hd * 2,
-			Math.max( 4, Math.round( hw * 2 / probeSpacing ) ),
+			Math.max( 2, Math.min(CIRCUIT_BUDGET.maxProbeAxis, Math.round( hw * 2 / probeSpacing )) ),
 			2,
-			Math.max( 4, Math.round( hd * 2 / probeSpacing ) ),
+			Math.max( 2, Math.min(CIRCUIT_BUDGET.maxProbeAxis, Math.round( hd * 2 / probeSpacing )) ),
 		);
 		probes.position.set( bounds.centerX, relief.min + probeHeight / 2, bounds.centerZ );
 		// The kit dressing stays out of the bake: a probe that lands under the
@@ -624,7 +627,7 @@ async function init() {
 		const reach = chase && ultra && ! lowSpec ? CHASE_ULTRA_REACH : 1;
 		if ( chase && ! sky ) sky = new Sky( scene, ( scene.fog ? scene.fog.color : scene.background ).clone(), { puffy: ultra && ! lowSpec, sun: dirLight, scale: reach } );
 		if ( sky ) sky.visible = chase;
-		cam.camera.far = chase ? ( stage ? 150 : 400 ) * reach : isoFar;
+		cam.camera.far = chase ? ( stage ? 150 : 180 ) * Math.min(reach,1.5) : isoFar;
 		cam.camera.updateProjectionMatrix();
 		if ( stage ) {
 
@@ -1286,6 +1289,7 @@ async function init() {
 	Promise.resolve( loading.reveal() ).then( () => {
 		sceneReady = true;
 		if ( start ) start.begin();
+  if(pageParams.has('debug'))console.info('[circuit-ready] '+JSON.stringify({circuit:circuitParam||'default',loadMs:Math.round(performance.now()-loadStarted),probes:!!probes,...circuitPerformance}));
 		if ( sync ) sync.loaded();
 		hint.show();
 	} );

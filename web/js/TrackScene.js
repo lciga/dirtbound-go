@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { CIRCUIT_BUDGET, selectForestCells } from './CircuitBudget.js';
 import { CELL_RAW, GRID_SCALE } from './Track.js';
-import { TRACK_SCALE, ROAD_HALF, ROAD_Y, GRASS_UV, ROCK_UV, buildRoadGeometry, extractTileGeometry, finishWithoutArch, extractCornerGeometry, splineBounds } from './SplineTrack.js';
-import { TERRAIN_LIMIT, buildGroundGeometry, rockGroundMaterial } from './Terrain.js';
+import { TRACK_SCALE, ROAD_HALF, ROAD_Y, GRASS_UV, ROCK_UV, buildRoadGeometry, buildRoadChunks, extractTileGeometry, finishWithoutArch, extractCornerGeometry, splineBounds } from './SplineTrack.js';
+import { TERRAIN_LIMIT, buildGroundChunks, rockGroundMaterial } from './Terrain.js';
 import { dressCircuit, circuitArch } from './CircuitDressing.js';
 import { plantForest } from './Forest.js';
 import { fadingBridges, headroom } from './Bridges.js';
@@ -16,7 +17,7 @@ const _n = new THREE.Vector3();
 
 const TERRAIN_SINK = - 0.08; // keeps the ground just under the road surface (visual only)
 const MAX_DECO_SLOPE = 1.2;  // skip decoration tiles on cells steeper than this height range
-const FOREST_REACH = 150;    // m from the road: no forest beyond (the terrain is endless)
+const FOREST_REACH = CIRCUIT_BUDGET.forestReach;    // m from the road: no forest beyond (the terrain is endless)
 const REACH_CELL = 32;       // m, cells of the coarse map of where the road is near
 
 function hash( gx, gz ) {
@@ -95,7 +96,7 @@ function reachMap( path, reach ) {
 
 }
 
-export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summer' ) {
+export async function buildSplineTrack( scene, models, path, terrain, seasonId = 'summer', paint = async () => {} ) {
 
 	const group = new THREE.Group();
 
@@ -106,20 +107,21 @@ export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summ
 	const finish = path.closed ? extractTileGeometry( kitArch ? finishWithoutArch( models[ 'track-finish' ] ) : models[ 'track-finish' ] ) : null;
 
 	const corner = extractCornerGeometry( models[ 'track-corner' ] );
-	const road = new THREE.Mesh( buildRoadGeometry( path, straight.geometry, finish?.geometry, false, corner.geometry ), straight.material );
-	road.castShadow = true;
-	road.receiveShadow = true;
-	group.add( road );
+ const roadGeometries = terrain.crossings?.hasBridge
+  ? [buildRoadGeometry(path,straight.geometry,finish?.geometry,false,corner.geometry)]
+  : buildRoadChunks(path,straight.geometry,finish?.geometry,corner.geometry,CIRCUIT_BUDGET.groundCell);
+ const roads = roadGeometries.map(geometry=>{const mesh=new THREE.Mesh(geometry,straight.material);mesh.castShadow=mesh.receiveShadow=true;group.add(mesh);return mesh;});
+ const road = roads[0];
+ await paint();
 
 	const bounds = splineBounds( path );
 
 	// Grass, grey rock where the ground is too steep (cliffs, as on the rally
 	// stages) with a ragged edge, flat grass out to the horizon around the relief
 	const groundMaterial = seasonId === 'summer' ? rockGroundMaterial( straight.material, ROCK_UV ) : seasonMaterial( straight.material, seasonId, { rock: ROCK_UV } );
-	const ground = new THREE.Mesh( buildGroundGeometry( terrain, { grass: GRASS_UV, yOffset: TERRAIN_SINK, centre: [ bounds.centerX, bounds.centerZ ] } ), groundMaterial );
-	ground.castShadow = true;
-	ground.receiveShadow = true;
-	group.add( ground );
+ const groundGeometries = buildGroundChunks(terrain,{grass:GRASS_UV,yOffset:TERRAIN_SINK,centre:[bounds.centerX,bounds.centerZ]});
+ for(const geometry of groundGeometries){const ground=new THREE.Mesh(geometry,groundMaterial);ground.castShadow=ground.receiveShadow=true;group.add(ground);}
+ await paint();
 
 	// Where the road passes over itself: decks and piers (the ground under them
 	// follows the road below); each bridge fades while the car is under it
@@ -150,6 +152,7 @@ export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summ
 	const forestCells = [];
 
 	for ( let gz = gz0; gz < gz1; gz ++ ) {
+  if((gz-gz0)%16===0)await paint();
 
 		for ( let gx = gx0; gx < gx1; gx ++ ) {
 
@@ -200,6 +203,9 @@ export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summ
 		const src = models[ key ];
 		if ( ! src || list.length === 0 ) continue;
 
+  const regions = new Map();
+  for(let i=0;i<list.length;i+=4){const key=Math.floor(list[i]/64)+','+Math.floor(list[i+2]/64);if(!regions.has(key))regions.set(key,[]);regions.get(key).push(...list.slice(i,i+4));}
+  for(const list of regions.values()) {
 		const count = list.length / 4;
 
 		src.traverse( ( child ) => {
@@ -220,10 +226,11 @@ export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summ
 
 			}
 
+   inst.computeBoundingSphere();
 			group.add( seasonScenery( inst, seasonId ) );
 
 		} );
-
+  }
 	}
 
 	// Trees and bushes on the relief as drawn, sunk by its slope; never on
@@ -236,7 +243,10 @@ export function buildSplineTrack( scene, models, path, terrain, seasonId = 'summ
 
 	};
 	const canGrow = ( x, z, top, r ) => top < headroom( path, terrain, x, z, r ) - 0.2;
-	group.add( plantForest( models, forestCells, CELL, { ground: plantGround, canGrow, seasonId } ) );
+ const selectedForest = selectForestCells(forestCells), forestGroups=new Map();
+ for(const cell of selectedForest){const key=Math.floor(cell.x/CIRCUIT_BUDGET.forestCell)+','+Math.floor(cell.z/CIRCUIT_BUDGET.forestCell);if(!forestGroups.has(key))forestGroups.set(key,[]);forestGroups.get(key).push(cell);}
+ for(const cells of forestGroups.values()){const forest=plantForest(models,cells,CELL,{ground:plantGround,canGrow,seasonId});forest.traverse(mesh=>{if(mesh.isBatchedMesh){mesh.computeBoundingSphere();mesh.frustumCulled=true;}});group.add(forest);await paint();}
+ group.userData.performance={groundChunks:groundGeometries.length,groundVertices:groundGeometries.reduce((n,g)=>n+g.attributes.position.count,0),roadChunks:roads.length,forestCandidates:forestCells.length,forestCells:selectedForest.length};
 
 	// The dressing keeps off the forest tiles (in performance mode they are
 	// all plain grass)

@@ -62,7 +62,7 @@ export default {
 		offlineWhy: 'Аккаунты недоступны: {why}',
 		retry: 'Повторить',
 		choosePseudo: 'Выбрать ник',
-		googleAccount: 'Профиль DirtBound',
+		googleAccount: 'Racing Club 1sk4nd3r',
 		online: 'Онлайн-рейтинг',
 		pseudo: 'Ник',
 		pseudoPlaceholder: 'Твой ник',

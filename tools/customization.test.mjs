@@ -37,7 +37,7 @@ test('seasonal circuit meshes still share one material and keep geometry', () =>
 
 test('all characters of the 3D logo produce nonempty finite geometry', async () => {
 	const font=new FontLoader().parse(JSON.parse(await fs.readFile(new URL('../web/fonts/brand-logo.typeface.json',import.meta.url))));
-	for (const char of '1sk4nd3r') {
+	for (const char of new Set('RacingClub1sk4nd3r')) {
 		const geometry=new TextGeometry(char,{font,size:1,depth:0.4});
 		assert.ok(geometry.attributes.position.count>0,char);
 		assert.ok(geometry.attributes.position.array.every(Number.isFinite),char);

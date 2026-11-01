@@ -13,3 +13,6 @@
 
 web/.precompressed/
 backups/
+
+/web/audio/music/club/*
+!/web/audio/music/club/manifest.json
