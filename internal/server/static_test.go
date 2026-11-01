@@ -3,8 +3,11 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -79,5 +82,43 @@ func TestOldPortalRedirectsIntoMenu(t *testing.T) {
 	handler.ServeHTTP(w, httptest.NewRequest("GET", "/site.html", nil))
 	if w.Code != 303 || w.Header().Get("Location") != "/menu.html" {
 		t.Fatal(w.Code, w.Header())
+	}
+}
+
+func TestServiceWorkerManifestAndBuild(t *testing.T) {
+	files := fstest.MapFS{
+		"sw.js":                     {Data: []byte("const MANIFEST = " + manifestMarker + ";")},
+		"js/a.js":                   {Data: []byte("a")},
+		".precompressed/js/a.js.gz": {Data: []byte("gz")},
+		"index.html":                {Data: []byte("page")},
+		"audio/music/song.m4a":      {Data: []byte("song")},
+	}
+	get := func(h http.Handler, target string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", target, nil))
+		return w
+	}
+	handler := httpFiles(files)
+	w := get(handler, "/sw.js")
+	if w.Code != 200 || w.Header().Get("Cache-Control") != "no-cache" || !strings.Contains(w.Header().Get("Content-Type"), "javascript") {
+		t.Fatal(w.Code, w.Header())
+	}
+	var manifest struct {
+		Build  string              `json:"build"`
+		Assets map[string][]string `json:"assets"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSuffix(strings.TrimPrefix(w.Body.String(), "const MANIFEST = "), ";")), &manifest); err != nil {
+		t.Fatal(err, w.Body.String())
+	}
+	page := get(handler, "/index.html")
+	if manifest.Build == "" || page.Header().Get("X-Build") != manifest.Build {
+		t.Fatal("build header", manifest.Build, page.Header().Get("X-Build"))
+	}
+	if len(manifest.Assets) != 1 || len(manifest.Assets["js/a.js"]) != 2 || manifest.Assets["js/a.js"][0] != get(handler, "/js/a.js").Header().Get("ETag") {
+		t.Fatal("assets kept by the worker", manifest.Assets)
+	}
+	files["js/a.js"] = &fstest.MapFile{Data: []byte("changed")}
+	if next := get(httpFiles(files), "/index.html").Header().Get("X-Build"); next == manifest.Build {
+		t.Fatal("build must change with an asset")
 	}
 }
