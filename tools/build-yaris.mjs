@@ -44,7 +44,7 @@ function polygon(points,color,normal){
  for(let i=1;i<points.length-1;i++)triangle([points[0],points[i],points[i+1]],color);
 }
 const axles=[-1.25,1.24], tyreRadius=0.34;
-const bodySections=[[-2.00,.77,.84],[-1.85,.87,.95],[-1.25,.94,1.00],[-.65,.89,.98],[.25,.87,1.00],[1.00,.94,.96],[1.35,.94,.91],[1.80,.88,.84],[2.00,.78,.77]];
+const bodySections=[[-2.00,.77,.84],[-1.85,.87,.95],[-1.25,.94,1.00],[-.65,.89,.98],[.25,.87,1.00],[1.00,.94,.96],[1.35,.94,.91],[1.80,.88,.89],[2.00,.78,.85]];
 function atSection(z,column){
  for(let i=1;i<bodySections.length;i++)if(z<=bodySections[i][0]){
   const a=bodySections[i-1],b=bodySections[i],t=(z-a[0])/(b[0]-a[0]);return a[column]+(b[column]-a[column])*t;
