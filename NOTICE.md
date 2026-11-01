@@ -37,12 +37,13 @@
 
 PostgreSQL-драйвер pgx — github.com/jackc/pgx, MIT; используется как модуль Go. Новые SVG-превью и панель личного кабинета созданы для этого проекта.
 
-Дополнительные записи локального плейлиста меню скачаны 2026-11-01 с YouTube по прямому запросу пользователя. Источники — публикации исполнителей, лейблов и автоматические публикации дистрибьюторов. Для всех файлов AAC перепакован в M4A с быстрым началом загрузки без перекодирования, добавлены исполнитель и название. Записи не объявляются свободно лицензированными; они воспроизводятся только в меню.
+Дополнительные записи локального плейлиста меню скачаны 2026-11-01 с YouTube по прямому запросу пользователя. Источники — публикации исполнителей, лейблов и автоматические публикации дистрибьюторов; для One Good Reason (Instrumental) отдельно согласована сторонняя публикация канала NFS Music. Для всех файлов AAC перепакован в M4A с быстрым началом загрузки без перекодирования, добавлены исполнитель и название. Записи не объявляются свободно лицензированными; они воспроизводятся только в меню.
 
 | Запись | Источник |
 | --- | --- |
 | Styles of Beyond — Nine Thou (Superstars Remix) | [YouTube](https://www.youtube.com/watch?v=M_s95No5E-s) |
 | Celldweller feat. Styles of Beyond — Shapeshifter | [YouTube](https://www.youtube.com/watch?v=kRrOq4NipQQ) |
+| Celldweller — One Good Reason (Instrumental) | [NFS Music / YouTube](https://www.youtube.com/watch?v=DJ7nCFwZJIU) |
 | Disturbed — Decadence | [YouTube](https://www.youtube.com/watch?v=-daTpfB-7K4) |
 | Static-X — Skinnyman | [YouTube](https://www.youtube.com/watch?v=EIZa5k7Wgsk) |
 | The Prodigy — You’ll Be Under My Wheels | [YouTube](https://www.youtube.com/watch?v=wFAA0_Acvqw) |
