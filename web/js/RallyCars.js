@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadSecureAsset } from './SecureAssets.js';
+import { CAR_STYLE } from './CarStyle.js';
 
 // "ARCADE Rally Cars" pack, converted by tools/convert_rally_cars.py into
 // models/rally/<Name>.glb (parts named like the Kenney trucks: body,
@@ -81,8 +82,8 @@ export function loadRallyCar( loader, name, color = 1 ) {
 
 				const m = child.material;
 				m.color.set( 0xffffff ); // exported as 0.8 grey
-				m.metalness = 0; // glTF default is fully metallic
-				m.roughness = 0.6;
+				m.metalness = CAR_STYLE.metalness; // glTF default is fully metallic
+				m.roughness = CAR_STYLE.roughness;
 				m.side = THREE.FrontSide;
 
 				if ( m.name === 'Vinyls' ) {
@@ -109,7 +110,7 @@ export function loadRallyCar( loader, name, color = 1 ) {
 			} );
 
 			// Same convention as the Kenney trucks (main.js scales vehicles by 0.5)
-			gltf.scene.scale.setScalar( 0.5 );
+			gltf.scene.scale.setScalar( CAR_STYLE.runtimeScale );
 
 			// The body's rest height, which Vehicle.js springs it back to (the
 			// trucks use 0.3; this pack has the body origin on the ground)

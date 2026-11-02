@@ -195,12 +195,17 @@ export function createSphereBody( world, spawnPos, { beta = false } = {} ) {
 		motionType: MotionType.DYNAMIC,
 		objectLayer: world._OL_MOVING,
 		position: spawnPos || [ 3.5, 0.5, 5 ],
-		mass: 1000.0,
-		friction: 5.0,
+		mass: beta ? 1200.0 : 1000.0,
+		// Beta owns tyre forces in Vehicle; rolling-sphere friction would apply
+		// a second, incompatible driveline on the moving tangent ground proxy.
+		friction: beta ? 0.0 : 5.0,
 		restitution: 0.1,
 		linearDamping: beta ? 0.015 : 0.1,
 		angularDamping: beta ? 0.05 : 4.0,
-		gravityFactor: 1.5,
+		// The default 47 rad/s caps a rolling radius-0.5 body at ~170 km/h.
+		maxAngularVelocity: beta ? 200 : 47.12388980384689,
+		// Beta uses SI gravity at half-scale geometry (9.81 / 2 world units/s²).
+		gravityFactor: beta ? 0.5 : 1.5,
 		motionQuality: MotionQuality.LINEAR_CAST,
 	} );
 

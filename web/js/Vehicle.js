@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { rigidBody } from 'crashcat';
+import { rigidBody, contacts } from 'crashcat';
 import { physics } from './GoPhysics.js';
 
 const _tmpVec = new THREE.Vector3();
@@ -11,6 +11,7 @@ const _mat4 = new THREE.Matrix4();
 const _quat = new THREE.Quaternion();
 const _up = new THREE.Vector3( 0, 1, 0 );
 const _groundUp = new THREE.Vector3();
+const _groundVelocity = new THREE.Vector3();
 const ZERO3 = [ 0, 0, 0 ];
 
 export const STATE_SIZE = 18; // numbers of saveState
@@ -34,6 +35,7 @@ export class Vehicle {
 
 		this.rigidBody = null;
 		this.physicsWorld = null;
+		this.groundBody = null;
 
 		this.modelVelocity = new THREE.Vector3();
 		this.prevModelPos = new THREE.Vector3( 3.5, 0, 5 );
@@ -123,13 +125,22 @@ export class Vehicle {
 			this.container.quaternion.slerp(_quat, 1 - Math.exp(-3 * dt));
 		}
 		_forward.set(0, 0, 1).applyQuaternion(this.container.quaternion);
+		const previousAngular = this.angularSpeed;
 		const step = physics.advance(this.linearSpeed, this.angularSpeed, this.acceleration,
 			dt, this.inputX, this.inputZ, this.handbrake, this.boost, touch,
 			this.speedFactor, _forward.x, _forward.z);
 		this.linearSpeed = step[0];
 		this.angularSpeed = step[1];
 		this.inputX = step[3];
-		if (!touch) this.container.rotateY(step[4]);
+		// The touch stick chooses a compass heading, not forward/reverse pedal.
+		if (this.beta && touch) this.inputZ = 1;
+		if (!touch) {
+			if(this.beta && this.rigidBody){
+				const v=this.rigidBody.motionProperties.linearVelocity;
+				this.angularSpeed=physics.steering(previousAngular,v[0]*_forward.x+v[1]*_forward.y+v[2]*_forward.z,this.inputX,dt);
+				this.container.rotateY(this.angularSpeed*dt);
+			} else this.container.rotateY(step[4]);
+		}
 		if (step[6]) this.boostUsed = true;
 
 		_tmpVec.set( 0, 1, 0 ).applyQuaternion( this.container.quaternion );
@@ -157,14 +168,32 @@ export class Vehicle {
 			let drive = step[5];
    if(this.beta){
     const v=this.rigidBody.motionProperties.linearVelocity;
-    const speed=v[0]*_forward.x+v[2]*_forward.z,t=this.transmission;
-    const r=physics.transmission(t.gear,t.rpm,t.shift,t.hold,dt,speed,this.inputZ,this.speedFactor,this.handbrake);
-    Object.assign(t,{gear:r[0],rpm:r[1],shift:r[2],hold:r[3],load:r[5],redline:r[6],shifting:r[2]>0,gearLabel:speed<-.25?'R':String(r[0])});
-    const dv=r[4]*dt;
-    rigidBody.setLinearVelocity(this.physicsWorld,this.rigidBody,[v[0]+_forward.x*dv,v[1],v[2]+_forward.z*dv]);
-    // Match sphere rolling to the driven axle's ground velocity.
-    drive=0;
-    rigidBody.setAngularVelocity(this.physicsWorld,this.rigidBody,[_right.x*(speed+dv)/.5,angvel[1],_right.z*(speed+dv)/.5]);
+    const grounded=!!this.groundBody&&contacts.hasContactsBetweenBodies(this.physicsWorld.contacts,this.rigidBody,this.groundBody);
+    const up=this.getGroundNormal?this.getGroundNormal(this.rigidBody.position[0],this.rigidBody.position[2],_groundUp):_up;
+    // Drive along the road plane. Horizontal force and wheel spin cancel each
+    // other on a slope; neither should overwrite the vertical contact response.
+    _forward.addScaledVector(up,-_forward.dot(up)).normalize();
+    _right.crossVectors(up,_forward).normalize();
+    _groundVelocity.fromArray(v).addScaledVector(up,-(v[0]*up.x+v[1]*up.y+v[2]*up.z));
+    const groundSpeed=_groundVelocity.length();
+    const speed=v[0]*_forward.x+v[1]*_forward.y+v[2]*_forward.z,t=this.transmission;
+    const r=physics.transmission(t.gear,t.rpm,t.shift,t.hold,dt,speed,this.inputZ,this.speedFactor,this.handbrake,groundSpeed);
+    Object.assign(t,{gear:r[0],rpm:r[1],shift:r[2],hold:r[3],load:r[5],redline:r[6],shifting:r[2]>0,gearLabel:r[0]<0?'R':String(r[0]),grounded});
+    if(grounded){
+     const dv=r[4]*dt,spin=angvel[0]*up.x+angvel[1]*up.y+angvel[2]*up.z;
+     if(r[7]>0 && groundSpeed>1e-8){
+      _groundVelocity.multiplyScalar(-Math.min(1,r[7]*dt/groundSpeed));
+     } else _groundVelocity.copy(_forward).multiplyScalar(dv);
+     // Explicit arcade tyre grip, independent of the rolling ground sphere.
+     // Clamp lateral force, retain normal velocity and allow handbrake slides.
+     const lateral=(v[0]+_groundVelocity.x)*_right.x+(v[1]+_groundVelocity.y)*_right.y+(v[2]+_groundVelocity.z)*_right.z;
+     const grip=(this.handbrake?3:24)*Math.max(.15,this.speedFactor)/physics.worldMetres;
+     const side=Math.max(-grip*dt,Math.min(grip*dt,-lateral*(1-Math.exp(-12*dt))));
+     const vx=v[0]+_groundVelocity.x+_right.x*side,vy=v[1]+_groundVelocity.y+_right.y*side,vz=v[2]+_groundVelocity.z+_right.z*side;
+     const rolling=vx*_forward.x+vy*_forward.y+vz*_forward.z;
+     rigidBody.setLinearVelocity(this.physicsWorld,this.rigidBody,[vx,vy,vz]);
+     rigidBody.setAngularVelocity(this.physicsWorld,this.rigidBody,[_right.x*rolling/.5+up.x*spin,_right.y*rolling/.5+up.y*spin,_right.z*rolling/.5+up.z*spin]);
+    }
     this.linearSpeed=speed/20*MAX_SPEED;
    }
 

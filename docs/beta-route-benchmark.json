@@ -1,0 +1,56 @@
+{
+  "scope": "Go/WASM + Vehicle + Crashcat, 10 km road centreline with elevation. Automatic measuring driver, without scenery, walls or network; not a human lap time.",
+  "measurements": [
+    {
+      "seed": 152428,
+      "landscape": "low",
+      "finished": true,
+      "timeSeconds": 202.33,
+      "distanceMetres": 9999,
+      "meanKmh": 177.9,
+      "maxKmh": 227.1,
+      "maxLateralErrorMetres": 0.28,
+      "gears": {
+        "1": 301,
+        "2": 192,
+        "3": 1078,
+        "4": 3577,
+        "5": 19132
+      }
+    },
+    {
+      "seed": 19381,
+      "landscape": "varied",
+      "finished": true,
+      "timeSeconds": 226.97,
+      "distanceMetres": 9999.5,
+      "meanKmh": 158.6,
+      "maxKmh": 229.2,
+      "maxLateralErrorMetres": 0.29,
+      "gears": {
+        "1": 301,
+        "2": 191,
+        "3": 1267,
+        "4": 6974,
+        "5": 18503
+      }
+    },
+    {
+      "seed": 2026,
+      "landscape": "high",
+      "finished": true,
+      "timeSeconds": 225.33,
+      "distanceMetres": 9999,
+      "meanKmh": 159.7,
+      "maxKmh": 226,
+      "maxLateralErrorMetres": 0.29,
+      "gears": {
+        "1": 301,
+        "2": 326,
+        "3": 1280,
+        "4": 7987,
+        "5": 17146
+      }
+    }
+  ]
+}

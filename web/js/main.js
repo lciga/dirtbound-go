@@ -26,6 +26,7 @@ import { loadCar, findCar } from './Cars.js';
 import { loadSettings, saveSettings, saveBest, loadBest } from './Settings.js';
 import { MenuMusic } from './menu/MenuMusic.js';
 import { BetaHUD } from './BetaHUD.js';
+import { BETA_METRES_PER_WORLD } from './RaceUnits.js';
 import { YarisWallGuard } from './YarisWallGuard.js';
 import { getAccount } from './Account.js';
 import { YARIS_CAR, YARIS_TRACK_ID, stretchYaris } from './YarisMode.js';
@@ -280,7 +281,7 @@ async function init() {
 		else if ( multi ) {
 
 			// Never race a different track from the others
-			showLobbyError( 'Circuit introuvable (' + res.error + ')' );
+			showLobbyError( 'Трасса не найдена (' + res.error + ')' );
 			return;
 
 		} else console.warn( 'Published circuit unavailable: ' + res.error );
@@ -448,7 +449,7 @@ async function init() {
 
 		// ?landscape=low|high (RallyBiomes.js), varied otherwise;
 		// ?length=<m> for a limited stage (endless without it)
-		stage = new RallyStage( scene, world, models, rallySeed, rallyLandscape, Number( params.get( 'length' ) ) || 0, { props: ! lowSpec, ultra, seasonId: rallySeason, forest: ultra && ! multi ? 2 : 1 } ); // Ultra, solo: twice the trees
+		stage = new RallyStage( scene, world, models, rallySeed, rallyLandscape, Number( params.get( 'length' ) ) || 0, { props: ! lowSpec, ultra, seasonId: rallySeason, forest: ultra && ! multi ? 2 : 1, metresPerWorld: betaMode ? BETA_METRES_PER_WORLD : 1 } ); // Ultra, solo: twice the trees
 		stage.autoStream = false; // streamed once per frame in animate(), not every physics step
 		spawn = stage.spawn();
 
@@ -548,6 +549,7 @@ async function init() {
 	const vehicle = new Vehicle({beta:betaMode});
 	vehicle.rigidBody = sphereBody;
 	vehicle.physicsWorld = world;
+	vehicle.groundBody = groundBody;
 
 	if ( spawn ) {
 
@@ -598,7 +600,8 @@ async function init() {
 
 	if(carModel?.userData.yarisModel) carModel.userData.yaris=yarisMode;
  const vehicleGroup = vehicle.init( carModel );
- const wallGuard=carModel?.userData.yarisModel?new YarisWallGuard(world,{stretch:yarisMode}):null;
+ const yarisBounds=carModel?.userData.yarisModel?new THREE.Box3().setFromObject(carModel):null;
+ const wallGuard=yarisBounds?new YarisWallGuard(world,{stretch:yarisMode,halfWidth:Math.max(Math.abs(yarisBounds.min.x),Math.abs(yarisBounds.max.x))+.01,halfLength:Math.max(Math.abs(yarisBounds.min.z),Math.abs(yarisBounds.max.z))+.01}):null;
 	scene.add( vehicleGroup );
 	vehicle.respawn( vehicle.spawnPosition.toArray(), vehicle.spawnAngle );
 
@@ -696,7 +699,7 @@ async function init() {
 	} );
 	let yarisTime = 0;
 
-	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), betaMode?'beta:'+trackId:trackId );
+	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), betaMode?'beta-v2:'+trackId:trackId );
  const betaHUD=betaMode?new BetaHUD({path,customCells,stage}):null;
 
 	// Circuits: online leaderboard and record ghost (the id follows the circuit
@@ -823,7 +826,7 @@ async function init() {
 	if ( stage && stage.length ) {
 
 		// Best time per stage (seed + landscape + length), on this device; v2 = the biome stages
-		const bestKey = `${betaMode ? "beta." : ""}racing.bestStage2.${ rallySeed }.${ rallyLandscape }.${ stage.length }`;
+		const bestKey = `${betaMode ? "beta-v2." : ""}racing.bestStage2.${ rallySeed }.${ rallyLandscape }.${ stage.length }`;
 
 		stage.onFinish = ( time ) => {
 
@@ -836,7 +839,7 @@ async function init() {
 				time,
 				best,
 				record,
-				subtitle: t( 'race.stageLine', { seed: rallySeed, km: ( stage.length / 1000 ).toFixed( 0 ) } ) + ( boosted ? ' · ' + t( 'game.boostedTime' ) : '' ),
+				subtitle: t( 'race.stageLine', { seed: rallySeed, km: ( stage.length * stage.metresPerWorld / 1000 ).toFixed( 0 ) } ) + ( boosted ? ' · ' + t( 'game.boostedTime' ) : '' ),
 			} );
 
 			// The daily challenge: post to its leaderboard once the result screen

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { worldLength, BETA_RALLY_FEATURE_SCALE } from './RaceUnits.js';
 import { rigidBody, box, MotionType } from 'crashcat';
 import { CELL_RAW, GRID_SCALE } from './Track.js';
 import { TrackPath, TILE_LEN, TRACK_SCALE, ROAD_HALF, ROAD_Y, GRASS_UV, ROCK_UV, extractTileGeometry } from './SplineTrack.js';
@@ -190,7 +191,7 @@ export class RallyStage {
 	// options.props: false plants no trees or stones (performance mode).
 	// The menu backdrop runs one too: world null (no colliders), hud false (no
 	// HUD, no odometer), smaller tile radius and chunk window.
-	constructor( scene, world, models, seed, landscape = 'varied', length = 0, { props = true, hud = true, tileRadius = TILE_BUILD_RADIUS, ahead = AHEAD, behind = BEHIND, ultra = false, seasonId = 'summer', forest = 1, forestBand = 1 } = {} ) {
+	constructor( scene, world, models, seed, landscape = 'varied', length = 0, { props = true, hud = true, tileRadius = TILE_BUILD_RADIUS, ahead = AHEAD, behind = BEHIND, ultra = false, seasonId = 'summer', forest = 1, forestBand = 1, metresPerWorld = 1 } = {} ) {
 
 		this.plantProps = props;
 		this.forest = forest; // 2: a second wave of trees (solo; multiplayer keeps 1, the same stage for everyone)
@@ -200,12 +201,13 @@ export class RallyStage {
 		this.world = world;
 		this.models = models;
 		this.seed = seed;
-		this.length = length > 0 ? length : 0;
+		this.metresPerWorld = metresPerWorld;
+		this.length = worldLength( length, metresPerWorld );
 		this.finishS = null; // arc length of the arrival arch, once its chunk is built
 		this.finished = false;
 		this.onFinish = null;
 
-		this.route = new RallyRoute( seed, ROAD_HALF, landscape, this.length || Infinity );
+		this.route = new RallyRoute( seed, ROAD_HALF, landscape, this.length || Infinity, { featureScale: this.metresPerWorld > 1 ? BETA_RALLY_FEATURE_SCALE : 1 } );
 		this.route.growTo( this.lookahead );
 		this.terrain = new RallyTerrain( this.route, ROAD_HALF );
 		this.grid = new Map(); // grid vertex → terrain height (gridHeight)
@@ -398,7 +400,7 @@ export class RallyStage {
 
 		if ( arrival ) {
 
-			const at = Math.max( 0, path.length - FINISH_BACK );
+			const at = Math.max( 0, path.length - ( this.metresPerWorld > 1 ? 0 : FINISH_BACK ) );
 			path.frameAt( at, _f );
 			archColliders.push( ...this.addArch( group, _f, t( 'race.bannerFinish' ), 'finish' ) );
 			this.finishS = startS + at * k;
@@ -1658,7 +1660,7 @@ export class RallyStage {
 
 				best = n.dist;
 				bestChunk = chunk;
-				bestS = chunk.startS + n.s;
+				bestS = chunk.startS + n.s * ( this.metresPerWorld > 1 ? chunk.scale : 1 );
 
 			}
 
@@ -1672,7 +1674,7 @@ export class RallyStage {
 			if ( progress > 0 ) {
 
 				// The first fix is the spawn point, not driven distance
-				if ( this.odometer && this.placed ) this.odometer.add( progress );
+				if ( this.odometer && this.placed ) this.odometer.add( progress * this.metresPerWorld );
 				this.distance = bestS;
 
 			}
@@ -1700,7 +1702,7 @@ export class RallyStage {
 
 		const shown = this.finished ? this.length : Math.min( this.distance, this.length || Infinity );
 		setText( this.timeEl, formatTime( this.time ) );
-		setText( this.distanceEl, ( shown / 1000 ).toFixed( 2 ) + ( this.length ? ` / ${ ( this.length / 1000 ).toFixed( 0 ) } km` : ' km' ) );
+		setText( this.distanceEl, ( shown * this.metresPerWorld / 1000 ).toFixed( 2 ) + ( this.length ? ` / ${ ( this.length * this.metresPerWorld / 1000 ).toFixed( 0 ) } km` : ' km' ) );
 		if ( this.odometer ) setText( this.totalEl, formatKm( this.odometer.total ) );
 		if ( this.barEl ) {
 

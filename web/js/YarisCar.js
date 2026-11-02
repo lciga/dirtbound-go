@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CAR_STYLE } from './CarStyle.js';
 
 // One GLB fetch and shared GPU geometry/materials for every racer.
 let template;
@@ -11,7 +12,7 @@ export function loadYaris( loader, color=1 ) {
 	if ( ! template ) template = new Promise( ( resolve, reject ) => {
 		loader.load( 'models/yaris.glb', gltf => {
 			const content = gltf.scene;
-			content.scale.setScalar( 0.46 );
+			content.scale.setScalar( CAR_STYLE.runtimeScale );
 			content.traverse( node => {
 				if ( WHEELS[ node.name ] ) node.name = WHEELS[ node.name ];
 				else if ( node.name === 'car' ) node.name = 'body';

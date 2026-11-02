@@ -81,6 +81,70 @@ func TestBetaCodePersistsAndRoomsRejectNonTesters(t *testing.T) {
 			t.Fatal("not all testers have forced Yaris", p)
 		}
 	}
+	// Continue through the real beta loading, countdown, reconnect and podium.
+	wsSend(t, ctx, x, map[string]any{"t": "loaded"})
+	wsSend(t, ctx, x, map[string]any{"t": "ping", "c": 1})
+	wsRead(t, ctx, x, "pong")
+	a.hub.mu.Lock()
+	waitingForSecond := l.State == "loading"
+	a.hub.mu.Unlock()
+	if !waitingForSecond {
+		t.Fatal("started before second tester loaded")
+	}
+	wsSend(t, ctx, y, map[string]any{"t": "loaded"})
+	for {
+		m := wsRead(t, ctx, x, "lobby")
+		if m["lobby"].(map[string]any)["state"] == "racing" {
+			break
+		}
+	}
+	wsSend(t, ctx, x, map[string]any{"t": "finish", "time": 1, "p": 1})
+	wsRead(t, ctx, x, "error") // countdown has not elapsed: premature finish rejected
+	y.CloseNow()
+	for {
+		m := wsRead(t, ctx, x, "lobby")
+		disconnected := false
+		for _, raw := range m["lobby"].(map[string]any)["players"].([]any) {
+			if raw.(map[string]any)["connected"] == false {
+				disconnected = true
+			}
+		}
+		if disconnected {
+			break
+		}
+	}
+	y = dial(guest)
+	wsSend(t, ctx, y, map[string]any{"t": "hello"})
+	welcome := wsRead(t, ctx, y, "welcome")
+	if welcome["player"] == nil {
+		t.Fatal("beta lobby lost across reconnect")
+	}
+	rejoined := wsRead(t, ctx, y, "lobby")["lobby"].(map[string]any)
+	if rejoined["state"] != "racing" || rejoined["race"].(map[string]any)["mode"] != "beta" {
+		t.Fatal("beta race lost on reconnect", rejoined)
+	}
+	// Advance only the test clock; avoid a real countdown/lap in a server test.
+	a.hub.mu.Lock()
+	l.Race.StartAt = time.Now().Add(-10 * time.Second).UnixMilli()
+	a.hub.mu.Unlock()
+	wsSend(t, ctx, x, map[string]any{"t": "state", "rt": 1, "x": 10, "z": 20, "qw": 1, "p": .5})
+	if len(wsRead(t, ctx, y, "states")["states"].([]any)) != 1 {
+		t.Fatal("beta state relay")
+	}
+	wsSend(t, ctx, x, map[string]any{"t": "finish", "time": 9, "p": 1})
+	wsSend(t, ctx, y, map[string]any{"t": "finish", "time": 9.1, "p": 1})
+	for {
+		m := wsRead(t, ctx, x, "lobby")
+		room := m["lobby"].(map[string]any)
+		if room["state"] == "results" {
+			results := room["race"].(map[string]any)["results"].([]any)
+			if len(results) != 2 {
+				t.Fatal("beta podium", results)
+			}
+			break
+		}
+	}
+
 }
 func TestCarUpdatesBroadcastAndResetReady(t *testing.T) {
 	_, s, c := newTest(t)

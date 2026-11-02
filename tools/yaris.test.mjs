@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import * as THREE from 'three';
 import { yarisScale, stretchYaris, YARIS_CAR, YARIS_TRACK_ID } from '../web/js/YarisMode.js';
+import { CAR_STYLE } from '../web/js/CarStyle.js';
 import { CARS, GARAGE_CARS } from '../web/js/Cars.js';
 import { audioVolumes, loadSettings, saveSettings } from '../web/js/Settings.js';
 import { MenuMusic, shuffleTracks } from '../web/js/menu/MenuMusic.js';
@@ -35,14 +36,23 @@ test('Yaris geometry stays inside the reviewed rendering budget and available in
  assert.equal(bytes.toString('ascii',0,4),'glTF');
  const model=JSON.parse(bytes.toString('utf8',20,20+bytes.readUInt32LE(12)));
  let triangles=0, draws=0;
- for(const node of model.nodes)for(const p of model.meshes[node.mesh].primitives){triangles+=model.accessors[p.indices??p.attributes.POSITION].count/3;draws++;}
- assert.ok(triangles<=4000 && draws<=5);
- assert.ok(bytes.length<220_000 && (model.images?.length??0)===0);
+ for(const node of model.nodes.filter(n=>n.mesh!==undefined))for(const p of model.meshes[node.mesh].primitives){triangles+=model.accessors[p.indices??p.attributes.POSITION].count/3;draws++;}
+ assert.ok(triangles<=CAR_STYLE.maxTriangles && draws<=CAR_STYLE.maxDrawCalls);
+ assert.ok(bytes.length<CAR_STYLE.maxModelBytes && (model.images?.length??0)===0);
  assert.ok(CARS.some(c=>c.id===YARIS_CAR));
  assert.ok(GARAGE_CARS.some(c=>c.id===YARIS_CAR));
  assert.ok(model.nodes.filter(n=>['FL','FR'].includes(n.name)).every(n=>n.translation[2]>0));
  assert.ok(model.nodes.filter(n=>['BL','BR'].includes(n.name)).every(n=>n.translation[2]<0));
  assert.ok(!model.nodes.find(n=>n.name==='car').rotation);
+ const reference=model.asset.extras;
+ assert.equal(reference.reference,'Toyota GR Yaris XP210 2020');
+ const factor=reference.referenceScale;
+ const front=model.nodes.find(n=>n.name==='FL'),rear=model.nodes.find(n=>n.name==='BL');
+ assert.ok(Math.abs((front.translation[2]-rear.translation[2])/factor-2.560)<1e-6);
+ assert.ok(Math.abs((1.9975-front.translation[2]/factor)-.830)<1e-6);
+ assert.ok(Math.abs((rear.translation[2]/factor+1.9975)-.605)<1e-6);
+ for(const m of model.materials){assert.ok(m&&m.alphaMode!=='BLEND');assert.equal(m.pbrMetallicRoughness.metallicFactor,CAR_STYLE.metalness);}
+ assert.ok(model.meshes.every(m=>m.primitives.every(p=>model.materials[p.material])));
  const bin=28+bytes.readUInt32LE(12);
  for(const mesh of model.meshes)for(const primitive of mesh.primitives){
   for(const name of ['POSITION','NORMAL']){

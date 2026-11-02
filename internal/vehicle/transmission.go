@@ -2,92 +2,147 @@ package vehicle
 
 import "math"
 
-// Experimental longitudinal powertrain. World geometry uses half-scale cars;
-// two physical metres correspond to one world unit. The ordinary Advance is untouched.
+// Beta powertrain. Model geometry is half scale: 1 world unit = 2 metres.
+// Acceleration is in world units/s²; torque, drag and speed are computed in SI.
 const WorldMetres = 2.0
 const TransmissionIdle = 1800.0
 const TransmissionRedline = 7500.0
+const TransmissionMass = 1200.0
+const TransmissionWheelRadius = .31
+const TransmissionFinalDrive = 3.6
+const TransmissionReverseRatio = 3.1
+const TransmissionReverseSpeed = 10.0 // m/s, a separate low-speed reverse range
 
-var GearRatios = [...]float64{3.2, 2.13, 1.52, 1.16, .92, .74}
+// Five forward gears for every beta car; -1 is the persistent reverse range.
+var GearRatios = [...]float64{3.2, 2.13, 1.52, 1.16, .86}
 
 type Transmission struct {
-	Gear                          int
-	RPM, Shift, Hold, Accel, Load float64
+	Gear                                 int
+	RPM, Shift, Hold, Accel, Load, Brake float64
 }
 
-func AdvanceTransmission(t Transmission, dt, worldSpeed, throttle, speedFactor float64, handbrake bool) Transmission {
+func AdvanceTransmission(t Transmission, dt, worldSpeed, throttle, speedFactor float64, handbrake bool, groundWorldSpeed ...float64) Transmission {
 	dt = Clamp(dt, 0, .05)
 	throttle = Clamp(throttle, -1, 1)
 	speed := worldSpeed * WorldMetres
-	if t.Gear < 1 || t.Gear > len(GearRatios) {
+	groundSpeed := math.Abs(speed)
+	if len(groundWorldSpeed) > 0 {
+		groundSpeed = math.Max(groundSpeed, math.Abs(groundWorldSpeed[0])*WorldMetres)
+	}
+	t.Brake = 0
+	if t.Gear == 0 || t.Gear < -1 || t.Gear > len(GearRatios) {
 		t.Gear = 1
 	}
 	t.Hold += dt
 	t.Shift = math.Max(0, t.Shift-dt)
-	reverse := speed < -.5 || (math.Abs(speed) < .5 && throttle < 0)
-	ratio := GearRatios[t.Gear-1] * 3.8
-	if reverse {
-		ratio = 3.1 * 3.8
-		t.Gear = 1
+	direction := 1.0
+	if t.Gear == -1 {
+		direction = -1
 	}
-	wheelRPM := math.Abs(speed) / .31 * 60 / (2 * math.Pi)
-	coupled := wheelRPM * ratio
-	braking := (speed > .5 && throttle < 0) || (speed < -.5 && throttle > 0)
+	requested := 0.0
+	if math.Abs(throttle) > .05 {
+		requested = math.Copysign(1, throttle)
+	}
+	// A direction change brakes first. Rollback on a hill does not select R:
+	// the driver's selected range, rather than velocity noise, controls torque.
+	braking := requested != 0 && requested != direction
+	if groundSpeed < .35 {
+		if requested != 0 && requested != direction {
+			direction = requested
+			t.Gear = int(direction)
+			t.Shift, t.Hold = 0, 0
+			braking = false
+		} else if t.Gear > 1 {
+			// A stop must launch in first immediately, including after a collision.
+			t.Gear, t.Shift, t.Hold = 1, 0, 0
+		}
+	}
 	t.Load = math.Abs(throttle)
-	if braking {
+	if braking || requested == 0 || handbrake {
 		t.Load = 0
 	}
-	target := math.Max(TransmissionIdle, coupled)
-	if math.Abs(speed) < 5 && t.Load > .1 && !braking {
-		target = math.Max(target, TransmissionIdle+1900*t.Load)
-	}
-	if !reverse && t.Shift == 0 && t.Hold > .65 {
-		if coupled > 6600 && t.Gear < len(GearRatios) && t.Load > .1 {
-			t.Gear++
-			t.Shift = .24
-			t.Hold = 0
+	ratioFor := func(gear int) float64 {
+		if gear < 0 {
+			return TransmissionReverseRatio * TransmissionFinalDrive
 		}
-		if coupled < 2800 && t.Gear > 1 && wheelRPM*GearRatios[t.Gear-2]*3.8 < 6000 {
-			t.Gear--
-			t.Shift = .20
-			t.Hold = 0
+		return GearRatios[gear-1] * TransmissionFinalDrive
+	}
+	wheelRPM := math.Abs(speed) / TransmissionWheelRadius * 60 / (2 * math.Pi)
+	coupled := wheelRPM * ratioFor(t.Gear)
+	if t.Gear > 0 && t.Shift == 0 && t.Hold > .65 {
+		upAt := 3500 + 3300*t.Load
+		downAt := 1700 + 2100*t.Load
+		targetGear := t.Gear
+		if coupled > upAt && t.Gear < len(GearRatios) && t.Load > .1 {
+			targetGear++
+		} else if coupled < downAt && t.Gear > 1 {
+			// Select a usable lower gear, rather than crawling down one at a time.
+			for g := t.Gear - 1; g >= 1; g-- {
+				if wheelRPM*ratioFor(g) > 6200 {
+					break
+				}
+				targetGear = g
+			}
+		}
+		if targetGear != t.Gear {
+			t.Gear, t.Shift, t.Hold = targetGear, .20, 0
 		}
 	}
-	if t.Shift > 0 {
-		target = math.Max(TransmissionIdle, wheelRPM*GearRatios[t.Gear-1]*3.8)
+	ratio := ratioFor(t.Gear)
+	targetRPM := math.Max(TransmissionIdle, wheelRPM*ratio)
+	if math.Abs(speed) < 5 && t.Load > .1 {
+		targetRPM = math.Max(targetRPM, TransmissionIdle+2100*t.Load)
 	}
 	rate := 10.0
 	if t.Shift > 0 {
 		rate = 7
 	}
-	t.RPM = Clamp(Lerp(math.Max(t.RPM, TransmissionIdle), target, math.Min(1, dt*rate)), TransmissionIdle, TransmissionRedline)
-	// Broad torque curve, finite tyre grip, drag and engine braking.
-	torque := 360 * (.64 + .36*math.Exp(-math.Pow((t.RPM-4700)/2200, 2)))
-	force := torque * ratio * .88 / .31 * t.Load
-	if reverse {
-		force = -force
+	t.RPM = Clamp(Lerp(math.Max(t.RPM, TransmissionIdle), targetRPM, math.Min(1, dt*rate)), TransmissionIdle, TransmissionRedline)
+
+	// Arcade club tune, shared by all cars: broad torque and finite traction.
+	torque := 480 * (.68 + .32*math.Exp(-math.Pow((t.RPM-4700)/2300, 2)))
+	force := direction * torque * ratio * .88 / TransmissionWheelRadius * t.Load
+	if t.Gear < 0 {
+		force *= Clamp((TransmissionReverseSpeed-math.Abs(speed))/1.5, 0, 1)
 	}
 	if t.Shift > 0 || t.RPM >= TransmissionRedline-25 {
 		force = 0
 	}
-	force = Clamp(force, -1300*5.8, 1300*5.8) * Clamp(speedFactor, .15, 1)
-	sign := math.Copysign(1, speed)
-	if math.Abs(speed) < .02 {
-		sign = 0
+	grip := TransmissionMass * 8.0
+	force = Clamp(force, -grip, grip) * Clamp(speedFactor, .15, 1)
+	// Gravity belongs to the collision solver, so it must not be counted here.
+	sign := 0.0
+	if math.Abs(speed) > 1e-8 {
+		sign = math.Copysign(1, speed)
 	}
-	accel := force/1300 - sign*(.16+.00038*speed*speed)
+	accel := force/TransmissionMass - sign*(.15+.00038*speed*speed)
 	if t.Load < .05 {
-		accel -= sign * .45
+		accel -= sign * .55
 	}
-	if braking {
-		accel = -sign * 8.5
+	// A downhill reverse must remain a low-speed range after torque fades.
+	if t.Gear < 0 && speed < -TransmissionReverseSpeed {
+		accel = math.Max(accel, math.Min(4, (-speed-TransmissionReverseSpeed)/math.Max(dt, .001)))
 	}
-	if handbrake {
-		accel = -sign * 10
-	}
-	if math.Abs(speed) < .15 && t.Load < .05 {
+	if braking || handbrake {
+		deceleration := 12.0
+		if handbrake {
+			deceleration = 12
+		}
+		// Braking can stop the car, never kick it through zero on the next step.
+		t.Brake = math.Min(deceleration, groundSpeed/math.Max(dt, .001)) / WorldMetres
+		accel = -sign * math.Min(deceleration, math.Abs(speed)/math.Max(dt, .001))
+	} else if t.Load < .05 && math.Abs(accel)*dt > math.Abs(speed) {
 		accel = -speed / math.Max(dt, .001)
 	}
 	t.Accel = accel / WorldMetres
 	return t
+}
+
+// Bicycle steering in world units, with a rate cap for the club's arcade tune.
+// Unlike the ordinary arcade steering it can negotiate a tight corner at low
+// speed without a speed-independent minimum turning radius.
+func BetaSteering(previous, worldSpeed, steer, dt float64) float64 {
+	target := worldSpeed * math.Tan(-Clamp(steer, -1, 1)*.65) / (2.56 / WorldMetres)
+	target = Clamp(target, -3.8, 3.8)
+	return Lerp(previous, target, 1-math.Exp(-8*Clamp(dt, 0, .05)))
 }

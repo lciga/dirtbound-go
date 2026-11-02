@@ -34,10 +34,10 @@ const CLUTCH_ENGAGE_RATE = 6; // 1/s
 // SHIFT_UP. Full throttle levels off at ~0.94; the taller final gear keeps
 // cruising below a continuous limiter. This changes sound only; ordinary
 // acceleration still comes from Vehicle.js / Go Advance.
-const GEAR_TOP_SPEED = [ 0.3, 0.5, 0.72, 1.10 ];
+const GEAR_TOP_SPEED = [ 0.24, 0.40, 0.58, 0.78, 1.10 ];
 
 // The gearbox reads a lagged copy of the speed: the car itself levels off in
-// ~1.5 s, far too short to hear four gears. Rising follows slowly (each gear
+// ~1.5 s, far too short to hear five gears. Rising follows slowly (each gear
 // holds ~1 s, like the old synth's gentle rise rate); falling follows fast so
 // braking still drops the revs and downshifts right away.
 const SPEED_RISE_RATE = 0.9; // 1/s

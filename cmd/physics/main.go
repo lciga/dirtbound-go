@@ -30,15 +30,23 @@ func main() {
 		}
 		return out
 	})
-	txOut := js.Global().Get("Float64Array").New(7)
+	txOut := js.Global().Get("Float64Array").New(8)
 	export("transmission", func(a []js.Value) any {
 		n := func(i int) float64 { return a[i].Float() }
-		t := vehicle.AdvanceTransmission(vehicle.Transmission{Gear: int(n(0)), RPM: n(1), Shift: n(2), Hold: n(3)}, n(4), n(5), n(6), n(7), a[8].Bool())
-		for i, v := range []float64{float64(t.Gear), t.RPM, t.Shift, t.Hold, t.Accel, t.Load, vehicle.TransmissionRedline} {
+		groundSpeed := n(5)
+		if len(a) > 9 {
+			groundSpeed = n(9)
+		}
+		t := vehicle.AdvanceTransmission(vehicle.Transmission{Gear: int(n(0)), RPM: n(1), Shift: n(2), Hold: n(3)}, n(4), n(5), n(6), n(7), a[8].Bool(), groundSpeed)
+		for i, v := range []float64{float64(t.Gear), t.RPM, t.Shift, t.Hold, t.Accel, t.Load, vehicle.TransmissionRedline, t.Brake} {
 			txOut.SetIndex(i, v)
 		}
 		return txOut
 	})
+	export("steering", func(a []js.Value) any {
+		return vehicle.BetaSteering(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float())
+	})
+	js.Global().Get("DirtboundGo").Set("worldMetres", vehicle.WorldMetres)
 	drift := js.Global().Get("Float64Array").New(2)
 	export("drift", func(a []js.Value) any {
 		r := vehicle.Drift(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float(), a[4].Float(), a[5].Float(), a[6].Bool())

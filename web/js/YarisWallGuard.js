@@ -16,8 +16,9 @@ export function bodyWallContact(x,z,angle,halfWidth,halfLength,wall,out={}){
  out.x=nx;out.z=nz;out.depth=depth;return out;
 }
 export class YarisWallGuard {
- constructor(world,{stretch=false}={}){
-  this.world=world;this.hw=stretch?.61:.51;this.hl=stretch?1.16:.98;this.cells=new Map();this.seen=new Set();this.contact={};
+ constructor(world,{stretch=false,halfWidth=.51,halfLength=.98}={}){
+  const scale=stretch?1.2:1;
+  this.world=world;this.hw=halfWidth*scale;this.hl=halfLength*scale;this.cells=new Map();this.seen=new Set();this.contact={};
   for(const b of world._clubWalls||[]){
    const q=b.quaternion||[0,0,0,1],angle=2*Math.atan2(q[1],q[3]),c=Math.cos(angle),s=Math.sin(angle),hx=b.halfExtents[0],hz=b.halfExtents[2];
    const w={x:b.position[0],y:b.position[1],z:b.position[2],hy:b.halfExtents[1],hx,hz,c,s};

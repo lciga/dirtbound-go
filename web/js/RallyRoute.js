@@ -132,7 +132,11 @@ export class RallyRoute {
 	// roadHalf: centerline → barrier outer edge
 	// landscape: RallyBiomes.js LANDSCAPE_IDS ('varied', 'low', 'high')
 	// maxLength: the road stops once it reaches this (a limited stage)
-	constructor( seed, roadHalf, landscape = 'varied', maxLength = Infinity ) {
+	constructor( seed, roadHalf, landscape = 'varied', maxLength = Infinity, { featureScale = 1 } = {} ) {
+
+		// Beta's faster cars need full-size bends and run-ups. Road width and
+		// advertised distance stay unchanged; ordinary seeds retain their layout.
+		this.featureScale = Math.max(1, Number(featureScale) || 1);
 
 		this.maxLength = maxLength > 0 ? maxLength : Infinity;
 		this.biomes = createBiomes( seed, landscape );
@@ -365,7 +369,15 @@ export class RallyRoute {
 
 		const emit = ( px, pz, ha ) => samples.push( px, pz, s, Math.sin( ha ), Math.cos( ha ) );
 
-		for ( const m of moves ) {
+		for ( const move of moves ) {
+
+			const m = move.len !== undefined ? { ...move, len: move.len * this.featureScale } : { ...move, r: move.r * this.featureScale };
+			if (this.featureScale > 1 && Number.isFinite(this.maxLength)) {
+				const remaining = this.maxLength - this.length - s;
+				if (remaining <= 1e-8) break;
+				if (m.len !== undefined) m.len = Math.min(m.len, remaining);
+				else m.turn = Math.sign(m.turn) * Math.min(Math.abs(m.turn), remaining / m.r);
+			}
 
 			if ( m.len !== undefined ) {
 

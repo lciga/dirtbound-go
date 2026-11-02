@@ -20,7 +20,7 @@ func TestTransmissionShiftCutsTractionAndCoastBrakes(t *testing.T) {
 			}
 		}
 		speed += state.Accel * Step
-		if state.RPM > TransmissionRedline || math.IsNaN(speed) || state.Gear < 1 || state.Gear > 6 {
+		if state.RPM > TransmissionRedline || math.IsNaN(speed) || state.Gear < 1 || state.Gear > 5 {
 			t.Fatal(state, speed)
 		}
 	}
@@ -40,12 +40,57 @@ func TestTransmissionReverseAndOffroad(t *testing.T) {
 		s = AdvanceTransmission(s, Step, v, -1, 1, false)
 		v += s.Accel * Step
 	}
-	if v >= -1 || s.Gear != 1 {
+	if v >= -1 || s.Gear != -1 {
 		t.Fatal("reverse", v, s)
 	}
 	a := AdvanceTransmission(Transmission{Gear: 1, RPM: 3500}, Step, 2, 1, 1, false)
 	b := AdvanceTransmission(Transmission{Gear: 1, RPM: 3500}, Step, 2, 1, .4, false)
 	if b.Accel >= a.Accel {
 		t.Fatal("offroad must reduce tractive force")
+	}
+}
+
+func TestTransmissionReverseToForward(t *testing.T) {
+	state := Transmission{}
+	speed := 0.0
+	for n := 0; n < 120*3; n++ {
+		state = AdvanceTransmission(state, Step, speed, -1, 1, false)
+		speed += state.Accel * Step
+	}
+	if speed >= -1 {
+		t.Fatal("reverse did not engage", speed)
+	}
+	for n := 0; n < 120*5; n++ {
+		state = AdvanceTransmission(state, Step, speed, 1, 1, false)
+		speed += state.Accel * Step
+	}
+	if speed < 5 || state.Gear < 1 {
+		t.Fatalf("forward acceleration did not recover after reverse: speed %.3f world/s, gear %d", speed, state.Gear)
+	}
+}
+
+func TestRangeUsesTotalGroundSpeedAndReverseSpeedIsLimited(t *testing.T) {
+	s := AdvanceTransmission(Transmission{Gear: 1}, Step, 0, -1, 1, false, 12)
+	if s.Gear != 1 || s.Brake <= 0 || s.Load != 0 {
+		t.Fatal("sideways motion selected R", s)
+	}
+	s = AdvanceTransmission(Transmission{Gear: -1}, Step, -7, -1, 1, false)
+	if s.Accel <= 0 {
+		t.Fatal("downhill reverse has no speed governor", s)
+	}
+	s = AdvanceTransmission(Transmission{Gear: 5, Shift: .2}, Step, 0, 1, 1, false)
+	if s.Gear != 1 || s.Shift != 0 || s.Accel <= 0 {
+		t.Fatal("stopped high gear did not reset", s)
+	}
+}
+func TestBetaSteeringRespondsToDirectionAndRemainsBounded(t *testing.T) {
+	for _, speed := range []float64{-30, -1, 0, 1, 30} {
+		left, right := BetaSteering(0, speed, -1, Step), BetaSteering(0, speed, 1, Step)
+		if math.Abs(left+right) > 1e-12 || math.Abs(left) > 3.8 || left*speed < 0 {
+			t.Fatal(speed, left, right)
+		}
+	}
+	if len(GearRatios) != 5 {
+		t.Fatal("five forward gears required")
 	}
 }

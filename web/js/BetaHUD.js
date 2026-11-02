@@ -1,4 +1,5 @@
 import { TRACK_CELLS, CELL_RAW, GRID_SCALE } from './Track.js';
+import { speedKmh } from './RaceUnits.js';
 
 // Bounded map samples, cached road image and a 10 Hz DOM/canvas update.
 export function mapSamples({path,customCells,stage},limit=256){
@@ -33,8 +34,8 @@ export class BetaHUD {
   this.logTimer+=dt;this.elapsed+=dt;if(this.elapsed<.1)return;this.elapsed=0;
   if(this.track.stage&&this.track.stage.route.nodes.length!==this.version)this.buildMap();
   const t=vehicle.transmission;
-  if(this.debug&&this.logTimer>=2){this.logTimer=0;console.info('[beta-transmission] '+JSON.stringify({speedKmh:Math.round(Math.hypot(vehicle.sphereVel.x,vehicle.sphereVel.z)*7.2),gear:t.gear,rpm:Math.round(t.rpm),shifting:t.shifting,load:t.load}));}
-  this.speed.textContent=Math.round(Math.hypot(vehicle.sphereVel.x,vehicle.sphereVel.z)*7.2);this.gear.textContent=t.gearLabel;this.rpm.textContent=Math.round(t.rpm/50)*50;this.meter.value=t.rpm;
+  if(this.debug&&this.logTimer>=2){this.logTimer=0;console.info('[beta-transmission] '+JSON.stringify({speedKmh:Math.round(speedKmh(vehicle.sphereVel)),gear:t.gear,rpm:Math.round(t.rpm),shifting:t.shifting,load:t.load,grounded:t.grounded}));}
+  this.speed.textContent=Math.round(speedKmh(vehicle.sphereVel));this.gear.textContent=t.gearLabel;this.rpm.textContent=Math.round(t.rpm/50)*50;this.meter.value=t.rpm;
   const ctx=this.ctx;ctx.clearRect(0,0,192,144);ctx.drawImage(this.background,0,0);ctx.save();ctx.translate(this.ox+vehicle.container.position.x*this.scale,this.oz+vehicle.container.position.z*this.scale);
   const q=vehicle.container.quaternion;ctx.rotate(-Math.atan2(2*(q.w*q.y+q.x*q.z),1-2*(q.y*q.y+q.x*q.x)));
   ctx.fillStyle='#ff6a1a';ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,6);ctx.lineTo(-4,-4);ctx.lineTo(4,-4);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
