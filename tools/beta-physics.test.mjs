@@ -136,3 +136,27 @@ test('touch compass directions drive forward instead of selecting R or cutting t
   assert.equal(r.vehicle.inputZ,1);
  }
 });
+
+test('full throttle through a mild or full-lock turn no longer scrubs away straight-line speed',()=>{
+ for(const steer of [.12,.25,1]){
+  const r=drivingRig();r.run(6,{z:1});const entry=r.vehicle.sphereVel.length();let min=entry,maxSlip=0;
+  for(let i=0;i<360;i++){r.step({z:1,x:steer});min=Math.min(min,r.vehicle.sphereVel.length());maxSlip=Math.max(maxSlip,r.vehicle.slipAngle);assert.ok(r.vehicle.transmission.gear>=3);}
+  assert.ok(min>entry*.95,`steer ${steer}: ${min/entry}`);assert.ok(maxSlip<.12,`slip ${maxSlip}`);
+  const exit=r.vehicle.sphereVel.length();r.run(2,{z:1});assert.ok(r.vehicle.sphereVel.length()>exit+1);
+ }
+});
+
+test('an ordinary 40–60 km/h corner exit keeps second and responds to throttle',()=>{
+ const r=drivingRig();r.run(6,{z:1});
+ while(r.vehicle.sphereVel.length()*7.2>50)r.step({z:-1});
+ const before=r.vehicle.sphereVel.length();
+ for(let i=0;i<240;i++){r.step({z:1,x:.5});assert.notEqual(r.vehicle.transmission.gear,1);}
+ assert.ok(r.vehicle.sphereVel.length()>before+5);
+});
+
+test('handbrake can still create a slide while ordinary steering stays within grip',()=>{
+ const r=drivingRig();r.run(5,{z:1});let peak=0;
+ for(let i=0;i<120;i++){r.step({x:1,z:1,handbrake:true});peak=Math.max(peak,r.vehicle.slipAngle);}
+ assert.ok(peak>.25);
+ r.run(6,{z:1});assert.ok(r.vehicle.sphereVel.length()*7.2>90);
+});

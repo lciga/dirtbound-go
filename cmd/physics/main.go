@@ -44,9 +44,14 @@ func main() {
 		return txOut
 	})
 	export("steering", func(a []js.Value) any {
-		return vehicle.BetaSteering(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float())
+		factor := 1.0
+		if len(a) > 4 {
+			factor = a[4].Float()
+		}
+		return vehicle.BetaSteering(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float(), factor)
 	})
 	js.Global().Get("DirtboundGo").Set("worldMetres", vehicle.WorldMetres)
+	js.Global().Get("DirtboundGo").Set("lateralGrip", vehicle.TransmissionLateralGrip)
 	drift := js.Global().Get("Float64Array").New(2)
 	export("drift", func(a []js.Value) any {
 		r := vehicle.Drift(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float(), a[4].Float(), a[5].Float(), a[6].Bool())

@@ -28,7 +28,11 @@ for(const [seed,landscape] of [[152428,'low'],[19381,'varied'],[2026,'high']]) {
   if(error>ROAD_HALF*route.widthAt(path.s[index])-.7)break;
   path.frameAt(path.s[index]+clamp(2+speed*.2,2,9),ahead);
   front.set(0,0,1).applyQuaternion(v.container.quaternion);
-  const steer=clamp(-2.2*wrap(Math.atan2(ahead.x-v.spherePos.x,ahead.z-v.spherePos.z)-Math.atan2(front.x,front.z)),-1,1);
+  const alpha=wrap(Math.atan2(ahead.x-v.spherePos.x,ahead.z-v.spherePos.z)-Math.atan2(front.x,front.z));
+  const lookahead=Math.hypot(ahead.x-v.spherePos.x,ahead.z-v.spherePos.z);
+  // Pure pursuit requests wheel angle; invert the speed-sensitive steering.
+  const angleLimit=Math.min(.65,Math.atan(globalThis.DirtboundGo.lateralGrip/2*.85*1.28/Math.max(1,speed*speed)));
+  const steer=clamp(-Math.atan(2*1.28*Math.sin(alpha)/Math.max(1,lookahead))/angleLimit,-1,1);
   let target=32;
   for(let i=index;i<path.sampleCount&&path.s[i]-path.s[index]<100;i+=2){
    const ds=i>1?path.s[i]-path.s[i-2]:1;

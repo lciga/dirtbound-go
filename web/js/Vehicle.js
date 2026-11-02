@@ -137,7 +137,7 @@ export class Vehicle {
 		if (!touch) {
 			if(this.beta && this.rigidBody){
 				const v=this.rigidBody.motionProperties.linearVelocity;
-				this.angularSpeed=physics.steering(previousAngular,v[0]*_forward.x+v[1]*_forward.y+v[2]*_forward.z,this.inputX,dt);
+				this.angularSpeed=physics.steering(previousAngular,v[0]*_forward.x+v[1]*_forward.y+v[2]*_forward.z,this.inputX,dt,this.speedFactor*(this.handbrake?1.5:1));
 				this.container.rotateY(this.angularSpeed*dt);
 			} else this.container.rotateY(step[4]);
 		}
@@ -187,8 +187,8 @@ export class Vehicle {
      // Explicit arcade tyre grip, independent of the rolling ground sphere.
      // Clamp lateral force, retain normal velocity and allow handbrake slides.
      const lateral=(v[0]+_groundVelocity.x)*_right.x+(v[1]+_groundVelocity.y)*_right.y+(v[2]+_groundVelocity.z)*_right.z;
-     const grip=(this.handbrake?3:24)*Math.max(.15,this.speedFactor)/physics.worldMetres;
-     const side=Math.max(-grip*dt,Math.min(grip*dt,-lateral*(1-Math.exp(-12*dt))));
+     const grip=(this.handbrake?3:physics.lateralGrip)*Math.max(.15,this.speedFactor)/physics.worldMetres;
+     const side=Math.max(-grip*dt,Math.min(grip*dt,-lateral*(1-Math.exp(-18*dt))));
      const vx=v[0]+_groundVelocity.x+_right.x*side,vy=v[1]+_groundVelocity.y+_right.y*side,vz=v[2]+_groundVelocity.z+_right.z*side;
      const rolling=vx*_forward.x+vy*_forward.y+vz*_forward.z;
      rigidBody.setLinearVelocity(this.physicsWorld,this.rigidBody,[vx,vy,vz]);

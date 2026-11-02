@@ -12,6 +12,8 @@ const TransmissionWheelRadius = .31
 const TransmissionFinalDrive = 3.6
 const TransmissionReverseRatio = 3.1
 const TransmissionReverseSpeed = 10.0 // m/s, a separate low-speed reverse range
+const TransmissionShiftTime = .14
+const TransmissionLateralGrip = 32.0 // m/s², deliberately arcade rather than road-car tyres
 
 // Five forward gears for every beta car; -1 is the persistent reverse range.
 var GearRatios = [...]float64{3.2, 2.13, 1.52, 1.16, .86}
@@ -67,25 +69,36 @@ func AdvanceTransmission(t Transmission, dt, worldSpeed, throttle, speedFactor f
 		}
 		return GearRatios[gear-1] * TransmissionFinalDrive
 	}
-	wheelRPM := math.Abs(speed) / TransmissionWheelRadius * 60 / (2 * math.Pi)
+	// The sphere has no individual driven wheels. Use rolling road speed for
+	// their estimate: a yaw/slip spike must not look like an instant wheel stop.
+	rollingSpeed := math.Abs(speed)
+	if t.Gear > 0 {
+		rollingSpeed = math.Max(rollingSpeed, groundSpeed*.90)
+	}
+	wheelRPM := rollingSpeed / TransmissionWheelRadius * 60 / (2 * math.Pi)
 	coupled := wheelRPM * ratioFor(t.Gear)
-	if t.Gear > 0 && t.Shift == 0 && t.Hold > .65 {
+	sliding := groundSpeed > 6 && math.Abs(speed) < groundSpeed*.92
+	if t.Gear > 0 && t.Shift == 0 && t.Hold > .65 && !sliding && !handbrake {
 		upAt := 3500 + 3300*t.Load
-		downAt := 1700 + 2100*t.Load
+		downAt := 1800 + 1300*t.Load
 		targetGear := t.Gear
 		if coupled > upAt && t.Gear < len(GearRatios) && t.Load > .1 {
 			targetGear++
 		} else if coupled < downAt && t.Gear > 1 {
 			// Select a usable lower gear, rather than crawling down one at a time.
 			for g := t.Gear - 1; g >= 1; g-- {
-				if wheelRPM*ratioFor(g) > 6200 {
+				// First is for launches and slow hairpins, not ordinary corners.
+				if g == 1 && groundSpeed > 30/3.6 {
+					break
+				}
+				if wheelRPM*ratioFor(g) > 4800 {
 					break
 				}
 				targetGear = g
 			}
 		}
 		if targetGear != t.Gear {
-			t.Gear, t.Shift, t.Hold = targetGear, .20, 0
+			t.Gear, t.Shift, t.Hold = targetGear, TransmissionShiftTime, 0
 		}
 	}
 	ratio := ratioFor(t.Gear)
@@ -105,7 +118,9 @@ func AdvanceTransmission(t Transmission, dt, worldSpeed, throttle, speedFactor f
 	if t.Gear < 0 {
 		force *= Clamp((TransmissionReverseSpeed-math.Abs(speed))/1.5, 0, 1)
 	}
-	if t.Shift > 0 || t.RPM >= TransmissionRedline-25 {
+	// Half the shift opens the clutch; the remainder progressively reconnects.
+	force *= Clamp(1-t.Shift/(TransmissionShiftTime*.5), 0, 1)
+	if t.RPM >= TransmissionRedline-25 {
 		force = 0
 	}
 	grip := TransmissionMass * 8.0
@@ -141,8 +156,17 @@ func AdvanceTransmission(t Transmission, dt, worldSpeed, throttle, speedFactor f
 // Bicycle steering in world units, with a rate cap for the club's arcade tune.
 // Unlike the ordinary arcade steering it can negotiate a tight corner at low
 // speed without a speed-independent minimum turning radius.
-func BetaSteering(previous, worldSpeed, steer, dt float64) float64 {
-	target := worldSpeed * math.Tan(-Clamp(steer, -1, 1)*.65) / (2.56 / WorldMetres)
+func BetaSteering(previous, worldSpeed, steer, dt float64, gripFactor ...float64) float64 {
+	factor := 1.0
+	if len(gripFactor) > 0 {
+		factor = Clamp(gripFactor[0], .15, 1.5)
+	}
+	wheelbase := 2.56 / WorldMetres
+	lateral := TransmissionLateralGrip / WorldMetres * factor * .85
+	// Match the requested curvature to the tyre force budget. Without this,
+	// full lock rotates the body 90° while its velocity still points straight.
+	angle := math.Min(.65, math.Atan(lateral*wheelbase/math.Max(1, worldSpeed*worldSpeed)))
+	target := worldSpeed * math.Tan(-Clamp(steer, -1, 1)*angle) / wheelbase
 	target = Clamp(target, -3.8, 3.8)
 	return Lerp(previous, target, 1-math.Exp(-8*Clamp(dt, 0, .05)))
 }

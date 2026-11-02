@@ -699,7 +699,7 @@ async function init() {
 	} );
 	let yarisTime = 0;
 
-	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), betaMode?'beta-v2:'+trackId:trackId );
+	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), betaMode?'beta-v3:'+trackId:trackId );
  const betaHUD=betaMode?new BetaHUD({path,customCells,stage}):null;
 
 	// Circuits: online leaderboard and record ghost (the id follows the circuit
@@ -826,7 +826,7 @@ async function init() {
 	if ( stage && stage.length ) {
 
 		// Best time per stage (seed + landscape + length), on this device; v2 = the biome stages
-		const bestKey = `${betaMode ? "beta-v2." : ""}racing.bestStage2.${ rallySeed }.${ rallyLandscape }.${ stage.length }`;
+		const bestKey = `${betaMode ? "beta-v3." : ""}racing.bestStage2.${ rallySeed }.${ rallyLandscape }.${ stage.length }`;
 
 		stage.onFinish = ( time ) => {
 

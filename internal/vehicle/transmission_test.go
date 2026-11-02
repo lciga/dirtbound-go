@@ -94,3 +94,19 @@ func TestBetaSteeringRespondsToDirectionAndRemainsBounded(t *testing.T) {
 		t.Fatal("five forward gears required")
 	}
 }
+
+func TestCornerShiftHysteresisAndClutchReturn(t *testing.T) {
+	mid := AdvanceTransmission(Transmission{Gear: 2, RPM: 3500, Hold: 1}, Step, 50/7.2, 1, 1, false, 50/7.2)
+	if mid.Gear != 2 {
+		t.Fatal("normal corner selected first", mid)
+	}
+	drift := AdvanceTransmission(Transmission{Gear: 3, RPM: 4500, Hold: 1}, Step, 3, 1, 1, false, 14)
+	if drift.Gear != 3 || drift.Shift != 0 {
+		t.Fatal("sideways slip triggered a shift", drift)
+	}
+	open := AdvanceTransmission(Transmission{Gear: 2, RPM: 5000, Shift: .12}, Step, 10, 1, 1, false)
+	reconnect := AdvanceTransmission(Transmission{Gear: 2, RPM: 5000, Shift: .03}, Step, 10, 1, 1, false)
+	if open.Accel >= 0 || reconnect.Accel <= 0 || reconnect.Shift <= 0 {
+		t.Fatal("clutch did not progressively return traction", open, reconnect)
+	}
+}
