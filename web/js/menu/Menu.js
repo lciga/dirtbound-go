@@ -11,6 +11,7 @@ import { LANDSCAPE_IDS, landscapeOf } from '../RallyBiomes.js';
 import { ghostMode } from '../CircuitOnline.js';
 import { MenuMusic } from './MenuMusic.js';
 import { YARIS_CAR, YARIS_TRACK_ID, stretchYaris } from '../YarisMode.js';
+import { YARIS_PAINTS } from '../YarisCar.js';
 import { UiSounds } from './UiSounds.js';
 import { Fx } from './Fx.js';
 import { createProfileScreen } from './ProfileScreen.js';
@@ -50,9 +51,9 @@ const ICONS = {
 
 // Where each screen stands (Showroom.goTo): home at the start of a stage, the
 // white garage, racing down the stage (solo), with two more cars (multiplayer)
-const PLACES = { home: 'home', settings: 'home', legal: 'home', garage: 'garage', solo: 'home', circuit: 'home', rally: 'home', multi: 'home', experimental: 'home', yaris: 'home', daily: 'home', lobby: 'multi' }; // solo, circuit, rally: the home stays, only its walls change (and the camera slides for the last two)
+const PLACES = { home: 'home', settings: 'home', legal: 'home', garage: 'garage', solo: 'home', circuit: 'home', rally: 'home', multi: 'home', experimental: 'home', yaris: 'home', beta: 'home', daily: 'home', lobby: 'multi' }; // solo, circuit, rally: the home stays, only its walls change (and the camera slides for the last two)
 const placeOf = ( name ) => name === 'lobby' && inYarisMode() ? 'home' : PLACES[ name ] || 'home';
-const WALL_SCREENS = [ 'home', 'solo', 'circuit', 'rally', 'multi', 'experimental', 'yaris', 'daily' ]; // their choices are on the home's walls
+const WALL_SCREENS = [ 'home', 'solo', 'circuit', 'rally', 'multi', 'experimental', 'yaris', 'beta', 'daily' ]; // their choices are on the home's walls
 const PANEL_SCREENS = [ 'settings', 'legal', 'profile' ]; // a panel of their own on the home: reached by a slide like Solo's, not the wipe
 const CIRCUIT_COLS = 3; // tiles across on a row of the circuit menu
 const PAGE = CIRCUIT_COLS * 2; // circuits on a page of the circuit menu (2 rows)
@@ -73,9 +74,9 @@ if ( ! GARAGE_CARS.includes( findCar( settings.car ) ) ) {
 }
 
 forgetOldPlayer();
-// The Google account as the screens read it: name = pseudo ('' until chosen),
+// The signed-in account as the screens read it: name = pseudo,
 // filled in once /api/me answers (the menu never waits for the network)
-const player = { name: '', signedIn: false, offline: null }; // offline: server error text
+const player = { name: '', signedIn: false, offline: null, beta: false }; // offline: server error text
 translatePage(); // index.html's own words (data-i18n)
 const authError = authErrorText( location.search );
 const screenEl = document.getElementById( 'screen' );
@@ -127,8 +128,11 @@ showroom.onCut = () => fx.cut();
 showroom.onFrame = ( canvas, p ) => fx.frame( canvas, p );
 
 let stack = [ 'home' ];
-if ( new URLSearchParams( location.search ).get( 'mode' ) === 'yaris' ) stack.push( 'yaris' );
-const inYarisMode = () => stack.includes( 'yaris' ) || ( stack.at( -1 ) === 'lobby' && multi.client.lobby?.mode === 'yaris' );
+let soloYaris = new URLSearchParams( location.search ).get( 'mode' ) === 'yaris';
+if ( soloYaris ) stack.push( 'solo' );
+const inBetaMode = () => stack.includes('beta') || multi.client.lobby?.mode==='beta';
+const inYarisMode = () => multi.client.lobby ? !!multi.client.lobby.settings.yaris || multi.client.lobby.mode==='yaris' : soloYaris && stack.some(s=>['solo','circuit','rally'].includes(s));
+const raceOptions = () => `<div class="race-options" style="position:fixed;bottom:24px;left:32px;z-index:22"><button class="chip" data-act="solo-yaris" aria-pressed="${soloYaris}">Yaris Mode: ${soloYaris?'вкл.':'выкл.'}</button></div>`;
 if ( location.hash === '#profile' ) stack.push( 'profile' );
 if ( [ '#catalog', '#leaderboard' ].includes( location.hash ) ) stack.push( 'solo', 'circuit' ); // navigation history, last = current screen
 let current = null;
@@ -188,9 +192,10 @@ function leave( url ) {
 }
 
 function play( query ) {
-	if ( inYarisMode() ) {
+	if ( inYarisMode() || inBetaMode() ) {
 		const params = new URLSearchParams( query );
-		params.set( 'mode', 'yaris' );
+		if (inYarisMode()) params.set( 'mode', 'yaris' );
+        if (inBetaMode()) params.set('beta','1');
 		query = params.toString();
 	}
 
@@ -328,14 +333,14 @@ const screens = {
 		'</div>' } ),
 
 	// The two modes are clips on the home's walls (soloCards → Walls.js); nothing in #screen
-	solo: () => ( { view: 'center', title: t( 'home.solo' ), html: '' } ),
+	solo: () => ( { view: 'center', title: t( 'home.solo' ), html: raceOptions() } ),
 
 	// Circuit and Spéciale: a column on the home's left wall (circuitWall,
 	// rallyWall → Walls.js), the view shifted so the car stands on the right
 	circuit: () => ( {
 		view: 'menu',
-		title: inYarisMode() ? 'Yaris Mode · ' + t( 'solo.circuit' ) : t( 'solo.circuit' ),
-		html: '',
+		title: t( 'solo.circuit' ),
+		html: raceOptions(),
 		after: ( screen ) => {
 
 			if ( ( circuitTab === 'community' || circuitTab === 'official' ) && ! community ) loadCommunity( screen );
@@ -344,7 +349,7 @@ const screens = {
 		},
 	} ),
 
-	rally: () => ( { view: 'menu', title: t( 'rally.title' ), html: '' } ),
+	rally: () => ( { view: 'menu', title: t( 'rally.title' ), html: raceOptions() } ),
 
 	// The daily challenge: a column on the home's left wall (dailyWall →
 	// Walls.js), its leaderboard on the right wall like Circuit's
@@ -427,7 +432,7 @@ function homeTitles() {
 	return [
 		{ side: 'left', title: t( 'home.solo' ), sub: t( 'home.soloSub' ), size: 0.21, accent: true, data: { go: 'solo' } },
 		{ side: 'left', title: t( 'home.multi' ), sub: t( 'home.multiSub' ), size: 0.12, data: { go: 'multi' } },
-		{ side: 'left', title: 'Yaris Mode', size: 0.13, accent: true, data: { go: 'yaris' } },
+		...(player.beta ? [{ side:'left',title:'Бета-режим',size:.13,accent:true,data:{go:'beta'} }] : []),
 		{ side: 'left', title: t( 'home.daily' ), sub: t( 'home.dailySub' ), size: 0.1, data: { go: 'daily' } },
 		{ side: 'left', title: t( 'home.experimental' ), sub: t( 'home.experimentalSub' ), size: 0.15, accent: true, data: { go: 'experimental' } },
 		{ side: 'right', title: t( 'home.garage' ), sub: t( 'home.garageSub', { car: car.label, n: settings.color } ), size: 0.13, above: true, grow: 1.2, data: { go: 'garage' } }, // its line above it: the tiles right under; the whole right wall ×1.2
@@ -718,7 +723,7 @@ function soloCards() {
 // ─── Garage: the car wheel and the liveries ───────────────
 
 // Swatch colours per car (Swatches.js: read off the car's own textures), once known
-const swatches = new Map();
+const swatches = new Map( [ [ YARIS_CAR, YARIS_PAINTS ] ] );
 
 // The swatches of the car on display, once its model is in
 async function refreshSwatches() {
@@ -799,6 +804,7 @@ function chooseCar( id, livery = null ) {
 	if ( livery ) settings.color = livery;
 	if ( settings.color > car.liveries ) settings.color = 1;
 	save();
+	multi.syncCar();
 	showroom.setCar( settings.car, settings.color ).then( refreshSwatches );
 
 	updateLiveries( car );
@@ -1017,24 +1023,25 @@ let lobbyParent = 'multi';
 
 const multi = createMulti( {
 	player, settings, escapeHtml, segmented, listPublished, findCar,
-	onChange: () => { if ( [ 'lobby', 'multi', 'experimental', 'yaris' ].includes( stack[ stack.length - 1 ] ) ) render(); },
+	onChange: () => { if ( [ 'lobby', 'multi', 'experimental', 'yaris', 'beta' ].includes( stack[ stack.length - 1 ] ) ) render(); },
 	// The lobbies list changed: only the wall (a form being typed in keeps its focus)
 	onWalls: () => {
 
 		const name = stack[ stack.length - 1 ];
-		if ( name === 'multi' || name === 'experimental' || name === 'yaris' ) showroom.swapWalls( multi.wall( name === 'yaris' ? 'yaris' : name === 'experimental' ? 'bonus' : 'classic' ), 1, true );
+		if ( name === 'multi' || name === 'experimental' || name === 'yaris' || name === 'beta' ) showroom.swapWalls( multi.wall( name === 'beta' ? 'beta' : name === 'yaris' ? 'yaris' : name === 'experimental' ? 'bonus' : 'classic' ), 1, true );
 
 	},
 	onEnterLobby: () => fx.transition( () => {
 
-		lobbyParent = multi.client.lobby?.mode === 'yaris' ? 'yaris' : multi.client.lobby?.mode === 'bonus' ? 'experimental' : 'multi';
+		lobbyParent = multi.client.lobby?.mode === 'beta' ? 'beta' : multi.client.lobby?.mode === 'yaris' ? 'yaris' : multi.client.lobby?.mode === 'bonus' ? 'experimental' : 'multi';
 		stack.splice( 0, stack.length, 'home', lobbyParent, 'lobby' );
 		render( true );
 
 	} ),
 	onRace: ( code ) => leave( 'play.html?lobby=' + encodeURIComponent( code ) ),
 	onTest: () => leave( 'play.html?test' ),
-	onYarisSolo: () => go( 'circuit' ),
+	onYarisSolo: () => go( 'solo' ),
+ onGarage:()=>go('garage'),
 	onLeaveLobby: () => fx.transition( () => {
 
 		stack.splice( 0, stack.length, 'home', lobbyParent );
@@ -1049,6 +1056,7 @@ const accountScreen = createProfileScreen( {
  escapeHtml,
  onChange: () => { if ( stack.at( -1 ) === 'profile' ) render(); },
  onName: name => { player.name = name; renderProfile(); },
+ onBeta:()=>loadAccount(true),
  onPlay: id => play( id === 'default' ? '' : 'circuit=' + id ),
  onSignOut: async () => { await signOut(); location.href = 'menu.html'; },
  onCircuits: () => { circuitTab = 'official'; go( 'circuit' ); },
@@ -1060,8 +1068,9 @@ const accountScreen = createProfileScreen( {
 function render( entering = false ) {
 
 	const name = stack[ stack.length - 1 ];
-	if ( name !== 'multi' && name !== 'experimental' && name !== 'yaris' ) multi.stopBrowsing();
-	const yaris = inYarisMode();
+	if ( name !== 'multi' && name !== 'experimental' && name !== 'yaris' && name !== 'beta' ) multi.stopBrowsing();
+	if(name==='beta' && !player.beta){ stack.splice(1); return render(); }
+ const yaris = inYarisMode();
 	music.setTrackIds( yaris ? [ YARIS_TRACK_ID ] : null );
 	const previewId = yaris ? YARIS_CAR : settings.car;
 	const previewColor = yaris ? 1 : settings.color;
@@ -1071,7 +1080,7 @@ function render( entering = false ) {
 	current = screens[ name ]();
 	showroom.setView( current.view );
 	showroom.goTo( placeOf( name ), { walls: WALL_SCREENS.includes( name ) } );
-	const wall = { home: homeTitles, solo: soloCards, circuit: circuitWall, rally: rallyWall, daily: dailyWall, multi: () => multi.wall( 'classic' ), experimental: () => multi.wall( 'bonus' ), yaris: () => multi.wall( 'yaris' ) }[ name ];
+	const wall = { home: homeTitles, solo: soloCards, circuit: circuitWall, rally: rallyWall, daily: dailyWall, multi: () => multi.wall( 'classic' ), experimental: () => multi.wall( 'bonus' ), yaris: () => multi.wall( 'yaris' ), beta:()=>multi.wall('beta') }[ name ];
 	if ( wall ) {
 
 		if ( showroom.walls ) {
@@ -1241,7 +1250,8 @@ function act( a ) {
 
 	if ( multi.act( a ) ) return;
 	if ( a === 'back' ) back();
-	else if ( a === 'editor' ) leave( 'editor.html' );
+	else if ( a === 'solo-yaris' ) { soloYaris=!soloYaris; return render(); }
+ else if ( a === 'editor' ) leave( 'editor.html' );
 	else if ( a.startsWith( 'theme:' ) ) {
 
 		setThemeSeason( settings, a.slice( 6 ) );
@@ -1407,7 +1417,7 @@ document.addEventListener( 'click', ( e ) => {
 		}
 
 		save();
-		if ( set === 'car' || set === 'color' ) showroom.setCar( settings.car, settings.color );
+		if ( set === 'car' || set === 'color' ) { showroom.setCar( settings.car, settings.color ); multi.syncCar(); }
 		return render();
 
 	}
@@ -1598,6 +1608,7 @@ async function loadAccount( refresh = false ) {
 	player.offline = account?.error ?? null;
 	player.signedIn = account !== null && ! account.error;
 	player.name = account?.pseudo || '';
+ player.beta=account?.beta===true;
 	renderProfile();
 	render();
 	if ( player.offline && refresh ) showAuthMessage( t( 'account.offlineWhy', { why: player.offline } ) );
@@ -1671,7 +1682,8 @@ document.addEventListener( 'pointermove', ( e ) => {
 function beatLoop() {
 
 	beatInfo = music.info();
-	if ( inYarisMode() ) stretchYaris( showroom.car, beatInfo.time );
+	if(showroom.car?.userData.yarisModel){showroom.car.userData.yaris=inYarisMode();if(!inYarisMode())showroom.car.children[0].scale.set(1,1,1);}
+ if ( inYarisMode() ) stretchYaris( showroom.car, beatInfo.time );
 	fx.pulse( beatInfo.kick );
 	showroom.walls?.setLive( { music: settings.music !== false, kick: beatInfo.kick, season: showroom.sets?.home?.seasonId } );
 	requestAnimationFrame( beatLoop );

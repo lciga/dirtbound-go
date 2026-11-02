@@ -7,6 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
+      BETA_TESTER_CODE: ${BETA_TESTER_CODE:-}
       PGHOST: postgres
       PGPORT: "5432"
       PGDATABASE: ${POSTGRES_DB:-dirtbound}

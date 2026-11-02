@@ -10,6 +10,7 @@ export function createProfileScreen({
   escapeHtml: esc,
   onChange,
   onName,
+  onBeta,
   onPlay,
   onSignOut,
   onCircuits,
@@ -48,6 +49,7 @@ export function createProfileScreen({
     return (
       `<div class="account-card"><b>${esc(data.account.username)}</b><div class="account-stats">${["circuits", "records", "stars"].map((key) => `<div><strong>${Number(data.stats[key])}</strong><small>${label(key)}</small></div>`).join("")}</div></div>` +
       `<form id="account-name-form" class="account-card"><label for="account-nickname">${t("account.pseudo")}</label><div class="row"><input id="account-nickname" autocomplete="nickname" required maxlength="20" value="${esc(data.account.pseudo)}"><button class="chip" type="submit">${label("save")}</button></div><p class="note" id="account-name-status" role="status">${t("account.pseudoNote")}</p></form>` +
+      (data.account.beta ? '<div class="account-card"><b>Бета-доступ активирован</b></div>' : '<form id="beta-access-form" class="account-card"><label for="beta-code">Код бетатестера</label><div class="row"><input id="beta-code" type="password" autocomplete="off" maxlength="100" required><button class="chip" type="submit">Активировать</button></div><p role="status" class="note"></p></form>') +
       `<p class="note">${label("storage")}</p><div class="row"><button class="chip" data-account-action="refresh">${label("refresh")}</button><button class="chip" data-account-action="sign-out">${t("account.signOut")}</button></div>`
     );
   }
@@ -121,7 +123,14 @@ export function createProfileScreen({
         onSignOut();
       } else if (button.dataset.accountAction === "catalog") onCircuits();
     };
-    const form = panel.querySelector("form");
+    const betaForm = panel.querySelector('#beta-access-form');
+    if(betaForm) betaForm.onsubmit=async e=>{
+      e.preventDefault(); const button=betaForm.querySelector('button'); button.disabled=true;
+      const result=await request('me/beta',{method:'POST',body:JSON.stringify({code:betaForm.querySelector('input').value})});
+      if(result.ok){ data.account.beta=true; await onBeta(); onChange(); }
+      else { betaForm.querySelector('[role=status]').textContent=result.error; button.disabled=false; }
+    };
+    const form = panel.querySelector("#account-name-form");
     if (form)
       form.onsubmit = async (e) => {
         e.preventDefault();

@@ -75,7 +75,8 @@ export function raceParams( race, you ) {
 
 	if ( me && me.car ) params.set( 'car', me.car );
 	if ( me ) params.set( 'color', me.color );
-	if ( race.mode === 'yaris' ) {
+	if(race.mode==='beta') params.set('beta','1');
+ if ( race.yaris || race.mode === 'yaris' ) {
 		params.set( 'mode', 'yaris' );
 		params.set( 'car', YARIS_CAR );
 		params.set( 'color', '1' );

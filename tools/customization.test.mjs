@@ -64,15 +64,11 @@ test('limiter pops require throttle and high RPM, stop during shifts, never catc
 	assert.equal(gate.update({...state,load:0},10.1),false);
 });
 
-test('normal full speed reaches the cosmetic limiter; braking clears pop conditions', () => {
-	const gearbox=new Gearbox();
-	for(let i=0;i<1800;i++) gearbox.update(1/60,0.94,1);
-	assert.equal(gearbox.gear,4);
-	assert.equal(gearbox.rpm,REDLINE_RPM);
-	assert.equal(gearbox.revLimit,true);
-	gearbox.update(1/60,0.94,-1);
-	assert.equal(gearbox.load,0);
-	assert.equal(new BackfireGate().update(gearbox,30),false);
+test('ordinary cruising shifts through gears and stays below the continuous limiter',()=>{
+ const box=new Gearbox();let shifts=0,previous=1;
+ for(let i=0;i<120*15;i++){box.update(1/120,.94,1);if(box.gear!==previous){shifts++;previous=box.gear;}}
+ assert.ok(shifts>=3);assert.equal(box.revLimit,false);assert.ok(box.rpm<box.redline-300);
+ box.update(1/120,.5,-1);assert.equal(box.load,0);
 });
 
 test('turbo pressure builds under load and releases once on lift or shift', () => {

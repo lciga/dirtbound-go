@@ -24,7 +24,8 @@ def main():
     with socket.socket() as probe:
         probe.bind(('127.0.0.1', 0))
         port = probe.getsockname()[1]
-    env = dict(os.environ, PORT=str(port), BIND_ADDRESS='127.0.0.1', POSTGRES_PASSWORD=secrets.token_hex(24))
+    env = dict(os.environ, PORT=str(port), BIND_ADDRESS='127.0.0.1',
+               POSTGRES_PASSWORD=secrets.token_hex(24), BETA_TESTER_CODE=secrets.token_urlsafe(24))
     compose = ['docker', 'compose', '-p', project]
 
     def run(*command, capture=False, timeout=600):
@@ -104,6 +105,8 @@ def main():
         password = secrets.token_urlsafe(24)
         account = api('/api/auth/register', {'username': username, 'password': password})['account']
         assert api('/api/me')['id'] == account['id']
+        assert api('/api/me')['beta'] is False
+        assert api('/api/me/beta', {'code': env['BETA_TESTER_CODE']})['beta'] is True
         assert api('/api/me/dashboard')['stats'] == {'circuits': 0, 'records': 0, 'stars': 0}
         _, race_page = request('/play.html?rally=smoke')
         assert b'src="js/main.js"' in race_page, 'Signed-in player cannot load race'
@@ -123,10 +126,14 @@ def main():
         print('PostgreSQL backup and restore into isolated database: OK', flush=True)
         run(*compose, 'up', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '90')
         assert api('/api/me')['id'] == account['id'], 'Session lost after recreation'
+        assert api('/api/me')['beta'] is True, 'Beta access lost after recreation'
+        versions = run(*compose, 'exec', '-T', 'postgres', 'sh', '-c',
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM schema_migrations WHERE version=2"', capture=True).stdout.strip()
+        assert versions == '1', 'Beta migration was not applied exactly once'
         api('/api/auth/sign-out', {})
         logged_in = api('/api/auth/login', {'username': username, 'password': password})
         assert logged_in['account']['id'] == account['id'], 'Account lost after recreation'
-        print('Account and session survive container recreation: OK', flush=True)
+        print('Account, session, beta access and migration survive container recreation: OK', flush=True)
         print('Docker Compose smoke test passed.', flush=True)
     except Exception:
         subprocess.run([*compose, 'logs', '--no-color', '--tail', '40'], cwd=root, env=env)

@@ -22,6 +22,7 @@ type Player struct {
 	Connected bool   `json:"connected"`
 }
 type LobbySettings struct {
+	Yaris      bool   `json:"yaris"`
 	Laps       int    `json:"laps"`
 	Length     int    `json:"length"`
 	Collisions bool   `json:"collisions"`
@@ -39,6 +40,7 @@ type Finish struct {
 	Time *float64 `json:"time"`
 }
 type Race struct {
+	Yaris bool `json:"yaris"`
 	Choice
 	Mode       string             `json:"mode"`
 	Seed       string             `json:"seed,omitempty"`
@@ -68,6 +70,7 @@ type Lobby struct {
 	Race       *Race             `json:"race"`
 }
 type peer struct {
+	beta                  bool
 	conn                  *websocket.Conn
 	send                  chan []byte
 	id, name, room, watch string
@@ -82,7 +85,7 @@ type Hub struct {
 }
 
 func forceYaris(l *Lobby) {
-	if l.Mode != "yaris" {
+	if l.Mode != "yaris" && !l.Settings.Yaris {
 		return
 	}
 	for _, player := range l.Players {
@@ -123,7 +126,7 @@ func (h *Hub) socket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(65536)
-	p := &peer{conn: conn, send: make(chan []byte, 128), id: user.ID, name: user.Pseudo}
+	p := &peer{conn: conn, send: make(chan []byte, 128), id: user.ID, name: user.Pseudo, beta: user.Beta}
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	defer conn.CloseNow()
@@ -303,9 +306,17 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 		return
 	case "watch":
 		p.watch = str(m, "mode")
+		if p.watch == "beta" && !p.beta {
+			h.err(p, "Нужен доступ бетатестера.")
+			return
+		}
 		h.list(p)
 		return
 	case "create":
+		if str(m, "mode") == "beta" && !p.beta {
+			h.err(p, "Нужен доступ бетатестера.")
+			return
+		}
 		if len(h.rooms) >= 2000 {
 			h.err(p, "Server full")
 			return
@@ -324,7 +335,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 			code = ""
 		}
 		mode := str(m, "mode")
-		if mode != "bonus" && mode != "yaris" {
+		if mode != "bonus" && mode != "yaris" && mode != "beta" {
 			mode = "classic"
 		}
 		visibility := str(m, "visibility")
@@ -338,7 +349,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 		if name == "" {
 			name = p.name
 		}
-		l = &Lobby{Code: code, Name: name, Mode: mode, Visibility: visibility, Host: p.id, State: "waiting", Players: []*Player{{ID: p.id, Name: p.name, Car: "Audi Quattro S1", Color: 1, Connected: true}}, Settings: LobbySettings{Laps: 3, Length: 3000, Landscape: "varied", Camera: "iso"}, Votes: map[string]Choice{}}
+		l = &Lobby{Code: code, Name: name, Mode: mode, Visibility: visibility, Host: p.id, State: "waiting", Players: []*Player{{ID: p.id, Name: p.name, Car: "Audi Quattro S1", Color: 1, Connected: true}}, Settings: LobbySettings{Laps: 3, Length: 3000, Landscape: "varied", Camera: "iso", Yaris: boolean(m, "yaris")}, Votes: map[string]Choice{}}
 		forceYaris(l)
 		h.rooms[code] = l
 		p.room = code
@@ -349,6 +360,10 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 		target := h.rooms[code]
 		if target == nil || target.State != "waiting" || len(target.Players) >= 8 {
 			h.err(p, "Lobby unavailable")
+			return
+		}
+		if target.Mode == "beta" && !p.beta {
+			h.err(p, "Нужен доступ бетатестера.")
 			return
 		}
 		h.leave(p)
@@ -367,6 +382,21 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 		return
 	}
 	switch t {
+	case "car":
+		if l.State != "waiting" {
+			return
+		}
+		for _, pl := range l.Players {
+			if pl.ID == p.id {
+				if car := str(m, "car"); len(car) > 0 && len(car) < 100 {
+					pl.Car = car
+				}
+				pl.Color = int(math.Max(1, math.Min(5, number(m, "color"))))
+				pl.Ready = false
+			}
+		}
+		forceYaris(l)
+		h.broadcast(l)
 	case "ready":
 		if l.State != "waiting" {
 			return
@@ -391,6 +421,12 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 			return
 		}
 		s := l.Settings
+		if _, ok := m["yaris"]; ok {
+			s.Yaris = boolean(m, "yaris")
+			for _, pl := range l.Players {
+				pl.Ready = false
+			}
+		}
 		if _, ok := m["laps"]; ok {
 			s.Laps = int(math.Max(1, math.Min(10, number(m, "laps"))))
 		}
@@ -407,6 +443,7 @@ func (h *Hub) handle(p *peer, m map[string]json.RawMessage) {
 			s.Landscape = v
 		}
 		l.Settings = s
+		forceYaris(l)
 		h.broadcast(l)
 	case "kick":
 		if l.Host != p.id || str(m, "player") == p.id {
@@ -564,7 +601,7 @@ func (h *Hub) closeVote(l *Lobby) {
 			grid = append(grid, &copy)
 		}
 	}
-	l.Race = &Race{Choice: winner, Mode: l.Mode, Seed: id(8), Laps: l.Settings.Laps, Length: l.Settings.Length, Landscape: l.Settings.Landscape, Camera: l.Settings.Camera, Collisions: l.Settings.Collisions || l.Mode == "bonus", Bonus: l.Mode == "bonus", Grid: grid, Finishes: map[string]float64{}, Results: []Finish{}, Loaded: map[string]bool{}}
+	l.Race = &Race{Choice: winner, Mode: l.Mode, Yaris: l.Settings.Yaris || l.Mode == "yaris", Seed: id(8), Laps: l.Settings.Laps, Length: l.Settings.Length, Landscape: l.Settings.Landscape, Camera: l.Settings.Camera, Collisions: l.Settings.Collisions || l.Mode == "bonus", Bonus: l.Mode == "bonus", Grid: grid, Finishes: map[string]float64{}, Results: []Finish{}, Loaded: map[string]bool{}}
 	l.State = "loading"
 	l.Deadline = time.Now().Add(90 * time.Second).UnixMilli()
 	h.broadcast(l)

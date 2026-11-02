@@ -21,7 +21,9 @@ function lerpAngle(a, b, t) { return physics.angle(a, b, t); }
 
 export class Vehicle {
 
-	constructor() {
+	constructor( { beta = false } = {} ) {
+ this.beta=beta;
+ this.transmission={gear:1,gearLabel:"1",rpm:1800,redline:7500,shift:0,hold:0,shifting:false,load:0};
 
 		this.linearSpeed = 0;
 		this.angularSpeed = 0;
@@ -152,9 +154,21 @@ export class Vehicle {
 			_right.normalize();
 
 			const angvel = this.rigidBody.motionProperties.angularVelocity;
-			const drive = step[5];
+			let drive = step[5];
+   if(this.beta){
+    const v=this.rigidBody.motionProperties.linearVelocity;
+    const speed=v[0]*_forward.x+v[2]*_forward.z,t=this.transmission;
+    const r=physics.transmission(t.gear,t.rpm,t.shift,t.hold,dt,speed,this.inputZ,this.speedFactor,this.handbrake);
+    Object.assign(t,{gear:r[0],rpm:r[1],shift:r[2],hold:r[3],load:r[5],redline:r[6],shifting:r[2]>0,gearLabel:speed<-.25?'R':String(r[0])});
+    const dv=r[4]*dt;
+    rigidBody.setLinearVelocity(this.physicsWorld,this.rigidBody,[v[0]+_forward.x*dv,v[1],v[2]+_forward.z*dv]);
+    // Match sphere rolling to the driven axle's ground velocity.
+    drive=0;
+    rigidBody.setAngularVelocity(this.physicsWorld,this.rigidBody,[_right.x*(speed+dv)/.5,angvel[1],_right.z*(speed+dv)/.5]);
+    this.linearSpeed=speed/20*MAX_SPEED;
+   }
 
-			rigidBody.setAngularVelocity( this.physicsWorld, this.rigidBody, [
+			if(!this.beta) rigidBody.setAngularVelocity( this.physicsWorld, this.rigidBody, [
 				angvel[ 0 ] + _right.x * drive,
 				angvel[ 1 ],
 				angvel[ 2 ] + _right.z * drive
@@ -219,6 +233,7 @@ export class Vehicle {
 		}
 
 		this.spherePos.fromArray( position );
+ if(this.beta) Object.assign(this.transmission,{gear:1,gearLabel:"1",rpm:1800,shift:0,hold:0,shifting:false,load:0});
 		this.sphereVel.set( 0, 0, 0 );
 		this.linearSpeed = 0;
 		this.angularSpeed = 0;

@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-const paint=0xe5e8e2, glass=0x183343, rubber=0x20252c, silver=0xadb6bd;
+const paint=0xe5e8e2, glass=0x171e26, rubber=0x20252c, silver=0xadb6bd;
 function colorGeometry(g,hex){
  if(g.index)g=g.toNonIndexed();
  g.deleteAttribute('uv');g.computeVertexNormals();
@@ -134,15 +134,8 @@ surfacePanel(cabinSurface,[[-.595,-1.065],[.595,-1.065],[.607,-.20],[.60,.255],[
 box(1.40,.065,.18,0,1.412,-1.15,0x192228);
 // Large six-sided grille, split from the narrow upper intake by a white bridge.
 polygon([[-.61,.24,2.025],[.61,.24,2.025],[.635,.59,2.025],[.48,.69,2.025],[-.48,.69,2.025],[-.635,.59,2.025]],0x11181d,[0,0,1]);
-for(let row=0;row<5;row++)for(let col=0;col<12;col++){
- const cx=(col-5.5)*.092+(row%2)*.022,cy=.285+row*.075;
- if(Math.abs(cx)>.55||(cy>.56&&Math.abs(cx)>.48))continue;
- // Sparse polygon grille pattern: vertex colour, no transparent texture or extra material.
- for(let j=0;j<6;j++){
-  const a=Math.PI/3*j,b=Math.PI/3*(j+1);
-  polygon([[cx+Math.cos(a)*.038,cy+Math.sin(a)*.029,2.030],[cx+Math.cos(b)*.038,cy+Math.sin(b)*.029,2.030],[cx+Math.cos(b)*.030,cy+Math.sin(b)*.022,2.031],[cx+Math.cos(a)*.030,cy+Math.sin(a)*.022,2.031]],0x29343b,[0,0,1]);
- }
-}
+// Broad low-poly intake slats match the existing rally pack at game distance.
+for(let i=0;i<4;i++)box(1.05,.018,.012,0,.30+i*.085,2.035,0x34404a);
 box(.95,.043,.028,0,.775,2.027,0x11181d);
 // Toyota's small oval nose badge. Geometry is shared with the body draw.
 function oval(cx,cy,z,rx,ry,width,color){
@@ -161,12 +154,28 @@ box(1.46,.045,.12,0,.198,1.99,paint);
 box(1.41,.11,.11,0,.245,-1.99,0x182127);
 box(.44,.13,.035,0,.64,-2.027,0xf1cc55);
 for(const side of [-1,1])box(.14,.065,.11,side*.58,.235,-2.07,0x414d54);
+// GR rally livery: angular side panels, bonnet stripe and two-digit door plates.
+const accent=0xcc2e32;
+for(const side of [-1,1]){
+ const flank=(p,color,offset=.009)=>surfacePanel(bodySurface,p,[2,1],n=>n[0]*side>.30,color,offset);
+ flank([[-1.68,.27],[-.90,.27],[1.48,.89],[.80,.97]],accent);
+ flank([[-1.68,.24],[-1.20,.24],[1.31,.88],[1.01,.93]],0x1b2228,.012);
+ flank([[-.42,.46],[.32,.46],[.32,.88],[-.42,.88]],0x151b22,.015);
+ // Number 24 drawn as simple solid strokes, merged into the body geometry.
+ const digits={2:[0,1,3,4,6],4:[1,2,3,5]},segments=[[-.08,.115,.16,.025],[.07,.06,.025,.11],[-.07,.06,.025,.11],[0,0,.16,.025],[-.07,-.06,.025,.11],[.07,-.06,.025,.11],[0,-.115,.16,.025]];
+ for(let d=0;d<2;d++)for(const segment of digits[d?4:2]){
+  const [x,y,w,h]=segments[segment],centreZ=side*((d?-.20:.10)+x);
+  flank([[centreZ-w/2,.67+y-h/2],[centreZ+w/2,.67+y-h/2],[centreZ+w/2,.67+y+h/2],[centreZ-w/2,.67+y+h/2]],0xf5f4ec,.021);
+ }
+}
+surfacePanel(bodySurface,[[-.23,1.06],[.24,1.06],[.35,1.94],[-.30,1.94]],[0,2],n=>n[1]>.6,0x182127,.008);
+surfacePanel(bodySurface,[[.25,1.06],[.37,1.06],[.48,1.91],[.36,1.94]],[0,2],n=>n[1]>.6,accent,.010);
 const body=mergeGeometries(parts);
 function cylinder(radius,width,segments,color){return colorGeometry(new THREE.CylinderGeometry(radius,radius,width,segments,1,false).rotateZ(Math.PI/2),color);}
-const wheelParts=[cylinder(tyreRadius,.19,16,rubber),cylinder(.265,.197,16,0x303a43),cylinder(.235,.202,16,0x11181f)];
-for(const side of [-1,1])for(let i=0;i<10;i++){
- const spoke=new THREE.BoxGeometry(.012,.45,.017).rotateX(i*Math.PI/10).translate(side*.106,0,0);
- wheelParts.push(colorGeometry(spoke,0x626e77));
+const wheelParts=[cylinder(tyreRadius,.19,16,rubber),cylinder(.265,.197,12,0xd9dcda),cylinder(.227,.202,12,0x11181f)];
+for(const side of [-1,1])for(let i=0;i<5;i++){
+ const spoke=new THREE.BoxGeometry(.012,.45,.045).rotateX(i*Math.PI/5).translate(side*.106,0,0);
+ wheelParts.push(colorGeometry(spoke,0xe8e9e3));
 }
 wheelParts.push(cylinder(.055,.225,12,0x77838b));
 const wheel=mergeGeometries(wheelParts);

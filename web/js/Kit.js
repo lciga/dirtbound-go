@@ -41,6 +41,12 @@ const ARCH_SCALE = 3.6; // flat arches: posts and beam, beam bottom ≈ 1.9 m up
 const ROUND_HEIGHT = 3.4; // m, crown of the round arches
 
 export const KIT_MATERIAL = new THREE.MeshStandardMaterial( { vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true } );
+let clubPoster;
+function billboardPoster(){
+ // Kit front faces use v=-1 at the top and v=0 at the bottom.
+ if(!clubPoster){clubPoster=new THREE.TextureLoader().load('images/club-billboard.jpg');clubPoster.colorSpace=THREE.SRGBColorSpace;clubPoster.flipY=false;clubPoster.repeat.set(2,1);clubPoster.offset.set(-.5,1);}
+ return clubPoster;
+}
 const texturedMaterials = new Map(); // texture → material
 
 function texturedMaterial( map ) {
@@ -68,7 +74,8 @@ function bake( name, scene, recolor = {} ) {
 
 		const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
 		g.applyMatrix4( o.matrixWorld );
-		const m = o.material;
+		const source=o.material;
+ const m=name.startsWith('billboard') && source.name==='tankco' ? {...source,map:billboardPoster()} : source;
 		const key = m.name + ( m.map ? '#map' : '' );
 		let part = byMaterial.get( key );
 

@@ -23,6 +23,7 @@ import (
 )
 
 type Account struct {
+	Beta     bool   `json:"beta"`
 	ID       string `json:"id"`
 	Pseudo   string `json:"pseudo"`
 	Username string `json:"username"`
@@ -56,6 +57,8 @@ type Store struct {
 	Laps        map[string][]Lap      `json:"laps"`
 }
 type App struct {
+	betaCodeHash  [32]byte
+	betaEnabled   bool
 	db            *pgxpool.Pool
 	static        http.Handler
 	hub           *Hub
@@ -101,6 +104,10 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if !signedIn {
 			http.Redirect(w, r, "/login.html?next="+url.QueryEscape(r.URL.RequestURI()), http.StatusSeeOther)
+			return
+		}
+		if r.URL.Query().Get("beta") == "1" && !me.Beta {
+			failure(w, 403, "Для бета-режима нужен доступ бетатестера.")
 			return
 		}
 	}
@@ -181,6 +188,9 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		} else {
 			success(w, me)
 		}
+		return
+	case "me/beta":
+		a.redeemBeta(w, r, me)
 		return
 	case "me/dashboard":
 		a.dashboard(w, r, me)

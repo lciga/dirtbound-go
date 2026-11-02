@@ -277,10 +277,10 @@ export class GameAudio {
 
 	}
 
-	update( dt, speed, throttle, driftIntensity ) {
+	update( dt, speed, throttle, driftIntensity, transmission = null ) {
 
 		// Cosmetic gearbox: reads speed/throttle, never feeds back into physics
-		this.gearbox.update( dt, speed, throttle );
+		if(!transmission)this.gearbox.update( dt, speed, throttle );
 
 		const now = this.listener.context.currentTime;
 
@@ -296,7 +296,7 @@ export class GameAudio {
 
 		}
 
-		if ( this.engine ) this.engine.update( this.gearbox );
+		if ( this.engine ) this.engine.update( transmission || this.gearbox );
 
 		if ( this.skidSound.buffer ) {
 

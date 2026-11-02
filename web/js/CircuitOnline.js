@@ -38,7 +38,7 @@ export class CircuitOnline {
 	// challenge, on a real circuit: same geometry, its own leaderboard)
 	// onFinish(): called once a valid lap ends, whatever happens next (not
 	// signed in, not a personal best) — audience stats only, never blocks
-	constructor( { scene, loader, lapTimer, vehicle, trackRef, car, ghost, prepare = null, boardId = null, onFinish = null } ) {
+	constructor( { scene, loader, lapTimer, vehicle, trackRef, car, ghost, yarisMode = false, prepare = null, boardId = null, onFinish = null } ) {
 
 		this.scene = scene;
 		this.prepare = prepare;
@@ -46,6 +46,7 @@ export class CircuitOnline {
 		this.lapTimer = lapTimer;
 		this.vehicle = vehicle;
 		this.car = car;
+ this.yarisMode=yarisMode;
 		this.trackRef = trackRef;
 		this.onFinish = onFinish;
 		this.account = null; // { id, pseudo } once known, null when signed out
@@ -138,7 +139,7 @@ export class CircuitOnline {
 	// Swaps the ghost car for this lap (loads its car model if it changed)
 	async showGhost( lap ) {
 
-		const yaris = this.car.id === YARIS_CAR;
+		const yaris = this.yarisMode;
 		const carId = yaris ? YARIS_CAR : lap.car;
 		const color = yaris ? 1 : lap.color;
 		const sameCar = this.ghostCar && this.ghostCar.car === carId && this.ghostCar.color === color;
@@ -150,6 +151,7 @@ export class CircuitOnline {
 				return loadCar( this.loader, 'truck', 1 );
 			} );
 			if ( this.ghostCar ) this.scene.remove( this.ghostCar.container );
+			if(model.userData.yarisModel)model.userData.yaris=yaris;
 			this.ghostCar = new GhostCar( model );
 			this.ghostCar.car = carId;
 			this.ghostCar.color = color;

@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"crypto/sha256"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,41 @@ import (
 
 //go:embed schema.sql
 var schemaSQL string
+
+//go:embed migrations/*.sql
+var migrations embed.FS
+
+// The caller holds the PostgreSQL migration advisory lock and transaction.
+func applyMigrations(ctx context.Context, tx pgx.Tx) error {
+	entries, err := migrations.ReadDir("migrations")
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		version, err := strconv.Atoi(strings.SplitN(entry.Name(), "_", 2)[0])
+		if err != nil {
+			return err
+		}
+		var done bool
+		if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)", version).Scan(&done); err != nil {
+			return err
+		}
+		if done {
+			continue
+		}
+		sql, err := migrations.ReadFile("migrations/" + entry.Name())
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, string(sql)); err != nil {
+			return fmt.Errorf("migration %s: %w", entry.Name(), err)
+		}
+		if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations(version) VALUES($1)", version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // New opens PostgreSQL, applies the schema and imports a legacy JSON store
 // transactionally once. PostgreSQL is the only live source of account data.
@@ -62,6 +98,9 @@ func New(files fs.FS, databaseURL, legacyPath string) (*App, error) {
 	if _, err = tx.Exec(ctx, schemaSQL); err != nil {
 		return fail(fmt.Errorf("schema migration: %w", err))
 	}
+	if err = applyMigrations(ctx, tx); err != nil {
+		return fail(err)
+	}
 	if err = importLegacy(ctx, tx, legacyPath); err != nil {
 		return fail(fmt.Errorf("legacy import: %w", err))
 	}
@@ -84,6 +123,9 @@ func New(files fs.FS, databaseURL, legacyPath string) (*App, error) {
 		return fail(err)
 	}
 	a := &App{db: db, static: httpFiles(files), loginAttempts: map[string]*attempts{}, authSlots: make(chan struct{}, 4)}
+	code := strings.TrimSpace(os.Getenv("BETA_TESTER_CODE"))
+	a.betaEnabled = len(code) >= 12
+	a.betaCodeHash = sha256.Sum256([]byte(code))
 	a.hub = newHub(a)
 	ok = true
 	return a, nil
@@ -167,7 +209,7 @@ func (a *App) account(r *http.Request) (*Account, error) {
 		return nil, nil
 	}
 	var account Account
-	err = a.db.QueryRow(ctx, `SELECT a.id,a.username,a.pseudo FROM accounts a JOIN sessions s ON s.account_id=a.id WHERE s.token_hash=$1 AND s.expires>$2`, sessionKey(cookie.Value), time.Now().Unix()).Scan(&account.ID, &account.Username, &account.Pseudo)
+	err = a.db.QueryRow(ctx, `SELECT a.id,a.username,a.pseudo,a.beta_access FROM accounts a JOIN sessions s ON s.account_id=a.id WHERE s.token_hash=$1 AND s.expires>$2`, sessionKey(cookie.Value), time.Now().Unix()).Scan(&account.ID, &account.Username, &account.Pseudo, &account.Beta)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

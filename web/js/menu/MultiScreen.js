@@ -14,7 +14,7 @@ const COMMUNITY_SHOWN = 12;
 const CAMERA_LABELS = Object.fromEntries( CAMERAS.map( ( id ) => [ id, t( 'lobby.cameras.' + id ) ] ) );
 const CROWN = '<svg class="crown" viewBox="0 0 24 24"><path d="M3 18h18l-1.5-10-5 4L12 5l-2.5 7-5-4z"/></svg>';
 
-export function createMulti( { player, settings, escapeHtml, segmented, listPublished, findCar, onChange, onWalls, onEnterLobby, onLeaveLobby, onRace, onTest, onYarisSolo } ) {
+export function createMulti( { player, settings, escapeHtml, segmented, listPublished, findCar, onChange, onWalls, onEnterLobby, onLeaveLobby, onRace, onTest, onYarisSolo, onGarage } ) {
 
 	const client = new LobbyClient( { url: lobbyUrl( location ) } );
 	let message = ''; // last error or reason shown on the screens
@@ -28,6 +28,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 		if ( leaving ) return;
 		message = '';
+        syncCar();
 
 		// Vote over and this player is on the grid: off to the race
 		if ( client.lobby.state === 'loading' && inRace() ) {
@@ -78,14 +79,16 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 	const isHost = () => client.lobby?.host === client.you;
 	const note = () => message ? `<p class="note warn">${ escapeHtml( message ) }</p>` : '';
 
-	const bonusLobby = () => client.lobby?.mode === 'bonus';
+	const yarisLobby=()=>client.lobby?.settings.yaris || client.lobby?.mode==='yaris';
+ function syncCar(){const mine=me();if(mine&&client.lobby.state==='waiting'&&!yarisLobby()&&(mine.car!==settings.car||mine.color!==settings.color)) client.setCar(settings.car,settings.color);}
+ const bonusLobby = () => client.lobby?.mode === 'bonus';
 
 	// ─── "Multijoueur" and "Expérimental": a column on the home's left wall ───
 	// (wall(): Walls.js tiles, like Circuit's) — create a lobby, join one with
 	// its code (those two need typing: a small form card on the right, HTML),
 	// the public lobbies a page at a time
 
-	const browse = { mode: 'classic', creating: false, visibility: 'public', name: '', codeOpen: false, page: 0 };
+	const browse = { mode: 'classic', creating: false, visibility: 'public', name: '', codeOpen: false, page: 0, yaris:false };
 	const named = () => player.signedIn && player.name !== '';
 	const COLUMN = 0.92, GAP = 0.008, PAGE = 4;
 	const across = ( n ) => ( COLUMN - GAP * ( n - 1 ) ) / n;
@@ -101,7 +104,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 			{ ...L, kind: 'tab', row: 'act', w: across( 2 ), h: 0.12, title: t( 'multi.joinCode' ), off: ! can, data: { act: 'multi-code' } },
 			...( mode === 'yaris' ? [] : [ caption( bonus ? t( 'multi.bonusCaption' ) : t( 'multi.publicCaption', { min: MIN_PLAYERS, max: MAX_PLAYERS } ) ) ] ),
 		];
-		if ( mode === 'yaris' ) out.unshift(
+		if ( mode === 'yaris' || mode==='beta' ) out.unshift(
 			{ ...L, kind: 'tab', w: COLUMN, h: 0.13, title: t( 'club.yarisSolo' ), big: true, accent: true, data: { act: 'multi-solo' } },
 		);
 
@@ -150,6 +153,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 					`<input id="lobby-name" maxlength="24" autocomplete="off" spellcheck="false" placeholder="${ escapeHtml( t( 'multi.defaultName', { name: player.name } ) ) }" value="${ escapeHtml( browse.name ) }">` +
 					`<p class="note">${ t( 'multi.publicNote' ) }</p>`
 				: `<p class="note">${ t( 'multi.privateNote' ) }</p>` ) +
+			`<label class="field"><input id="lobby-yaris" type="checkbox" ${browse.yaris?'checked':''}> Yaris Mode</label>` +
 			( bonus || browse.mode === 'yaris' ? '' : `<p class="note mode-note">${ t( 'multi.tryBonusHint' ) }</p>` ) +
 			`<div class="row actions"><button data-act="multi-new-cancel">${ t( 'common.cancel' ) }</button><button class="go" data-act="multi-create-go">${ t( 'multi.createGo' ) }</button></div>` +
 			'</div>';
@@ -176,7 +180,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 		return {
 			view: 'menu',
-			title: mode === 'yaris' ? 'Yaris Mode' : bonus ? t( 'home.experimental' ) : t( 'home.multi' ),
+			title: mode==='beta'?'Бета-режим': mode === 'yaris' ? 'Yaris Mode' : bonus ? t( 'home.experimental' ) : t( 'home.multi' ),
 			after: () => {
 
 				stopCountdown();
@@ -211,7 +215,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		const badges = ( pl.id === client.lobby.host ? CROWN : '' ) + ( pl.connected ? '' : `<em class="off">${ t( 'lobby.disconnected' ) }</em>` );
 		const state = pl.ready ? `<span class="ready on">${ t( 'lobby.ready' ) }</span>` : `<span class="ready">${ t( 'lobby.notReady' ) }</span>`;
 		const kick = isHost() && pl.id !== client.you ? `<button class="mini-btn" data-act="multi-kick:${ pl.id }" title="${ t( 'lobby.kick' ) }">✕</button>` : '';
-		return `<li class="${ pl.id === client.you ? 'me' : '' }"><b>${ escapeHtml( pl.name ) }</b>${ badges }<small>${ client.lobby.mode === 'yaris' ? '' : car ? escapeHtml( t( 'lobby.carLine', { car: car.label, n: pl.color } ) ) : '–' }</small>${ state }${ kick }</li>`;
+		return `<li class="${ pl.id === client.you ? 'me' : '' }"><b>${ escapeHtml( pl.name ) }</b>${ badges }<small>${ yarisLobby() ? '' : car ? escapeHtml( t( 'lobby.carLine', { car: car.label, n: pl.color } ) ) : '–' }</small>${ state }${ kick }</li>`;
 
 	}
 
@@ -225,14 +229,14 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 	function settingsPanel() {
 
-		const { laps, length, collisions, landscape, camera = 'iso' } = client.lobby.settings;
+		const { laps, length, collisions, landscape, camera = 'iso', yaris=false } = client.lobby.settings;
 		const bonus = bonusLobby();
 		const host = isHost() && client.lobby.state === 'waiting';
 		const collisionSeg = segmented( 'multi-collisions', [ [ 0, t( 'common.no' ) ], [ 1, t( 'common.yes' ) ] ], collisions ? 1 : 0 ).replace( /data-set="multi-collisions" data-value="(\d)"/g, ( _, v ) => `data-act="multi-set:collisions:${ v }"${ host ? '' : ' disabled' }` );
 		const cameraSeg = segmented( 'multi-camera', CAMERAS.map( ( id ) => [ id, CAMERA_LABELS[ id ] ] ), camera ).replace( /data-set="multi-camera" data-value="([a-z]+)"/g, ( _, v ) => `data-act="multi-set:camera:${ v }"${ host ? '' : ' disabled' }` );
 		const landscapeSeg = segmented( 'multi-landscape', LANDSCAPE_IDS.map( ( id ) => [ id, t( 'landscape.' + id ) ] ), landscape || 'varied' ).replace( /data-set="multi-landscape" data-value="([a-z]+)"/g, ( _, v ) => `data-act="multi-set:landscape:${ v }"${ host ? '' : ' disabled' }` );
 
-		return ( bonus ? `<p class="note mode-note">${ t( 'lobby.bonusNote' ) }</p>` : '' ) +
+		return `<label class="field">Yaris Mode</label><button class="chip" data-act="multi-set:yaris:${yaris?0:1}" aria-pressed="${yaris}" ${host?'':'disabled'}>${yaris?'Включён':'Выключен'}</button>` + ( bonus ? `<p class="note mode-note">${ t( 'lobby.bonusNote' ) }</p>` : '' ) +
 			`<label class="field">${ bonus ? t( 'lobby.laps' ) : t( 'lobby.lapsAll' ) }</label>` + stepper( 'laps', laps, LAPS.min, LAPS.max, 1, t( 'lobby.lapCount', { n: laps } ) ) +
 			( bonus ? '' : `<label class="field">${ t( 'lobby.stageLength' ) }</label>` + stepper( 'length', length, STAGE_M.min, STAGE_M.max, STAGE_M.step, `${ length / 1000 } km` ) +
 			`<label class="field">${ t( 'lobby.stageLandscape' ) }</label>` + landscapeSeg ) +
@@ -334,7 +338,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 				`<section class="panel browser lobby-main">${ main }${ note() }${ offline }</section>` +
 				'<aside class="panel detail">' +
 				`<div class="lobby-code"><small>${ bonusLobby() ? t( 'lobby.bonusCode' ) : t( 'lobby.code' ) }</small><b>${ escapeHtml( lobby.code ) }</b><button data-act="multi-copy">${ t( 'lobby.copy' ) }</button></div>` +
-				`<ul class="lobby-players">${ lobby.players.map( playerRow ).join( '' ) }</ul>` +
+				`<ul class="lobby-players">${ lobby.players.map( playerRow ).join( '' ) }</ul>${lobby.state==='waiting'&&!yarisLobby()?'<button class="chip" data-act="multi-garage">Гараж</button>':''}` +
 				`<p class="note">${ t( 'lobby.players', { n: lobby.players.length, max: MAX_PLAYERS } ) }</p>` +
 				`<div class="row actions"><button data-act="multi-leave">${ t( 'lobby.leave' ) }</button></div>` +
 				'</aside></div>',
@@ -383,6 +387,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		else if ( action === 'multi-vis' ) {
 
 			browse.name = document.getElementById( 'lobby-name' )?.value ?? browse.name;
+            browse.yaris=!!document.getElementById('lobby-yaris')?.checked;
 			browse.visibility = a;
 
 		}
@@ -390,7 +395,7 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 			const name = ( document.getElementById( 'lobby-name' )?.value ?? browse.name ).trim() || t( 'multi.defaultName', { name: player.name } );
 			browse.name = name;
-			client.create( browse.mode, { visibility: browse.visibility, name } );
+			client.create( browse.mode, { visibility: browse.visibility, name, yaris:!!document.getElementById('lobby-yaris')?.checked } );
 
 		}
 		else if ( action === 'multi-code' ) Object.assign( browse, { codeOpen: true, creating: false } );
@@ -411,7 +416,8 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 		}
 		else if ( action === 'multi-copy' ) navigator.clipboard?.writeText( client.lobby.code ).catch( () => {} );
-		else if ( action === 'multi-ready' ) client.setReady( { car: client.lobby.mode === 'yaris' ? YARIS_CAR : settings.car, color: client.lobby.mode === 'yaris' ? 1 : settings.color, ready: ! me()?.ready } );
+		else if(action==='multi-garage'){onGarage();return true;}
+        else if ( action === 'multi-ready' ) client.setReady( { car: yarisLobby() ? YARIS_CAR : settings.car, color: yarisLobby() ? 1 : settings.color, ready: ! me()?.ready } );
 		else if ( action === 'multi-vote-start' ) client.startVote();
 		else if ( action === 'multi-leave' ) leave();
 		else if ( action === 'multi-rejoin' ) {
@@ -425,7 +431,8 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 		else if ( action === 'multi-set' ) {
 
 			const next = { ...client.lobby.settings };
-			if ( a === 'collisions' ) next.collisions = b === '1';
+			if(a==='yaris') next.yaris=b==='1';
+            else if ( a === 'collisions' ) next.collisions = b === '1';
 			else if ( a === 'landscape' ) next.landscape = b;
 			else if ( a === 'camera' ) next.camera = b;
 			else next[ a ] = Number( b );
@@ -458,6 +465,6 @@ export function createMulti( { player, settings, escapeHtml, segmented, listPubl
 
 	}
 
-	return { screens: { multi: () => multiScreen(), experimental: () => multiScreen( 'bonus' ), yaris: () => multiScreen( 'yaris' ), lobby: lobbyScreen }, wall, act, leave, resume, stopBrowsing, client };
+	return { screens: { multi: () => multiScreen(), experimental: () => multiScreen( 'bonus' ), yaris: () => multiScreen( 'yaris' ), beta:()=>multiScreen('beta'), lobby: lobbyScreen }, wall, act, leave, resume, stopBrowsing, syncCar, client };
 
 }

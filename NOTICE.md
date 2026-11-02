@@ -55,3 +55,5 @@ PostgreSQL-драйвер pgx — github.com/jackc/pgx, MIT; используе�
 | Dave Rodgers — Beat of the Rising Sun | [YouTube](https://www.youtube.com/watch?v=5WyN2y2FPnQ) |
 
 Yaris Mode: модель GR Yaris `web/models/yaris.glb` создана процедурно генератором `tools/build-yaris.mjs` по фотографии пользователя в визуальном стиле машин игры. Перед направлен по +Z; геометрия и материалы общие для всех игроков. Референс анимации предоставлен пользователем: [UralCUP yaris](https://github.com/1sk4nd3r/UralCUP-2026-Writeups/tree/main/tasks/web/yaris). Эффект в `YarisMode.js` адаптирован из [bounce.js](https://github.com/1sk4nd3r/UralCUP-2026-Writeups/blob/main/tasks/web/yaris/front/src/bounce.js): цикл 2,2 Гц, быстрый участок 12%, масштаб 0,8–1,2. Меняется только визуальный узел, не физическое тело. Авторство исходных ресурсов и условия сторонних лицензий сохраняются; переоформление интерфейса их не отменяет.
+
+Билборды `web/images/club-billboard.jpg`: изображение предоставлено пользователем для оформления трасс. GR Yaris получила процедурные гоночные окрасы; геометрия и материалы кешируются по пяти вариантам.

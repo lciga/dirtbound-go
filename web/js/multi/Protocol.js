@@ -38,7 +38,7 @@ export const STATES_PER_SECOND = 20;
 export const LOOP_AVAILABLE = true; // vote kind 'loop' = « Circuit aléatoire »: the server draws one of the existing circuits when the vote closes (lobbies.mjs closeVote)
 // Lobby modes: 'classic' (the races above) or 'bonus' (menu Expérimental:
 // circuits only, item boxes and rockets, js/bonus/)
-export const LOBBY_MODES = Object.freeze( [ 'classic', 'bonus', 'yaris' ] );
+export const LOBBY_MODES = Object.freeze( [ 'classic', 'bonus', 'yaris', 'beta' ] );
 // Public lobbies are listed in the menu's grid (with their name); private ones join by code only
 export const VISIBILITIES = Object.freeze( [ 'public', 'private' ] );
 export const LOBBY_NAME = /^[\p{L}\p{N} .,'!?&#()+-]{1,24}$/u;

@@ -83,11 +83,12 @@ export class RaceSync {
 		for ( const g of this.race.grid ) {
 
 			if ( g.id === this.you ) continue;
-			const id = this.race.mode === 'yaris' ? YARIS_CAR : g.car || 'truck';
+			const id = (this.race.yaris || this.race.mode === 'yaris') ? YARIS_CAR : g.car || 'truck';
 			const model = await this.loadCar( id, g.color ).catch( error => {
-				if ( this.race.mode === 'yaris' ) throw error;
+				if ( (this.race.yaris || this.race.mode === 'yaris') ) throw error;
 				return this.loadCar( 'truck', 1 );
 			} );
+			if(model.userData.yarisModel)model.userData.yaris=!!(this.race.yaris || this.race.mode==='yaris');
 			const ghost = new GhostCar( model, { seeThrough: ! solid } );
 			if ( this.bodies ) this.bodies.add( g.id );
 			this.scene.add( ghost.container );

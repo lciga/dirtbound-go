@@ -113,7 +113,7 @@ func (a *App) authenticate(w http.ResponseWriter, r *http.Request, action string
 		account = Account{ID: id(12), Username: body.Username, Pseudo: body.Username}
 		cred.Account = account.ID
 	} else {
-		err = a.db.QueryRow(ctx, `SELECT c.account_id,c.salt,c.hash,c.iterations,a.id,a.username,a.pseudo FROM credentials c JOIN accounts a ON a.id=c.account_id WHERE c.login=$1`, login).Scan(&cred.Account, &cred.Salt, &cred.Hash, &cred.Iterations, &account.ID, &account.Username, &account.Pseudo)
+		err = a.db.QueryRow(ctx, `SELECT c.account_id,c.salt,c.hash,c.iterations,a.id,a.username,a.pseudo,a.beta_access FROM credentials c JOIN accounts a ON a.id=c.account_id WHERE c.login=$1`, login).Scan(&cred.Account, &cred.Salt, &cred.Hash, &cred.Iterations, &account.ID, &account.Username, &account.Pseudo, &account.Beta)
 		exists := err == nil
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			databaseFailure(w, err)

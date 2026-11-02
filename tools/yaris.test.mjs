@@ -30,7 +30,7 @@ test('reference squash/stretch is periodic and never moves the physical car', ()
  assert.ok(Math.abs(yarisScale(0.12/2.2).y-0.8)<1e-12);
 });
 
-test('Yaris geometry stays inside the reviewed rendering budget and outside the regular garage', async()=>{
+test('Yaris geometry stays inside the reviewed rendering budget and available in the regular garage', async()=>{
  const bytes=await fs.readFile(new URL('../web/models/yaris.glb',import.meta.url));
  assert.equal(bytes.toString('ascii',0,4),'glTF');
  const model=JSON.parse(bytes.toString('utf8',20,20+bytes.readUInt32LE(12)));
@@ -39,7 +39,7 @@ test('Yaris geometry stays inside the reviewed rendering budget and outside the 
  assert.ok(triangles<=4000 && draws<=5);
  assert.ok(bytes.length<220_000 && (model.images?.length??0)===0);
  assert.ok(CARS.some(c=>c.id===YARIS_CAR));
- assert.ok(!GARAGE_CARS.some(c=>c.id===YARIS_CAR));
+ assert.ok(GARAGE_CARS.some(c=>c.id===YARIS_CAR));
  assert.ok(model.nodes.filter(n=>['FL','FR'].includes(n.name)).every(n=>n.translation[2]>0));
  assert.ok(model.nodes.filter(n=>['BL','BR'].includes(n.name)).every(n=>n.translation[2]<0));
  assert.ok(!model.nodes.find(n=>n.name==='car').rotation);
@@ -135,9 +135,10 @@ test('record and TAS ghosts also use the Yaris visual without changing recorded 
   requested.push(src);
   const scene=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial());
+  body.geometry.setAttribute('color',new THREE.BufferAttribute(new Uint8Array(body.geometry.attributes.position.count*3).fill(255),3,true));
   body.name='car';scene.add(body);onLoad({scene});
  }};
- const online=Object.assign(Object.create(CircuitOnline.prototype),{car:{id:YARIS_CAR},loader,scene:new THREE.Scene(),ghostCar:null});
+ const online=Object.assign(Object.create(CircuitOnline.prototype),{yarisMode:true,car:{id:YARIS_CAR},loader,scene:new THREE.Scene(),ghostCar:null});
  const frames=[[0,0,0,0]];
  await online.showGhost({car:'Audi Quattro S1',color:3,frames});
  assert.deepEqual(requested,['models/yaris.glb']);

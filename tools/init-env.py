@@ -26,3 +26,14 @@ else:
         print('Replaced example PostgreSQL password in .env.')
     else:
         print('Existing .env kept unchanged.')
+
+content = path.read_text()
+if 'BETA_TESTER_CODE=' not in content or 'BETA_TESTER_CODE=generate-on-init' in content:
+    code = 'RC-' + secrets.token_hex(10).upper()
+    if 'BETA_TESTER_CODE=generate-on-init' in content:
+        content = content.replace('BETA_TESTER_CODE=generate-on-init','BETA_TESTER_CODE='+code)
+    else:
+        content += '\nBETA_TESTER_CODE='+code+'\n'
+    path.write_text(content)
+    path.chmod(0o600)
+    print('Generated beta tester code in .env (not printed).')

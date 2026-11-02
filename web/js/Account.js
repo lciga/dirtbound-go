@@ -1,4 +1,4 @@
-// The player's account: Google through Better Auth (server/lib/auth.mjs).
+// The player's account: username/password and sessions served by Go/PostgreSQL.
 // The session is an HttpOnly cookie of this site, so every same-origin fetch
 // carries it; nothing about the account is kept in localStorage. Network
 // failures never break the game: calls resolve to null / { ok: false }.
@@ -40,7 +40,7 @@ export async function getAccount( { refresh = false } = {} ) {
 
 		}
 
-		cached = r.ok ? { id: r.data.id, pseudo: r.data.pseudo } : null;
+		cached = r.ok ? { id: r.data.id, pseudo: r.data.pseudo, beta: r.data.beta === true } : null;
 
 	}
 
@@ -48,7 +48,7 @@ export async function getAccount( { refresh = false } = {} ) {
 
 }
 
-// Off to Google, back on this page (or the menu with ?error= if it fails)
+// Open the local login screen and return to this page afterwards.
 export async function signIn({location = window.location} = {}) {
  const next = location.pathname + location.search + location.hash;
  location.href = 'login.html?next=' + encodeURIComponent(next);

@@ -9,7 +9,7 @@ export const TRUCK_COLORS = [ 'yellow', 'green', 'purple', 'red' ];
 
 export const CARS = [
 	{ id: 'truck', label: 'Club Pick-up', liveries: TRUCK_COLORS.length },
-	{ id: YARIS_CAR, label: YARIS_CAR, liveries: 1, modeOnly: 'yaris' },
+	{ id: YARIS_CAR, label: 'Toyota GR Yaris', liveries: 5 },
 	...RALLY_CARS.map( ( name ) => ( { id: name, label: name, liveries: 5 } ) ),
 ];
 
@@ -29,7 +29,7 @@ export function loadCar( loader, id, livery = 1 ) {
 
 	const car = findCar( id );
 	if ( ! car ) return Promise.reject( new Error( `Unknown car "${ id }"` ) );
-	if ( car.id === YARIS_CAR ) return loadYaris( loader );
+	if ( car.id === YARIS_CAR ) return loadYaris( loader, livery );
 
 	if ( car.id !== 'truck' ) return loadRallyCar( loader, car.id, livery );
 

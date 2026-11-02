@@ -3,6 +3,11 @@ import { rigidBody, box, sphere, MotionType, MotionQuality } from 'crashcat';
 import { TRACK_CELLS, CELL_RAW, ORIENT_DEG, GRID_SCALE } from './Track.js';
 import { splineWallBoxes } from './WallBoxes.js';
 
+function createWall(world,options){
+ (world._clubWalls??=[]).push({position:options.position,quaternion:options.quaternion,halfExtents:options.shape.halfExtents});
+ return rigidBody.create(world,options);
+}
+
 const _debugMat = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
 
 function addDebugBox( group, halfExtents, position, quaternion ) {
@@ -52,7 +57,7 @@ export function buildWallColliders( world, debugGroup, customCells ) {
 			];
 			const quaternion = [ 0, Math.sin( - aMid / 2 ), 0, Math.cos( - aMid / 2 ) ];
 
-			rigidBody.create( world, {
+			createWall( world, {
 				shape: box.create( { halfExtents } ),
 				motionType: MotionType.STATIC,
 				objectLayer: world._OL_STATIC,
@@ -92,7 +97,7 @@ export function buildWallColliders( world, debugGroup, customCells ) {
 				const position = [ wx, wallY, wz ];
 				const quaternion = [ 0, Math.sin( rad / 2 ), 0, Math.cos( rad / 2 ) ];
 
-				rigidBody.create( world, {
+				createWall( world, {
 					shape: box.create( { halfExtents } ),
 					motionType: MotionType.STATIC,
 					objectLayer: world._OL_STATIC,
@@ -131,7 +136,7 @@ export function buildSplineWallColliders( world, path, debugGroup ) {
 
 		if ( debugGroup ) addDebugBox( debugGroup, halfExtents, position, quaternion );
 
-		return rigidBody.create( world, {
+		return createWall( world, {
 			shape: box.create( { halfExtents } ),
 			motionType: MotionType.STATIC,
 			objectLayer: world._OL_STATIC,
@@ -183,7 +188,7 @@ export function createGroundProxy( world, sample ) {
 
 }
 
-export function createSphereBody( world, spawnPos ) {
+export function createSphereBody( world, spawnPos, { beta = false } = {} ) {
 
 	const body = rigidBody.create( world, {
 		shape: sphere.create( { radius: 0.5 } ),
@@ -193,8 +198,8 @@ export function createSphereBody( world, spawnPos ) {
 		mass: 1000.0,
 		friction: 5.0,
 		restitution: 0.1,
-		linearDamping: 0.1,
-		angularDamping: 4.0,
+		linearDamping: beta ? 0.015 : 0.1,
+		angularDamping: beta ? 0.05 : 4.0,
 		gravityFactor: 1.5,
 		motionQuality: MotionQuality.LINEAR_CAST,
 	} );

@@ -5,6 +5,7 @@
 // sessionStorage that this tab is in a lobby, so the next page reconnects.
 
 import { LOBBY_PATH, normalizeCode } from './Protocol.js';
+import { LobbySounds } from './LobbySounds.js';
 import { t, serverText } from '../i18n.js';
 
 const IN_LOBBY_KEY = 'dirtbound.lobby';
@@ -67,6 +68,7 @@ export class LobbyClient extends EventTarget {
 		this.pingTimer = null;
 		this.watching = null; // mode of the public lobbies listed (watch)
 		this.lobbies = null; // the last list received
+ this.sounds=new LobbySounds(this);
 
 	}
 
@@ -122,7 +124,7 @@ export class LobbyClient extends EventTarget {
 	}
 
 	// mode: 'bonus' for the menu Expérimental; visibility 'public' (with a name) or 'private'
-	create( mode = 'classic', { visibility = 'private', name = '' } = {} ) { this.send( { t: 'create', mode, visibility, ...( visibility === 'public' ? { name } : {} ) } ); }
+	create( mode = 'classic', { visibility = 'private', name = '', yaris=false } = {} ) { this.send( { t: 'create', mode, visibility, yaris, ...( visibility === 'public' ? { name } : {} ) } ); }
 
 	// The menu's grid of public lobbies of a mode (null = stop); sent again after a reconnection
 	watch( mode ) {
@@ -140,7 +142,8 @@ export class LobbyClient extends EventTarget {
 
 	setReady( { car, color, ready } ) { this.send( { t: 'ready', car, color, ready } ); }
 
-	setSettings( { laps, length, collisions, landscape, camera } ) { this.send( { t: 'settings', laps, length, collisions, landscape, camera } ); }
+	setSettings( { laps, length, collisions, landscape, camera, yaris } ) { this.send( { t: 'settings', laps, length, collisions, landscape, camera, yaris } ); }
+ setCar(car,color){this.send({t:'car',car,color});}
 
 	kick( player ) { this.send( { t: 'kick', player } ); }
 
@@ -244,7 +247,9 @@ export class LobbyClient extends EventTarget {
 
 		if ( msg.t === 'lobby' ) {
 
-			this.lobby = msg.lobby;
+			const previous=this.lobby;
+ this.lobby = msg.lobby;
+ if(previous?.code===msg.lobby.code){ const changes=presenceChanges(previous.players,msg.lobby.players,msg.you); if(changes.joined||changes.left) this.emit('presence',changes); }
 			this.you = msg.you;
 			this.remember( true );
 			this.emit( 'lobby', { lobby: msg.lobby, you: msg.you } );
@@ -347,4 +352,9 @@ export class LobbyClient extends EventTarget {
 
 	}
 
+}
+
+export function presenceChanges(previous,current,you){
+ const before=new Set(previous.map(p=>p.id)),after=new Set(current.map(p=>p.id));
+ return {joined:current.filter(p=>p.id!==you&&!before.has(p.id)).length,left:previous.filter(p=>p.id!==you&&!after.has(p.id)).length};
 }

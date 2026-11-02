@@ -25,6 +25,9 @@ import { landscapeOf } from './RallyBiomes.js';
 import { loadCar, findCar } from './Cars.js';
 import { loadSettings, saveSettings, saveBest, loadBest } from './Settings.js';
 import { MenuMusic } from './menu/MenuMusic.js';
+import { BetaHUD } from './BetaHUD.js';
+import { YarisWallGuard } from './YarisWallGuard.js';
+import { getAccount } from './Account.js';
 import { YARIS_CAR, YARIS_TRACK_ID, stretchYaris } from './YarisMode.js';
 import { createUltraEffects, createDofPass, setDof, setFocus } from './Ultra.js';
 import { season, applySeasonLight, seasonScenery, SEASONS } from './Seasons.js';
@@ -254,7 +257,9 @@ async function init() {
 	}
 
 	const params = multi ? multi.params : pageParams;
-	const yarisMode = multi ? multi.race.mode === 'yaris' : params.get( 'mode' ) === 'yaris';
+	const betaMode=multi ? multi.race.mode==='beta' : params.get('beta')==='1';
+ if(betaMode && !(await getAccount({refresh:true}))?.beta) throw new Error('Нужен доступ бетатестера.');
+ const yarisMode = multi ? multi.race.yaris || multi.race.mode === 'yaris' : params.get( 'mode' ) === 'yaris';
 
 	// The car chosen in the garage (Settings.js), or ?car=<name>&color=<livery>:
 	// fetched and decrypted while the circuit is built
@@ -296,7 +301,7 @@ async function init() {
 	const testMode = ! multi && pageParams.has( 'test' );
 	// ?daily (menu, tuile « Défi du jour »): this run's lap goes to the daily
 	// challenge's own leaderboard (its id, not the circuit's own) — solo only
-	const dailyMode = ! multi && ! testMode && pageParams.has( 'daily' );
+	const dailyMode = ! multi && ! testMode && ! betaMode && pageParams.has( 'daily' );
 	// What is raced, for the audience stats (Stats.js)
 	const raceMode = yarisMode ? 'yaris' : testMode ? 'test' : dailyMode ? 'daily' : multi ? ( multi.race.bonus ? 'bonus' : 'multi' ) : rallyParam !== null ? 'rally'
 		: circuitParam ? ( isOfficialPublished( circuitParam ) ? 'official' : 'community' ) : trackParam || mapParam ? 'drawn' : 'official';
@@ -538,9 +543,9 @@ async function init() {
 
 	}
 
-	const sphereBody = createSphereBody( world, spawn ? spawn.position : null );
+	const sphereBody = createSphereBody( world, spawn ? spawn.position : null, {beta:betaMode} );
 
-	const vehicle = new Vehicle();
+	const vehicle = new Vehicle({beta:betaMode});
 	vehicle.rigidBody = sphereBody;
 	vehicle.physicsWorld = world;
 
@@ -591,7 +596,9 @@ async function init() {
 		console.warn( car.error.message + ', using the truck' );
 	}
 
-	const vehicleGroup = vehicle.init( carModel );
+	if(carModel?.userData.yarisModel) carModel.userData.yaris=yarisMode;
+ const vehicleGroup = vehicle.init( carModel );
+ const wallGuard=carModel?.userData.yarisModel?new YarisWallGuard(world,{stretch:yarisMode}):null;
 	scene.add( vehicleGroup );
 	vehicle.respawn( vehicle.spawnPosition.toArray(), vehicle.spawnAngle );
 
@@ -689,15 +696,16 @@ async function init() {
 	} );
 	let yarisTime = 0;
 
-	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), trackId );
+	const lapTimer = new LapTimer( stage ? null : path ? splineLapConfig( path ) : gridLapConfig( customCells ), betaMode?'beta:'+trackId:trackId );
+ const betaHUD=betaMode?new BetaHUD({path,customCells,stage}):null;
 
 	// Circuits: online leaderboard and record ghost (the id follows the circuit
 	// actually loaded, unless it's the daily challenge: ranked under its own id)
 	let circuitFinishTracked = false; // trackFinish once per session, on the first valid lap
-	const online = lapTimer.enabled && ! multi && ! testMode ? new CircuitOnline( {
+	const online = lapTimer.enabled && ! multi && ! testMode && !betaMode ? new CircuitOnline( {
 		scene, loader, lapTimer, vehicle,
 		trackRef: { track: path ? trackParam : null, map: customCells ? mapParam : null },
-		car: playerCar,
+		car: playerCar, yarisMode,
 		ghost: settings.ghost,
 		prepare: ( object ) => precompile( object ),
 		boardId: dailyMode ? dailyBoardId() : null,
@@ -815,7 +823,7 @@ async function init() {
 	if ( stage && stage.length ) {
 
 		// Best time per stage (seed + landscape + length), on this device; v2 = the biome stages
-		const bestKey = `racing.bestStage2.${ rallySeed }.${ rallyLandscape }.${ stage.length }`;
+		const bestKey = `${betaMode ? "beta." : ""}racing.bestStage2.${ rallySeed }.${ rallyLandscape }.${ stage.length }`;
 
 		stage.onFinish = ( time ) => {
 
@@ -990,7 +998,8 @@ async function init() {
 
 		}
 
-		vehicle.update( step, input );
+		if(wallGuard)wallGuard.resolve(vehicle);
+ vehicle.update( step, input );
 		if ( online ) online.input( input );
 		if ( dailyRally ) dailyRally.input( input );
 		if ( bonus ) bonus.afterVehicle( step );
@@ -1107,7 +1116,7 @@ async function init() {
 	// circuits: back FLYING s before the line at the speed of the last lap, or
 	// RUN_UP m of road before it, stopped (FlyingStart.js); the clock starts at
 	// the line. Taken at the next physics step
-	const flying = lapTimer.enabled && ! multi && ! testMode ? new FlyingStart( PHYSICS_STEP ) : null;
+	const flying = lapTimer.enabled && ! multi && ! testMode && !betaMode ? new FlyingStart( PHYSICS_STEP ) : null;
 	let restartDue = false;
 	let runUp = null; // the standing run-up, worked out the first time
 
@@ -1274,7 +1283,8 @@ async function init() {
 			if ( bridges ) bridges.update( _renderSphere, cam.camera, dt );
 			if ( particles ) particles.update( dt, vehicle, burnout );
 			driftMarks.update( dt, vehicle, burnout );
-			audio.update( dt, vehicle.linearSpeed / MAX_SPEED, input.z, Math.max( vehicle.driftIntensity, burnout * 1.7 ) );
+			audio.update( dt, vehicle.linearSpeed / MAX_SPEED, input.z, Math.max( vehicle.driftIntensity, burnout * 1.7 ), betaMode?vehicle.transmission:null );
+ if(betaHUD)betaHUD.update(dt,vehicle);
 			if ( online ) online.render( alpha * PHYSICS_STEP );
 			if ( sync ) sync.render();
 			if ( bench ) bench.frame();
