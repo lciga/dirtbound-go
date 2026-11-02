@@ -2,6 +2,7 @@ import { request } from "../Leaderboard.js";
 import { setPseudo, signIn } from "../Account.js";
 import { unpublishCircuit } from "../Circuits.js";
 import { formatTime } from "../Settings.js";
+import { publishedCircuitName } from "../multi/Protocol.js";
 import { t } from "../i18n.js";
 
 // The account uses the same panels, tabs and showroom framing as Settings.
@@ -61,7 +62,7 @@ export function createProfileScreen({
             .map((r) => {
               const id = r.circuit || r.track,
                 canPlay = validTrack(id);
-              return `<article class="account-card account-record"><div><b>${esc(r.name)}</b><small>${esc(r.car)} · #${Number(r.rank)}</small></div><strong>${formatTime(r.time)}</strong>${canPlay ? `<button class="chip" data-account-play="${id}">${label("drive")}</button>` : ""}</article>`;
+              return `<article class="account-card account-record"><div><b>${esc(publishedCircuitName(id, r.name))}</b><small>${esc(r.car)} · #${Number(r.rank)}</small></div><strong>${formatTime(r.time)}</strong>${canPlay ? `<button class="chip" data-account-play="${id}">${label("drive")}</button>` : ""}</article>`;
             })
             .join("")
         : `<p class="note">${label("noRecords")}</p>`)

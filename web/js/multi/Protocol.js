@@ -18,10 +18,10 @@ export const OFFICIAL_CIRCUITS = Object.freeze( { default: 'Club Circuit' } );
 // Published circuits promoted to official (menu tab Officiel, lobby vote's
 // Officiel section): still played, voted and ranked as the published circuit
 export const OFFICIAL_PUBLISHED = Object.freeze( [
-	Object.freeze( { id: '8c9a9daf0a18b1c3f2be1901689b35d1955ad365fc2114d7cb5025fba457a363', name: 'Tarte à rivière' } ),
+	Object.freeze( { id: '8c9a9daf0a18b1c3f2be1901689b35d1955ad365fc2114d7cb5025fba457a363', name: 'Речная трасса' } ),
 	Object.freeze( { id: '576bc747bd5bbd9cbed073245d3edff219eb11e2bfe0398fbc9507acda9d4e8b', name: 'Olufsen' } ),
-	Object.freeze( { id: '920a9bf5f0b4814b2b6157bc757e9bc897800e33a232bffa426cb7f842907d1c', name: 'Chantier publique' } ),
-	Object.freeze( { id: 'b409aaff015e8d4f85f167765fbf2ab121c319ddc5f3addb103147de1b941ae4', name: "Circuit de Spa-Francorchamps" } ),
+	Object.freeze( { id: '920a9bf5f0b4814b2b6157bc757e9bc897800e33a232bffa426cb7f842907d1c', name: 'Стройплощадка' } ),
+	Object.freeze( { id: 'b409aaff015e8d4f85f167765fbf2ab121c319ddc5f3addb103147de1b941ae4', name: 'Спа-Франкоршам' } ),
 	Object.freeze( { id: '60503d1345e366fd7cb17d0daab6e2cd4667f1544c31b852df267efcbf58f8ba', name: "Monaco" } ),
 	Object.freeze( { id: '0e117b17e58c3915fe7dcb1ba05034e9348c13b4d0899b1c40ff3918b51b2348', name: "Nürburgring - Nordschleife" } ),
 	Object.freeze( { id: '889e4be0059c2b5b884a72cc35f43cd1727eb541fbf0ca24143770dc0a50361c', name: "Mountain Circuit" } ),
@@ -30,6 +30,7 @@ export const OFFICIAL_PUBLISHED = Object.freeze( [
 ] );
 // Promoted circuits show in Officiel only, never again in Communauté (menu, lobby vote)
 export const isOfficialPublished = ( id ) => OFFICIAL_PUBLISHED.some( ( o ) => o.id === id );
+export const publishedCircuitName = ( id, fallback ) => OFFICIAL_PUBLISHED.find( ( o ) => o.id === id )?.name || fallback;
 export const LOBBY_PATH = '/api/lobby';
 // A car's state, 20 times a second: race time (s), position (m), orientation
 // (quaternion), steering (rad), speed (m/s), progress (0 at the start, 1 at the finish)
@@ -79,7 +80,7 @@ export function choiceKey( choice ) {
 export function choiceLabel( choice ) {
 
 	if ( choice.kind === 'official' ) return choice.id === 'default' ? t( 'circuits.kenney' ) : OFFICIAL_CIRCUITS[ choice.id ] || t( 'circuits.official' );
-	if ( choice.kind === 'circuit' ) return choice.name || t( 'circuits.community' );
+	if ( choice.kind === 'circuit' ) return publishedCircuitName( choice.id, choice.name ) || t( 'circuits.community' );
 	if ( choice.kind === 'rally' ) return t( 'vote.rally' );
 	return t( 'vote.loop' );
 

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="ru">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-	<title>Racing Club 1sk4nd3r · Éditeur de circuit</title>
+	<title>Racing Club 1sk4nd3r · Редактор трасс</title>
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
 
 	<style>
@@ -239,98 +239,98 @@
 <body>
 	<div id="page-loader" aria-hidden="true"><div><i></i></div></div>
 	<div id="corner">
-		<a class="panel" href="menu.html" data-i18n="editor.menu">Menu</a>
-		<button id="btn-library" class="panel" title="Enregistrer, ouvrir, publier" data-i18n="editor.library" data-i18n-title="editor.libraryTitle">Mes circuits</button>
-		<button id="btn-view" class="panel" title="Basculer vue de dessus / 3D (V)" data-i18n="editor.view3d" data-i18n-title="editor.viewTitle">Vue 3D</button>
+		<a class="panel" href="menu.html" data-i18n="editor.menu">Меню</a>
+		<button id="btn-library" class="panel" title="Сохранить, открыть, опубликовать" data-i18n="editor.library" data-i18n-title="editor.libraryTitle">Мои трассы</button>
+		<button id="btn-view" class="panel" title="Переключить вид сверху / 3D (V)" data-i18n="editor.view3d" data-i18n-title="editor.viewTitle">Вид 3D</button>
 	</div>
 
 	<div id="hud" class="panel">
-		<div class="title" id="circuit-title" data-i18n="editor.title">Éditeur de circuit</div>
+		<div class="title" id="circuit-title" data-i18n="editor.title">Редактор трасс</div>
 		<div id="hint"></div>
 		<div id="stats"></div>
 	</div>
 
 	<div id="relief-panel" class="subpanel panel">
-		<button class="chip" data-mode="raise" title="Monter (Maj : creuser)" data-i18n="editor.raise" data-i18n-title="editor.raiseTitle">Monter</button>
-		<button class="chip" data-mode="lower" title="Creuser (Maj : monter)" data-i18n="editor.lower" data-i18n-title="editor.lowerTitle">Creuser</button>
-		<button class="chip" data-mode="smooth" data-i18n="editor.smooth">Lisser</button>
-		<button class="chip" data-mode="flatten" title="Aplanit à la hauteur du point de départ du coup de pinceau" data-i18n="editor.flatten" data-i18n-title="editor.flattenTitle">Aplanir</button>
+		<button class="chip" data-mode="raise" title="Поднять (Shift: копать)" data-i18n="editor.raise" data-i18n-title="editor.raiseTitle">Поднять</button>
+		<button class="chip" data-mode="lower" title="Копать (Shift: поднять)" data-i18n="editor.lower" data-i18n-title="editor.lowerTitle">Копать</button>
+		<button class="chip" data-mode="smooth" data-i18n="editor.smooth">Сгладить</button>
+		<button class="chip" data-mode="flatten" title="Выравнивает по высоте точки, где начался мазок кистью" data-i18n="editor.flatten" data-i18n-title="editor.flattenTitle">Выровнять</button>
 		<div class="separator"></div>
-		<label><span data-i18n="editor.radius">Rayon</span> <input id="brush-radius" type="range" min="3" max="40" step="1" value="12"><span id="brush-radius-value" class="value"></span></label>
-		<label><span data-i18n="editor.strength">Force</span> <input id="brush-strength" type="range" min="0.1" max="1" step="0.05" value="0.5"><span id="brush-strength-value" class="value"></span></label>
+		<label><span data-i18n="editor.radius">Радиус</span> <input id="brush-radius" type="range" min="3" max="40" step="1" value="12"><span id="brush-radius-value" class="value"></span></label>
+		<label><span data-i18n="editor.strength">Сила</span> <input id="brush-strength" type="range" min="0.1" max="1" step="0.05" value="0.5"><span id="brush-strength-value" class="value"></span></label>
 		<div class="separator"></div>
-		<button id="btn-terrain-reset" class="chip" data-i18n="editor.flattenAll">Tout aplanir</button>
+		<button id="btn-terrain-reset" class="chip" data-i18n="editor.flattenAll">Выровнять всё</button>
 	</div>
 
 	<div id="node-panel" class="subpanel panel">
 		<span id="node-title"></span>
-		<label><span data-i18n="editor.height">Hauteur</span>
-			<button id="node-down" class="chip small" title="Descendre (Q)" data-i18n-title="editor.downTitle">−</button>
+		<label><span data-i18n="editor.height">Высота</span>
+			<button id="node-down" class="chip small" title="Опустить (Q)" data-i18n-title="editor.downTitle">−</button>
 			<span id="node-height" class="value"></span>
-			<button id="node-up" class="chip small" title="Monter (E)" data-i18n-title="editor.upTitle">+</button>
+			<button id="node-up" class="chip small" title="Поднять (E)" data-i18n-title="editor.upTitle">+</button>
 		</label>
-		<button id="node-ground" class="chip" title="Poser le point sur le terrain (T)" data-i18n="editor.onGround" data-i18n-title="editor.onGroundTitle">Sur le terrain</button>
+		<button id="node-ground" class="chip" title="Поставить точку на землю (T)" data-i18n="editor.onGround" data-i18n-title="editor.onGroundTitle">На землю</button>
 		<span id="seg-support" class="support">
 			<div class="separator"></div>
-		<label><span data-i18n="editor.nextSegment">Tronçon suivant</span>
-			<button id="seg-terrain" class="chip" title="Le terrain monte ou descend jusqu'à la route : remblais et tranchées (P)" data-i18n="editor.terrain" data-i18n-title="editor.terrainTitle">Terrain</button>
-			<button id="seg-piers" class="chip" title="La route passe sur un tablier porté par des piliers, le terrain ne bouge pas (P)" data-i18n="editor.piers" data-i18n-title="editor.piersTitle">Piliers</button>
+		<label><span data-i18n="editor.nextSegment">Следующий участок</span>
+			<button id="seg-terrain" class="chip" title="Грунт поднимается или опускается к дороге: насыпи и выемки (P)" data-i18n="editor.terrain" data-i18n-title="editor.terrainTitle">Грунт</button>
+			<button id="seg-piers" class="chip" title="Дорога идёт по настилу на опорах, грунт не меняется (P)" data-i18n="editor.piers" data-i18n-title="editor.piersTitle">Опоры</button>
 		</label>
 		</span>
-		<button id="node-delete" class="chip" title="Supprimer (Suppr)" data-i18n="editor.delete" data-i18n-title="editor.deleteTitle">Supprimer</button>
+		<button id="node-delete" class="chip" title="Удалить (Del)" data-i18n="editor.delete" data-i18n-title="editor.deleteTitle">Удалить</button>
 	</div>
 
 	<div id="build-panel" class="subpanel panel">
-		<label><span data-i18n="editor.rise">Dénivelé du prochain tronçon</span>
+		<label><span data-i18n="editor.rise">Перепад следующего участка</span>
 			<button id="rise-down" class="chip small" title="Q">−</button>
 			<span id="rise-value" class="value"></span>
 			<button id="rise-up" class="chip small" title="E">+</button>
 		</label>
-		<button id="rise-follow" class="chip" title="Les nouveaux points suivent la hauteur du terrain (T)" data-i18n="editor.follow" data-i18n-title="editor.followTitle">Suivre le terrain</button>
+		<button id="rise-follow" class="chip" title="Новые точки следуют высоте рельефа (T)" data-i18n="editor.follow" data-i18n-title="editor.followTitle">По рельефу</button>
 		<div class="separator"></div>
-		<label><span data-i18n="editor.underRoad">Sous la route</span>
-			<button id="build-terrain" class="chip" title="Le terrain monte ou descend jusqu'à la route : remblais et tranchées (P)" data-i18n="editor.terrain" data-i18n-title="editor.terrainTitle">Terrain</button>
-			<button id="build-piers" class="chip" title="La route passe sur un tablier porté par des piliers, le terrain ne bouge pas (P)" data-i18n="editor.piers" data-i18n-title="editor.piersTitle">Piliers</button>
+		<label><span data-i18n="editor.underRoad">Под дорогой</span>
+			<button id="build-terrain" class="chip" title="Грунт поднимается или опускается к дороге: насыпи и выемки (P)" data-i18n="editor.terrain" data-i18n-title="editor.terrainTitle">Грунт</button>
+			<button id="build-piers" class="chip" title="Дорога идёт по настилу на опорах, грунт не меняется (P)" data-i18n="editor.piers" data-i18n-title="editor.piersTitle">Опоры</button>
 		</label>
 	</div>
 
 	<div id="toolbar" class="panel">
-		<button id="btn-build" class="icon active" title="Construire (1)" aria-label="Construire" data-i18n-title="editor.buildTitle" data-i18n-aria-label="editor.build">
+		<button id="btn-build" class="icon active" title="Строить (1)" aria-label="Строить" data-i18n-title="editor.buildTitle" data-i18n-aria-label="editor.build">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c0-7 5-8 8-8s8-1 8-8"/><circle cx="4" cy="20" r="1.5" fill="currentColor"/><circle cx="20" cy="4" r="1.5" fill="currentColor"/></svg>
 		</button>
-		<button id="btn-edit" class="icon" title="Éditer les points (2)" aria-label="Éditer" data-i18n-title="editor.editTitle" data-i18n-aria-label="editor.edit">
+		<button id="btn-edit" class="icon" title="Править точки (2)" aria-label="Править" data-i18n-title="editor.editTitle" data-i18n-aria-label="editor.edit">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg>
 		</button>
-		<button id="btn-relief" class="icon" title="Relief (3)" aria-label="Relief" data-i18n-title="editor.reliefTitle" data-i18n-aria-label="editor.relief">
+		<button id="btn-relief" class="icon" title="Рельеф (3)" aria-label="Рельеф" data-i18n-title="editor.reliefTitle" data-i18n-aria-label="editor.relief">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20l6-10 4 6 3-4 7 8z"/><circle cx="17" cy="6" r="2"/></svg>
 		</button>
-		<button id="btn-pan" class="icon" title="Déplacer la vue (4)" aria-label="Vue" data-i18n-title="editor.panTitle" data-i18n-aria-label="editor.pan">
+		<button id="btn-pan" class="icon" title="Сдвинуть вид (4)" aria-label="Вид" data-i18n-title="editor.panTitle" data-i18n-aria-label="editor.pan">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
 		</button>
 		<div class="separator"></div>
-		<div id="draw-modes" class="modes" title="Mode de tracé (G pour changer)" data-i18n-title="editor.drawModesTitle">
-			<button class="chip" data-draw="free" title="Libre : arcs de cercle où vous voulez" data-i18n="editor.free" data-i18n-title="editor.freeTitle">Libre</button>
-			<button class="chip" data-draw="snap" title="Aimanté : angles de 15°, longueurs en demi-tuiles" data-i18n="editor.snap" data-i18n-title="editor.snapTitle">Aimanté</button>
-			<button class="chip" data-draw="grid" title="Grille : lignes droites et quarts de virage alignés sur les tuiles" data-i18n="editor.grid" data-i18n-title="editor.gridTitle">Grille</button>
+		<div id="draw-modes" class="modes" title="Режим рисования (G для смены)" data-i18n-title="editor.drawModesTitle">
+			<button class="chip" data-draw="free" title="Свободно: дуги окружности где угодно" data-i18n="editor.free" data-i18n-title="editor.freeTitle">Свободно</button>
+			<button class="chip" data-draw="snap" title="Привязка: углы по 15°, длины в половинах клетки" data-i18n="editor.snap" data-i18n-title="editor.snapTitle">Привязка</button>
+			<button class="chip" data-draw="grid" title="Сетка: прямые и четверти поворота по клеткам" data-i18n="editor.grid" data-i18n-title="editor.gridTitle">Сетка</button>
 		</div>
-		<button id="btn-flip" class="icon" title="Inverser le sens (F)" aria-label="Inverser le sens" data-i18n-title="editor.flipTitle" data-i18n-aria-label="editor.flip">
+		<button id="btn-flip" class="icon" title="Развернуть направление (F)" aria-label="Развернуть направление" data-i18n-title="editor.flipTitle" data-i18n-aria-label="editor.flip">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
 		</button>
-		<button id="btn-undo" class="icon" title="Annuler (Ctrl+Z)" aria-label="Annuler" data-i18n-title="editor.undoTitle" data-i18n-aria-label="editor.undo">
+		<button id="btn-undo" class="icon" title="Отменить (Ctrl+Z)" aria-label="Отменить" data-i18n-title="editor.undoTitle" data-i18n-aria-label="editor.undo">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
 		</button>
-		<button id="btn-redo" class="icon" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" data-i18n-title="editor.redoTitle" data-i18n-aria-label="editor.redo">
+		<button id="btn-redo" class="icon" title="Повторить (Ctrl+Y)" aria-label="Повторить" data-i18n-title="editor.redoTitle" data-i18n-aria-label="editor.redo">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
 		</button>
-		<button id="btn-svg" class="icon" title="Importer un SVG (ou glissez un fichier .svg sur la page)" aria-label="Importer un SVG" data-i18n-title="editor.svgTitle" data-i18n-aria-label="editor.svg">
+		<button id="btn-svg" class="icon" title="Импорт SVG (или перетащи файл .svg на страницу)" aria-label="Импорт SVG" data-i18n-title="editor.svgTitle" data-i18n-aria-label="editor.svg">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 		</button>
 		<div class="separator"></div>
-		<button id="btn-play" class="icon action" title="Jouer le circuit" aria-label="Jouer le circuit" data-i18n-title="editor.play" data-i18n-aria-label="editor.play">
+		<button id="btn-play" class="icon action" title="Проехать трассу" aria-label="Проехать трассу" data-i18n-title="editor.play" data-i18n-aria-label="editor.play">
 			<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
 		</button>
 		<div class="separator"></div>
-		<button id="btn-clear" class="icon danger" title="Effacer le circuit" aria-label="Effacer le circuit" data-i18n-title="editor.clear" data-i18n-aria-label="editor.clear">
+		<button id="btn-clear" class="icon danger" title="Очистить трассу" aria-label="Очистить трассу" data-i18n-title="editor.clear" data-i18n-aria-label="editor.clear">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
 		</button>
 	</div>
@@ -341,47 +341,47 @@
 
 	<div id="lib-dialog" class="dialog">
 		<div class="box panel">
-			<h2 data-i18n="editor.library">Mes circuits</h2>
+			<h2 data-i18n="editor.library">Мои трассы</h2>
 			<div class="row">
-				<input id="lib-name" maxlength="40" placeholder="Nom du circuit" data-i18n-placeholder="editor.name">
-				<button id="lib-save" class="chip primary" data-i18n="editor.save">Enregistrer</button>
+				<input id="lib-name" maxlength="40" placeholder="Название трассы" data-i18n-placeholder="editor.name">
+				<button id="lib-save" class="chip primary" data-i18n="editor.save">Сохранить</button>
 			</div>
 			<div id="lib-status" class="note"></div>
-			<div class="section" data-i18n="editor.publication">Publication</div>
+			<div class="section" data-i18n="editor.publication">Публикация</div>
 			<div class="row">
-				<input id="lib-pseudo" maxlength="20" autocomplete="nickname" placeholder="Ton pseudo" data-i18n-placeholder="account.pseudoPlaceholder">
-				<button id="lib-publish" class="chip primary" data-i18n="editor.publish">Publier</button>
-				<button id="lib-unpublish" class="chip" data-i18n="editor.unpublish">Retirer</button>
+				<input id="lib-pseudo" maxlength="20" autocomplete="nickname" placeholder="Твой ник" data-i18n-placeholder="account.pseudoPlaceholder">
+				<button id="lib-publish" class="chip primary" data-i18n="editor.publish">Опубликовать</button>
+				<button id="lib-unpublish" class="chip" data-i18n="editor.unpublish">Снять</button>
 			</div>
-			<div id="lib-publish-status" class="note" data-i18n="editor.publishNote">Un circuit publié est visible par tous dans le menu, où chacun peut lui donner une étoile.</div>
-			<div class="section"><span data-i18n="circuits.local">Sur cet appareil</span> <button id="lib-new" class="chip small" data-i18n="circuits.new">Nouveau circuit</button></div>
-			<div id="lib-list" data-empty="Aucun circuit enregistré pour l’instant." data-i18n-data-empty="editor.libEmpty"></div>
-			<div class="actions"><button id="lib-close" class="chip" data-i18n="editor.close">Fermer</button></div>
+			<div id="lib-publish-status" class="note" data-i18n="editor.publishNote">Опубликованную трассу видят все в меню, и любой может поставить ей звезду.</div>
+			<div class="section"><span data-i18n="circuits.local">На этом устройстве</span> <button id="lib-new" class="chip small" data-i18n="circuits.new">Новая трасса</button></div>
+			<div id="lib-list" data-empty="Сохранённых трасс пока нет." data-i18n-data-empty="editor.libEmpty"></div>
+			<div class="actions"><button id="lib-close" class="chip" data-i18n="editor.close">Закрыть</button></div>
 		</div>
 	</div>
 
 	<div id="svg-dialog">
 		<div class="box panel">
-			<h2 data-i18n="editor.svgDialog">Importer un tracé SVG</h2>
+			<h2 data-i18n="editor.svgDialog">Импорт контура SVG</h2>
 			<div id="svg-name" class="file"></div>
 			<canvas id="svg-preview"></canvas>
 			<div class="grid">
-				<label id="svg-shape-label" for="svg-shape" data-i18n="editor.svgShape">Tracé</label><select id="svg-shape"></select>
-				<label for="svg-size" data-i18n="editor.svgSize">Taille</label><input id="svg-size" type="range" min="0" max="1000" step="1" value="315"><span class="value"><input id="svg-size-number" type="number" min="30" max="5000" step="5" value="150" aria-label="Taille en mètres" data-i18n-aria-label="editor.svgSizeMeters"> m</span>
-				<label for="svg-rotation" data-i18n="editor.svgRotation">Rotation</label><input id="svg-rotation" type="range" min="-180" max="180" step="5" value="0"><span id="svg-rotation-value" class="value"></span>
-				<label for="svg-smoothing" data-i18n="editor.svgSmoothing">Lissage</label><input id="svg-smoothing" type="range" min="0" max="15" step="0.5" value="2"><span id="svg-smoothing-value" class="value"></span>
-				<label for="svg-start" data-i18n="editor.svgStart">Départ</label><input id="svg-start" type="range" min="0" max="99" step="1" value="0"><span id="svg-start-value" class="value"></span>
+				<label id="svg-shape-label" for="svg-shape" data-i18n="editor.svgShape">Контур</label><select id="svg-shape"></select>
+				<label for="svg-size" data-i18n="editor.svgSize">Размер</label><input id="svg-size" type="range" min="0" max="1000" step="1" value="315"><span class="value"><input id="svg-size-number" type="number" min="30" max="5000" step="5" value="150" aria-label="Размер в метрах" data-i18n-aria-label="editor.svgSizeMeters"> m</span>
+				<label for="svg-rotation" data-i18n="editor.svgRotation">Поворот</label><input id="svg-rotation" type="range" min="-180" max="180" step="5" value="0"><span id="svg-rotation-value" class="value"></span>
+				<label for="svg-smoothing" data-i18n="editor.svgSmoothing">Сглаживание</label><input id="svg-smoothing" type="range" min="0" max="15" step="0.5" value="2"><span id="svg-smoothing-value" class="value"></span>
+				<label for="svg-start" data-i18n="editor.svgStart">Старт</label><input id="svg-start" type="range" min="0" max="99" step="1" value="0"><span id="svg-start-value" class="value"></span>
 			</div>
 			<div class="checks">
-				<label><input id="svg-closed" type="checkbox"> <span data-i18n="editor.svgClosed">Boucle fermée</span></label>
-				<label><input id="svg-flip" type="checkbox"> <span data-i18n="editor.flip">Inverser le sens</span></label>
-				<label><input id="svg-relief" type="checkbox" checked> <span data-i18n="editor.svgRelief">Suivre le relief existant</span></label>
+				<label><input id="svg-closed" type="checkbox"> <span data-i18n="editor.svgClosed">Замкнутая петля</span></label>
+				<label><input id="svg-flip" type="checkbox"> <span data-i18n="editor.flip">Развернуть направление</span></label>
+				<label><input id="svg-relief" type="checkbox" checked> <span data-i18n="editor.svgRelief">Следовать существующему рельефу</span></label>
 			</div>
 			<div id="svg-stats"></div>
 			<div class="actions">
-				<button id="svg-auto" class="chip" title="Augmente le lissage jusqu'à ce que tous les virages soient praticables" data-i18n="editor.svgAuto" data-i18n-title="editor.svgAutoTitle">Adoucir automatiquement</button>
-				<button id="svg-cancel" class="chip" data-i18n="common.cancel">Annuler</button>
-				<button id="svg-apply" class="chip primary" data-i18n="editor.svgApply">Importer</button>
+				<button id="svg-auto" class="chip" title="Увеличивает сглаживание, пока все повороты не станут проходимыми" data-i18n="editor.svgAuto" data-i18n-title="editor.svgAutoTitle">Сгладить автоматически</button>
+				<button id="svg-cancel" class="chip" data-i18n="common.cancel">Отмена</button>
+				<button id="svg-apply" class="chip primary" data-i18n="editor.svgApply">Импортировать</button>
 			</div>
 		</div>
 	</div>

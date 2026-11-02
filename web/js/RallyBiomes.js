@@ -24,13 +24,13 @@ export function landscapeOf( value ) {
 
 export const BIOME_IDS = [ 'plain', 'gorge', 'mountain', 'cliff', 'ridge', 'pass', 'pasture' ];
 export const BIOMES = {
-	plain: { label: 'Plaine', color: '#4f8a2e' },
-	gorge: { label: 'Gorge', color: '#7a4f2a' },
-	mountain: { label: 'Haute montagne', color: '#5d6470' },
-	cliff: { label: 'Flanc de falaise', color: '#c07a1c' },
-	ridge: { label: 'Crête', color: '#a0927a' },
-	pass: { label: 'Col', color: '#3f6fb5' },
-	pasture: { label: 'Alpage', color: '#9fbf3b' },
+	plain: { label: 'Равнина', color: '#4f8a2e' },
+	gorge: { label: 'Ущелье', color: '#7a4f2a' },
+	mountain: { label: 'Высокогорье', color: '#5d6470' },
+	cliff: { label: 'Склон', color: '#c07a1c' },
+	ridge: { label: 'Хребет', color: '#a0927a' },
+	pass: { label: 'Перевал', color: '#3f6fb5' },
+	pasture: { label: 'Горный луг', color: '#9fbf3b' },
 };
 
 export const MAX_GRADE = 0.18;

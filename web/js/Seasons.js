@@ -20,7 +20,7 @@ const hex = ( h ) => new THREE.Color( h );
 export const SEASONS = {
 
 	summer: {
-		label: 'Été',
+		label: 'Лето',
 		grass: 0x4f9a52,
 		leaves: [ 0x4f9a4c, 0x5e9e45, 0x6aa24a, 0x4a8f55 ],
 		bushes: [ 0x5e9a44, 0x6ea24a, 0x4f8a45, 0x7aa84e ],
@@ -29,7 +29,7 @@ export const SEASONS = {
 	},
 
 	spring: {
-		label: 'Printemps',
+		label: 'Весна',
 		grass: 0x3fa648,
 		leaves: [ 0x3fa84a, 0x52b34a, 0x46a05a, 0x5aae3f ],
 		bushes: [ 0x44a845, 0x57b54a, 0x3c9a4e, 0x62b84f ],
@@ -41,7 +41,7 @@ export const SEASONS = {
 	},
 
 	autumn: {
-		label: 'Automne',
+		label: 'Осень',
 		grass: 0xc9a043,
 		leaves: [ 0xc23b22, 0xe0762a, 0xe8a531, 0x9c4a26, 0xd65a1f ],
 		bushes: [ 0xc8642a, 0xd9982f, 0xa8452a, 0xb8862e ],
@@ -51,7 +51,7 @@ export const SEASONS = {
 	},
 
 	winter: {
-		label: 'Hiver',
+		label: 'Зима',
 		grass: 0xdde5f0,
 		leaves: [ 0xe2e9f3, 0xd3dded, 0xeaf0f7 ],
 		bushes: [ 0xdfe6f1, 0xd2dcec, 0xe8eef6 ],

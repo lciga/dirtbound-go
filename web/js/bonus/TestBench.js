@@ -283,11 +283,11 @@ export class TestBench {
 		};
 
 		const title = document.createElement( 'h4' );
-		title.textContent = 'Mode test';
+		title.textContent = 'Проверка бонусов';
 		this.botButtons = [
-			button( '+ Bot immobile', () => this.addBot( false ) ),
-			button( '+ Bot qui roule', () => this.addBot( true ) ),
-			button( 'Retirer les bots <span class="count"></span>', () => this.removeBots() ),
+			button( '+ Неподвижный бот', () => this.addBot( false ) ),
+			button( '+ Едущий бот', () => this.addBot( true ) ),
+			button( 'Убрать ботов <span class="count"></span>', () => this.removeBots() ),
 		];
 		this.panel.append( title, ...this.botButtons );
 
@@ -307,36 +307,36 @@ export class TestBench {
 			const span = document.createElement( 'span' );
 			span.textContent = name;
 			el.append( span );
-			for ( let level = 1; level <= BONUS_LEVELS; level ++ ) el.append( button( 'niv. ' + level, () => run( level ), cls ) );
+			for ( let level = 1; level <= BONUS_LEVELS; level ++ ) el.append( button( 'ур. ' + level, () => run( level ), cls ) );
 			return el;
 
 		};
 
-		for ( const [ kind, name, cls ] of [ [ 'rocket', 'Roquette', 'bonus' ], [ 'lightning', 'Éclair', 'bolt' ] ] ) {
+		for ( const [ kind, name, cls ] of [ [ 'rocket', 'Ракета', 'bonus' ], [ 'lightning', 'Молния', 'bolt' ] ] ) {
 
 			this.panel.append(
 				label( name ),
-				row( 'Prendre', ( level ) => this.bonus?.give( level, kind ), cls ),
-				row( 'Recevoir', ( level ) => this.incoming( level, kind ), 'incoming' ),
+				row( 'Взять', ( level ) => this.bonus?.give( level, kind ), cls ),
+				row( 'Получить', ( level ) => this.incoming( level, kind ), 'incoming' ),
 			);
 
 		}
 
 		const maluses = document.createElement( 'div' );
 		maluses.className = 'row3';
-		for ( const [ malus, name ] of [ [ 'reverse', 'Inversé' ], [ 'shrink', 'Mini' ], [ 'vision', 'Flash' ] ] ) {
+		for ( const [ malus, name ] of [ [ 'reverse', 'Инверсия' ], [ 'shrink', 'Уменьшение' ], [ 'vision', 'Вспышка' ] ] ) {
 
 			maluses.append( button( name, () => this.bonus?.zaps.apply( this.sync.you, malus ), 'malus' ) );
 
 		}
 
 		// Turbo: only for oneself (nothing to receive)
-		this.panel.append( label( 'Turbo' ), row( 'Prendre', ( level ) => this.bonus?.give( level, 'boost' ), 'turbo' ) );
+		this.panel.append( label( 'Турбо' ), row( 'Взять', ( level ) => this.bonus?.give( level, 'boost' ), 'turbo' ) );
 
-		this.panel.append( label( 'Malus sur moi' ), maluses );
+		this.panel.append( label( 'Эффект на себя' ), maluses );
 
 		const hint = document.createElement( 'small' );
-		hint.textContent = 'Les boîtes « ? » marchent aussi. « Recevoir » : le bot le plus proche tire sur toi (sans bot, un tireur invisible derrière). Les malus sont tirés au hasard ; « Malus sur moi » en force un.';
+		hint.textContent = 'Ящики «?» тоже работают. «Получить» — ближайший бот стреляет в тебя; без бота выстрел приходит сзади. Кнопки «Эффект на себя» включают выбранный эффект.';
 		this.panel.append( hint );
 		document.body.appendChild( this.panel );
 		this.drawPanel();

@@ -1,4 +1,4 @@
-// Russian. Same keys as fr.js (the source); a key missing here shows in French.
+// Primary interface language and fallback for the club edition.
 // Plurals: one (1, 21…), few (2–4, 22–24…), many (5–20, 25…).
 
 export default {
@@ -6,7 +6,7 @@ export default {
 
 	common: { cancel: 'Отмена', yes: 'Да', no: 'Нет' },
 	pager: { prev: '‹ Назад', next: 'Далее ›' },
-	ordinal: { other: '{n}' }, // used after «место»
+	ordinal: { one: '{n}', other: '{n}' }, // used after «место»
 
 	topbar: { nav: 'Навигация' },
 	music: { mute: 'Выключить музыку', unmute: 'Включить музыку' },
@@ -16,6 +16,11 @@ export default {
 		soloSub: 'Трасса или спецучасток, на время',
 		multi: 'Мультиплеер',
 		multiSub: 'Комната, твои друзья, код',
+		daily: 'Испытание дня',
+		dailySub: 'Новая трасса каждый день · общий рейтинг',
+		onlineNow: { one: '{n} игрок в сети', few: '{n} игрока в сети', many: '{n} игроков в сети', other: '{n} игрока в сети' },
+		coffee: '☕ Поддержать игру',
+		feedback: '✉️ Оставить отзыв',
 		experimental: 'Эксперимент',
 		experimentalSub: 'Мультиплеер с бонусами',
 		garage: 'Гараж',
@@ -123,6 +128,9 @@ export default {
 		boardTitle: 'Рейтинг',
 		boardEmpty: 'Пока нет результатов онлайн',
 		boardNone: 'Нет трассы',
+		searchPlaceholder: 'Найти трассу…',
+		searchNone: 'По запросу «{q}» трасс не найдено',
+		starAria: 'Добавить или убрать звезду у трассы',
 	},
 
 	rally: {
@@ -136,6 +144,15 @@ export default {
 	},
 
 	landscape: { varied: 'Разная', low: 'Низины', high: 'Высокогорье' },
+	daily: {
+		title: 'Испытание дня',
+		onCircuit: 'Сегодня: трасса «{name}»',
+		onRally: 'Сегодня: спецучасток {km} км · {landscape}',
+		go: 'Старт',
+		board: 'Рейтинг дня',
+		newRecord: 'Новый рекорд испытания дня!',
+		rank: 'Испытание дня: место {place} из {total}',
+	},
 
 	themes: { summer: 'Зефирная долина', spring: 'Лютиковый луг', autumn: 'Рыжая роща', winter: 'Инеевая долина' },
 
@@ -153,7 +170,7 @@ export default {
 		ipText: 'Игра, её код и оригинальные материалы принадлежат их авторам. Сторонние ресурсы распространяются по своим лицензиям (см. «Авторы»).',
 		privacy: 'Персональные данные',
 		privacyText: 'Что хранит игра и как попросить удалить данные:',
-		privacyLink: 'Конфиденциальность (на французском)',
+		privacyLink: 'Конфиденциальность',
 		team: 'Команда',
 		basedOn: 'Основано на',
 		basedOnText: '{kit}, перенесено на JavaScript: {mrdoob}, по набору {kenney}',
@@ -268,6 +285,7 @@ export default {
 	},
 
 	multi: {
+		tryBonusHint: 'В режиме <b>«Эксперимент»</b> доступны заезды с бонусами.',
 		create: 'Создать комнату',
 		joinCode: 'Войти по коду',
 		bonusCaption: 'Экспериментальные комнаты · ракеты и ящики «?»',

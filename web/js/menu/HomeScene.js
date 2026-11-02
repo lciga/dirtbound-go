@@ -81,8 +81,8 @@ export function buildGround( models, seasonId = 'summer' ) {
 
 const BUILDINGS = /^(grandStand|pits)/;
 const NATURE_GROUPS = [
-	[ 'Sapins', /^tree_/ ], [ 'Buissons', /^plant_/ ], [ 'Fleurs', /^flower_/ ], [ 'Souches, troncs', /^(stump_|log)/ ],
-	[ 'Champignons', /^mushroom_/ ], [ 'Tentes, feux', /^(tent_|campfire_)/ ],
+	[ 'Ели', /^tree_/ ], [ 'Кустарники', /^plant_/ ], [ 'Цветы', /^flower_/ ], [ 'Пни и брёвна', /^(stump_|log)/ ],
+	[ 'Грибы', /^mushroom_/ ], [ 'Палатки и костры', /^(tent_|campfire_)/ ],
 ];
 
 // What can be placed: { id, type, name, label, group }
@@ -91,27 +91,27 @@ export function catalogue( { kit, nature, trees } ) {
 	const list = [];
 	const add = ( type, name, label, group ) => list.push( { id: type + ':' + name, type, name, label, group } );
 
-	for ( const [ name, label ] of ROADSIDE ) add( 'roadside', name, label, 'Bord de spéciale' );
-	add( 'gantry', 'DÉPART', 'Arche en bois DÉPART', 'Bord de spéciale' );
-	add( 'gantry', 'ARRIVÉE', 'Arche en bois ARRIVÉE', 'Bord de spéciale' );
-	for ( let i = 0; i < ( trees?.length || 0 ); i ++ ) add( 'tree', String( i ), `Arbre ${ i + 1 }`, 'Arbres de la forêt' );
+	for ( const [ name, label ] of ROADSIDE ) add( 'roadside', name, label, 'Обочина спецучастка' );
+	add( 'gantry', 'DÉPART', 'Деревянная арка «Старт»', 'Обочина спецучастка' );
+	add( 'gantry', 'ARRIVÉE', 'Деревянная арка «Финиш»', 'Обочина спецучастка' );
+	for ( let i = 0; i < ( trees?.length || 0 ); i ++ ) add( 'tree', String( i ), `Дерево ${ i + 1 }`, 'Лесные деревья' );
 	if ( nature ) for ( const name of Object.keys( nature ) ) {
 
 		const group = NATURE_GROUPS.find( ( [ , re ] ) => re.test( name ) );
-		add( 'nature', name, name.replace( /_/g, ' ' ), 'Nature : ' + ( group ? group[ 0 ] : 'divers' ) );
+		add( 'nature', name, name.replace( /_/g, ' ' ), 'Природа: ' + ( group ? group[ 0 ] : 'Прочее' ) );
 
 	}
 
-	if ( kit ) for ( const name of KIT_NAMES ) if ( kit[ name ] ) add( 'kit', name, name, 'Kit course' );
+	if ( kit ) for ( const name of KIT_NAMES ) if ( kit[ name ] ) add( 'kit', name, name, 'Гоночные объекты' );
 	return list;
 
 }
 
 // The roadside items a stage dresses itself with (Roadside.js), one at a time
 const ROADSIDE = [
-	[ 'spectator', 'Spectateur' ], [ 'crowd', 'Groupe de 5 spectateurs' ], [ 'bales', 'Bottes de paille (3)' ],
-	[ 'post', 'Poteau rouge et blanc' ], [ 'fence', 'Barrière en bois (6 m)' ], [ 'fenceBanner', 'Barrière avec banderoles (6 m)' ],
-	[ 'tape', 'Rubalise (6 m)' ], [ 'marquee', 'Barnum' ], [ 'flag', 'Mât à banderole' ], [ 'boulder', 'Rocher' ], [ 'bush', 'Buisson' ],
+	[ 'spectator', 'Зритель' ], [ 'crowd', 'Группа из 5 зрителей' ], [ 'bales', 'Тюки сена (3)' ],
+	[ 'post', 'Красно-белый столбик' ], [ 'fence', 'Деревянный забор (6 м)' ], [ 'fenceBanner', 'Забор с флагами (6 м)' ],
+	[ 'tape', 'Оградительная лента (6 м)' ], [ 'marquee', 'Шатёр' ], [ 'flag', 'Флагшток' ], [ 'boulder', 'Камень' ], [ 'bush', 'Куст' ],
 ];
 
 function mulberry( seed ) {
@@ -208,7 +208,7 @@ export function buildProp( ctx, spec ) {
 
 	} else if ( spec.type === 'gantry' ) {
 
-		object = buildGantry( { x: 0, y: - ROAD_Y, z: 0, tx: 0, tz: 1 }, spec.name );
+		object = buildGantry( { x: 0, y: - ROAD_Y, z: 0, tx: 0, tz: 1 }, { 'DÉPART': 'СТАРТ', 'ARRIVÉE': 'ФИНИШ' }[ spec.name ] || spec.name );
 		const wrap = new THREE.Group();
 		wrap.add( object );
 		object = wrap;

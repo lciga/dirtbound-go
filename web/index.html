@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-ui="wait">
+<html lang="ru" data-ui="wait">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -7,20 +7,20 @@
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
 
 	<!-- Share preview (images/og.jpg: made with the photo lab, now lab/studio.html, format Partage 1200 × 630) -->
-	<meta name="description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
+	<meta name="description" content="Гонки и ралли в браузере: трассы, горные спецучастки, редактор, рейтинги и заезды с друзьями.">
 	<meta name="theme-color" content="#e8590c">
 	<meta property="og:type" content="website">
 	<meta property="og:site_name" content="Racing Club 1sk4nd3r">
 	<meta property="og:title" content="Racing Club 1sk4nd3r">
-	<meta property="og:description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
+	<meta property="og:description" content="Гонки и ралли в браузере: трассы, горные спецучастки, редактор, рейтинги и заезды с друзьями.">
 	<meta property="og:image" content="images/racing-club-social.svg">
 	<meta property="og:image:width" content="1200">
 	<meta property="og:image:height" content="630">
-	<meta property="og:image:alt" content="Des voitures de rallye en glisse sur une spéciale de terre, dans un nuage de poussière">
+	<meta property="og:image:alt" content="Раллийные машины на грунтовом спецучастке в облаке пыли">
 	<meta property="og:locale" content="fr_FR">
 	<meta name="twitter:card" content="summary_large_image">
 	<meta name="twitter:title" content="Racing Club 1sk4nd3r">
-	<meta name="twitter:description" content="Jeu de course et de rallye gratuit dans le navigateur : spéciales générées à l'infini, éditeur de circuits, classements et multijoueur.">
+	<meta name="twitter:description" content="Гонки и ралли в браузере: трассы, горные спецучастки, редактор, рейтинги и заезды с друзьями.">
 	<meta name="twitter:image" content="images/racing-club-social.svg">
 	<script>
 		// Old shared links (index.html?rally=..., ?track=..., #track=..., ?map=...) now live in play.html
@@ -414,7 +414,7 @@
 		#music .eq i:nth-child(3) { height: calc(3px + var(--kick) * 12px); }
 		#music .eq i:nth-child(4) { height: calc(5px + var(--kick) * 7px); }
 		#music.off .eq i { height: 3px; background: var(--muted); }
-		#music.off .label::after { content: ' coupé'; }
+		#music.off .label::after { content: ' выкл.'; }
 		#profile { margin-left: 0; }
 
 		@media (prefers-reduced-motion: reduce) {
@@ -501,23 +501,23 @@
 
 	<header id="topbar">
 		<div id="online" hidden><span class="dot"></span><b></b></div>
-		<nav id="crumbs" aria-label="Navigation" data-i18n-aria-label="topbar.nav"></nav>
-		<div id="circuit-search" hidden><input id="circuit-search-input" type="search" maxlength="40" placeholder="Chercher un circuit…" data-i18n-placeholder="circuits.searchPlaceholder"></div>
-		<button id="music" aria-pressed="true" title="Couper la musique"><span class="eq"><i></i><i></i><i></i><i></i></span><span class="label" data-i18n="home.sound">Son</span></button>
-		<button id="profile" title="Ton compte pour les classements et le multijoueur" data-i18n-title="account.buttonTitle">
+		<nav id="crumbs" aria-label="Навигация" data-i18n-aria-label="topbar.nav"></nav>
+		<div id="circuit-search" hidden><input id="circuit-search-input" type="search" maxlength="40" placeholder="Найти трассу…" data-i18n-placeholder="circuits.searchPlaceholder"></div>
+		<button id="music" aria-pressed="true" title="Выключить музыку"><span class="eq"><i></i><i></i><i></i><i></i></span><span class="label" data-i18n="home.sound">Звук</span></button>
+		<button id="profile" title="Твой аккаунт для рейтингов и мультиплеера" data-i18n-title="account.buttonTitle">
 			<span class="avatar">G</span>
-			<span class="who">Se connecter<small>avec Google</small></span>
+			<span class="who">Войти<small>логин и пароль</small></span>
 		</button>
 	</header>
 
 	<div id="pseudo-pop" hidden>
-		<label for="pseudo" data-i18n="account.pseudo">Pseudo</label>
+		<label for="pseudo" data-i18n="account.pseudo">Ник</label>
 		<div class="row">
-			<input id="pseudo" maxlength="20" autocomplete="nickname" placeholder="Ton pseudo" data-i18n-placeholder="account.pseudoPlaceholder">
+			<input id="pseudo" maxlength="20" autocomplete="nickname" placeholder="Твой ник" data-i18n-placeholder="account.pseudoPlaceholder">
 			<button id="pseudo-save" class="chip on">OK</button>
 		</div>
 		<p id="pseudo-note" class="note"></p>
-		<div class="row"><button id="sign-out" class="chip" data-i18n="account.signOut">Se déconnecter</button></div>
+		<div class="row"><button id="sign-out" class="chip" data-i18n="account.signOut">Выйти</button></div>
 	</div>
 
 	<div id="walls" hidden></div>

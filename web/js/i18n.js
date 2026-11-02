@@ -1,9 +1,9 @@
 // Languages of the game's text. Every string shown to the player goes through
-// t( key, params ) and lives in js/locales/<code>.js; French (fr.js) is the
-// source: a key missing from another language falls back to it.
+// t( key, params ) and lives in js/locales/<code>.js. Russian is the club's
+// primary language and the fallback for missing translations.
 //
 // The language is the browser's (navigator.languages: what the player reads,
-// a better guess than their country), else English. Forced by hand, from
+// a better guess than their country), else Russian. Forced by hand, from
 // the devtools console:
 //   dirtbound.setLang( 'en' )    then the page reloads
 //   dirtbound.setLang( 'auto' )  back to the browser's language
@@ -11,16 +11,16 @@
 //
 // Adding a language: copy js/locales/en.js to js/locales/<code>.js, translate
 // it and add the code to LANGS. Only the active language is downloaded.
-// Outside a browser (the server's tests import some game modules) it is French.
+// Outside a browser (the server's tests import some game modules) it is Russian.
 
-import fr from './locales/fr.js';
+import ru from './locales/ru.js';
 
 export const LANGS = {
-	fr: 'Français', en: 'English', es: 'Español', pt: 'Português (Brasil)', de: 'Deutsch', it: 'Italiano',
+	en: 'English', es: 'Español', pt: 'Português (Brasil)', de: 'Deutsch', it: 'Italiano',
 	pl: 'Polski', tr: 'Türkçe', nl: 'Nederlands', sv: 'Svenska', cs: 'Čeština', ro: 'Română',
 	ru: 'Русский', ja: '日本語', zh: '简体中文', ko: '한국어',
 };
-export const FALLBACK = 'en'; // a browser in a language the game doesn't speak
+export const FALLBACK = 'ru'; // a browser in a language the game doesn't speak
 const KEY = 'dirtbound.lang';
 const browser = typeof window !== 'undefined';
 
@@ -51,7 +51,7 @@ function supported( code ) {
 
 function choose() {
 
-	if ( ! browser ) return { lang: 'fr', source: 'node' };
+	if ( ! browser ) return { lang: 'ru', source: 'node' };
 	const asked = supported( new URLSearchParams( location.search ).get( 'lang' ) );
 	if ( asked ) return { lang: asked, source: 'url' };
 	const stored = supported( readStored() );
@@ -69,7 +69,8 @@ function choose() {
 
 const chosen = choose();
 export const lang = chosen.lang;
-const dict = lang === 'fr' ? fr : ( await import( `./locales/${ lang }.js` ) ).default;
+const dict = lang === 'ru' ? ru : ( await import( `./locales/${ lang }.js` ) ).default;
+const serverMessages = { ...ru.server, ...dict.server };
 const plurals = new Intl.PluralRules( lang );
 const ordinals = new Intl.PluralRules( lang, { type: 'ordinal' } );
 
@@ -91,7 +92,7 @@ function lookup( table, key ) {
 // { one, other } (plurals) picks by params.n. Unknown key = the key itself.
 export function t( key, params = {} ) {
 
-	let v = lookup( dict, key ) ?? lookup( fr, key );
+	let v = lookup( dict, key ) ?? lookup( ru, key );
 	if ( v === undefined ) {
 
 		if ( browser ) console.warn( `i18n: no text for "${ key }"` );
@@ -107,7 +108,7 @@ export function t( key, params = {} ) {
 // 1 → '1er' / '1st': the language's `ordinal` { one, two, few, other }
 export function ordinal( n ) {
 
-	const v = lookup( dict, 'ordinal' ) ?? lookup( fr, 'ordinal' );
+	const v = lookup( dict, 'ordinal' ) ?? lookup( ru, 'ordinal' );
 	return ( v[ ordinals.select( n ) ] ?? v.other ).replace( '{n}', n );
 
 }
@@ -115,7 +116,7 @@ export function ordinal( n ) {
 // A list of texts (key → array), e.g. a graphics preset's lines
 export function list( key ) {
 
-	const v = lookup( dict, key ) ?? lookup( fr, key );
+	const v = lookup( dict, key ) ?? lookup( ru, key );
 	return Array.isArray( v ) ? v : [];
 
 }
@@ -125,8 +126,8 @@ export function list( key ) {
 // there is shown as is. "Tour refusé : <why>" is translated in two halves.
 export function serverText( message ) {
 
-	if ( ! message || lang === 'fr' ) return message;
-	const table = dict.server || {};
+	if ( ! message ) return message;
+	const table = serverMessages;
 	if ( table[ message ] ) return table[ message ];
 	const cut = message.indexOf( ' : ' );
 	if ( cut > 0 ) {

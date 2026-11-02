@@ -9,7 +9,8 @@
     "test:catalog": "node --test tools/catalog.test.mjs",
     "test:performance": "node --test tools/circuit-performance.test.mjs",
     "test:yaris": "node --test tools/yaris.test.mjs",
-    "test:beta": "node --test tools/beta.test.mjs"
+    "test:beta": "node --test tools/beta.test.mjs",
+    "test:localization": "node --test tools/localization.test.mjs"
   },
   "devDependencies": {
     "three": "0.185.1"
