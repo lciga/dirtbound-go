@@ -1353,14 +1353,21 @@ function showLobbyError( message ) {
 
 	const box = document.createElement( 'div' );
 	useHudTheme();
-	box.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:#adb2ba;text-align:center;z-index:50';
+	// Dark and long enough to read once the loading screen has faded; a click leaves at once
+	box.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;align-content:center;gap:18px;background:rgba(14,17,22,.94);text-align:center;z-index:50;cursor:pointer;padding:24px';
 	const inner = document.createElement( 'div' );
 	inner.className = 'hud-toast';
+	inner.style.cssText = 'white-space:normal;max-width:min(90vw,900px)';
 	inner.textContent = t( 'game.lobbyError', { message } );
-	box.appendChild( inner );
+	const hint = document.createElement( 'div' );
+	hint.style.cssText = 'color:#c9ced6;font:600 16px var(--text, sans-serif)';
+	hint.textContent = t( 'race.backToMenu' );
+	box.append( inner, hint );
 	document.body.appendChild( box );
 	loading.reveal();
-	setTimeout( () => leavePage( 'menu.html' ), 2500 );
+	const back = () => leavePage( 'menu.html' );
+	box.addEventListener( 'click', back );
+	setTimeout( back, 7000 );
 
 }
 

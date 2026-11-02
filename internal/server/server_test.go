@@ -347,6 +347,36 @@ func TestLobbyReconnectAcrossPageNavigation(t *testing.T) {
 	}
 }
 
+func TestLobbyRefusesAfterUpgradeAndWelcomesWithoutLobby(t *testing.T) {
+	_, s, client := newTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	url := "ws" + strings.TrimPrefix(s.URL, "http") + "/api/lobby"
+	guest, resp, err := websocket.Dial(ctx, url, nil)
+	if err != nil || resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("guest handshake must succeed (no HTTP refusal): %v", err)
+	}
+	if _, _, err = guest.Read(ctx); websocket.CloseStatus(err) != closeSignIn {
+		t.Fatalf("guest close: %v", err)
+	}
+	login(t, client, s.URL, "Welcome Driver")
+	conn, _, err := websocket.Dial(ctx, url, &websocket.DialOptions{HTTPClient: client})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.CloseNow() })
+	wsSend(t, ctx, conn, map[string]any{"t": "hello"})
+	if m := wsRead(t, ctx, conn, "welcome"); m["player"] != nil {
+		t.Fatalf("welcome without a lobby: %v", m)
+	}
+	wsSend(t, ctx, conn, map[string]any{"t": "create"})
+	created := wsRead(t, ctx, conn, "lobby")
+	wsSend(t, ctx, conn, map[string]any{"t": "hello"})
+	if m := wsRead(t, ctx, conn, "welcome"); m["player"] != created["you"] {
+		t.Fatalf("welcome in a lobby: %v", m)
+	}
+}
+
 func TestRaceRequiresSessionAndPreservesDestination(t *testing.T) {
 	a := newTestApp(t, fstest.MapFS{"play.html": &fstest.MapFile{Data: []byte("signed-in race")}})
 	for _, target := range []string{"/play.html?rally=123", "//play.html", "/unused/../play.html", "/%70lay.html"} {

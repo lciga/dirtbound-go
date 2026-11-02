@@ -6,6 +6,9 @@
 
 import { t, serverText } from './i18n.js';
 import { dailySeed } from './DailyChallenge.js';
+import { debugLog } from './DebugLog.js';
+
+const log = debugLog( 'net' );
 
 const API = 'api';
 const TIMEOUT = 8000; // ms
@@ -45,16 +48,19 @@ export async function request( path, options = {} ) {
 
 	const controller = new AbortController();
 	const timer = setTimeout( () => controller.abort(), TIMEOUT );
+	const started = performance.now();
 
 	try {
 
 		const res = await fetch( `${ API }/${ path }`, { ...options, signal: controller.signal } );
 		const body = await res.json().catch( () => null );
+		log( `${ options.method || 'GET' } ${ API }/${ path } → ${ res.status } in ${ Math.round( performance.now() - started ) } ms` );
 		if ( ! body ) return { ok: false, status: res.status, error: t( 'errors.boardUnreachable' ) };
 		return body.success ? { ok: true, data: body.data } : { ok: false, status: res.status, error: serverText( body.error ) }; // the server writes French
 
-	} catch {
+	} catch ( error ) {
 
+		log.warn( `${ options.method || 'GET' } ${ API }/${ path } failed after ${ Math.round( performance.now() - started ) } ms: ${ controller.signal.aborted ? `no answer within ${ TIMEOUT / 1000 } s` : error.message }` );
 		return { ok: false, status: 0, error: t( 'errors.boardUnreachable' ) };
 
 	} finally {

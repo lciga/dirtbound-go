@@ -951,8 +951,12 @@ export class Walls {
 		const item = this.items[ Number( button.dataset.wall ) ];
 		if ( ! item ) return;
 		// Still hot if hovered or focused from the keyboard (a click leaves the
-		// focus on the button: not a reason to stay lit once the mouse is gone)
-		const hot = on || button.matches( ':hover' ) || button.matches( ':focus-visible' );
+		// focus on the button: not a reason to stay lit once the mouse is gone).
+		// Leaving: where the pointer went, not :hover (Firefox only updates it
+		// after pointerout); onto the item's other button (its star) it stays
+		const to = e.type === 'pointerout' ? e.relatedTarget?.closest?.( '.hotspot' ) : null;
+		const hovered = e.type === 'pointerout' ? to?.dataset.wall === button.dataset.wall : button.matches( ':hover' );
+		const hot = on || hovered || button.matches( ':focus-visible' );
 		if ( hot === item.hot ) return;
 		item.hot = hot;
 		this.onHover?.( item.spec, hot );

@@ -4,6 +4,9 @@
 // failures never break the game: calls resolve to null / { ok: false }.
 
 import { t, serverText } from './i18n.js';
+import { debugLog } from './DebugLog.js';
+
+const log = debugLog( 'net' );
 
 const ERRORS = { access_denied: 'account.cancelled', EMAIL_NOT_VERIFIED: 'account.unverified' };
 
@@ -11,15 +14,18 @@ let cached;
 
 async function api( path, options = {} ) {
 
+	const started = performance.now();
 	try {
 
 		const res = await fetch( path, options );
 		const body = await res.json().catch( () => null );
+		log( `${ options.method || 'GET' } ${ path } → ${ res.status } in ${ Math.round( performance.now() - started ) } ms` );
 		if ( res.ok && body?.success !== false ) return { ok: true, status: res.status, data: body?.data ?? body };
 		return { ok: false, status: res.status, error: serverText( body?.error || body?.message ) || t( 'errors.server' ) }; // the server writes French
 
-	} catch {
+	} catch ( error ) {
 
+		log.warn( `${ options.method || 'GET' } ${ path } failed after ${ Math.round( performance.now() - started ) } ms: ${ error.message }` );
 		return { ok: false, status: 0, error: t( 'errors.unreachable' ) };
 
 	}
