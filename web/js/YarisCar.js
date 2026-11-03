@@ -1,49 +1,73 @@
 import * as THREE from 'three';
 import { CAR_STYLE } from './CarStyle.js';
 
-// One GLB fetch and shared GPU geometry/materials for every racer.
+// One mesh download; racers and paint variants share all GPU geometry.
 let template;
-const variants=new Map();
-const palettes=[[0xe5e8e2,0xcc2e32],[0x3a7ba9,0xf2c94c],[0x233c69,0xe5e8e2],[0x75a542,0x242b32],[0xf2c23a,0x282f36]];
-export const YARIS_PAINTS = palettes.map( ( [ paint ] ) => `#${ paint.toString( 16 ).padStart( 6, '0' ) }` );
+const variants = new Map();
+export const YARIS_PAINTS = [ '#eb4896', '#3078c6', '#1e345d', '#75a542', '#f2c23a' ];
 const WHEELS = { FL: 'wheel-front-left', FR: 'wheel-front-right', BL: 'wheel-back-left', BR: 'wheel-back-right' };
 
-export function loadYaris( loader, color=1 ) {
-	if ( ! template ) template = new Promise( ( resolve, reject ) => {
-		loader.load( 'models/yaris.glb', gltf => {
-			const content = gltf.scene;
-			content.scale.setScalar( CAR_STYLE.runtimeScale );
-			content.traverse( node => {
-				if ( WHEELS[ node.name ] ) node.name = WHEELS[ node.name ];
-				else if ( node.name === 'car' ) node.name = 'body';
-				if ( node.isMesh ) node.castShadow = node.receiveShadow = true;
-			} );
-			// Stretch around the tyre contact plane, not around the chassis centre.
-			content.updateMatrixWorld( true );
-			content.position.y -= new THREE.Box3().setFromObject( content ).min.y;
-			const visual = new THREE.Group();
-			visual.name = 'YarisVisual';
-			visual.userData.yarisModel = true;
- visual.userData.yaris = false;
-			visual.userData.bodyY = content.getObjectByName( 'body' )?.position.y ?? 0;
-			const stretch = new THREE.Group();
-			stretch.name = 'YarisStretch';
-			stretch.add( content );
-			visual.add( stretch );
-			resolve( visual );
-		}, undefined, error => { template = null; reject( error ); } );
-	} );
-	return template.then( model => {
- const variant=Math.min(5,Math.max(1,Math.round(color)||1));
- if(!variants.has(variant)){
-  const styled=model.clone(true),base=new THREE.Color(0xe5e8e2),accent=new THREE.Color(0xcc2e32),[paintColor,stripeColor]=palettes[variant-1].map(c=>new THREE.Color(c));
-  const matches=(a,i,c)=>Math.abs(a.getX(i)-c.r)<.008&&Math.abs(a.getY(i)-c.g)<.008&&Math.abs(a.getZ(i)-c.b)<.008;
-  styled.traverse(n=>{if(n.isMesh&&n.name==='body'){
-   n.geometry=n.geometry.clone();const colors=n.geometry.attributes.color;
-   for(let i=0;i<colors.count;i++){const c=matches(colors,i,base)?paintColor:matches(colors,i,accent)?stripeColor:null;if(c)colors.setXYZ(i,c.r,c.g,c.b);}
-  }});
-  variants.set(variant,styled);
+async function paintVariant( model, variant, manager ) {
+
+ const styled = model.clone( true );
+ if ( variant !== 1 ) {
+  const bitmap = await new THREE.ImageBitmapLoader( manager )
+   .setOptions( { premultiplyAlpha: 'none', colorSpaceConversion: 'none' } )
+   .loadAsync( `models/yaris/wrap-${ variant }.jpg` );
+  const atlas = new THREE.Texture( bitmap );
+  atlas.flipY = false;
+  atlas.colorSpace = THREE.SRGBColorSpace;
+  atlas.anisotropy = 4;
+  atlas.needsUpdate = true;
+  const body = styled.getObjectByName( 'body' );
+  body.material = body.material.clone();
+  body.material.map = atlas;
+  body.material.needsUpdate = true;
  }
- return variants.get(variant).clone(true);
- });
+ return styled;
+
+}
+
+export function loadYaris( loader, color = 1 ) {
+
+ if ( ! template ) template = new Promise( ( resolve, reject ) => {
+  loader.load( 'models/yaris.glb', gltf => {
+   const content = gltf.scene;
+   content.scale.setScalar( CAR_STYLE.runtimeScale );
+   content.traverse( node => {
+    if ( WHEELS[ node.name ] ) node.name = WHEELS[ node.name ];
+    else if ( node.name === 'car' ) node.name = 'body';
+    if ( node.isMesh ) {
+     node.castShadow = node.receiveShadow = true;
+     for ( const material of [ node.material ].flat() ) {
+      if ( material.map ) material.map.anisotropy = 4;
+     }
+    }
+   } );
+   content.updateMatrixWorld( true );
+   content.position.y -= new THREE.Box3().setFromObject( content ).min.y;
+   const visual = new THREE.Group();
+   visual.name = 'YarisVisual';
+   visual.userData.yarisModel = true;
+   visual.userData.yaris = false;
+   visual.userData.bodyY = content.getObjectByName( 'body' )?.position.y ?? 0;
+   const stretch = new THREE.Group();
+   stretch.name = 'YarisStretch';
+   stretch.add( content );
+   visual.add( stretch );
+   resolve( visual );
+  }, undefined, error => { template = null; reject( error ); } );
+ } );
+ return template.then( model => {
+  const variant = Math.min( 5, Math.max( 1, Math.round( color ) || 1 ) );
+  if ( ! variants.has( variant ) ) {
+   const pending = paintVariant( model, variant, loader.manager ).catch( error => {
+    variants.delete( variant );
+    throw error;
+   } );
+   variants.set( variant, pending );
+  }
+  return variants.get( variant ).then( styled => styled.clone( true ) );
+ } );
+
 }

@@ -1,0 +1,111 @@
+import fs from 'node:fs';
+import sharp from 'sharp';
+import {Document,NodeIO} from '@gltf-transform/core';
+import {KHRMeshQuantization} from '@gltf-transform/extensions';
+import {quantize} from '@gltf-transform/functions';
+import {MeshoptSimplifier} from 'meshoptimizer';
+import * as T from '../../dirtbound-go/node_modules/three/build/three.module.js';
+import {mergeVertices,toCreasedNormals} from '../../dirtbound-go/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
+import {CAR_STYLE} from '../../dirtbound-go/web/js/CarStyle.js';
+const ROOT=new URL('../',import.meta.url),io=new NodeIO().registerExtensions([KHRMeshQuantization]),src=await io.read(new URL('base-models/gr-yaris-2020-original.glb',ROOT).pathname),doc=new Document(),buffer=doc.createBuffer();
+await MeshoptSimplifier.ready;
+const neko=process.env.YARIS_LIVERY!=='white';
+const baseSample=await sharp(new URL('../textures/yaris-base-atlas.png',import.meta.url).pathname).removeAlpha().raw().toBuffer({resolveWithObject:true});
+const comps=JSON.parse(fs.readFileSync(new URL('base-models/component-analysis.json',ROOT)));
+const meshSrc=src.getRoot().listMeshes(),dst={body:{p:[],n:[],uv:[]},glass:{p:[],n:[],uv:[]},lights:{p:[],n:[],uv:[]},mirrors:{p:[],n:[],uv:[]},trim:{p:[],n:[],uv:[]}},audit=[];
+const factor=3.995/15.38949966430664*CAR_STYLE.referenceModelScale,cx=-74.9807014465332,cz=(30.63990020751953+46.02939987182617)/2;
+const point=(x,y,z)=>[-(x-cx)*factor,z*factor,(y-cz)*factor],normal=(x,y,z)=>[-x,z,y];
+const rad=(2.34265/2)*factor,half=.225/2*.86;
+const wx=((78.426498-71.534896)/2-.941/2)*factor,fy=(41.7+44.01)/2,by=(31.8148+34.125)/2;
+function append(mi,ids,target,tile){
+ const prim=meshSrc[mi].listPrimitives()[0],a=prim.getAttribute('POSITION').getArray(),n=prim.getAttribute('NORMAL').getArray(),uv=prim.getAttribute('TEXCOORD_0').getArray(),idx=prim.getIndices().getArray(),set=new Set(ids),parts=comps[mi].components.filter(c=>set.has(c.id));
+ const eligible=c=>target==='body'&&(mi===3||(mi===5&&[0,13,14,15,16,19].includes(c.id))||(mi===4&&[58,60].includes(c.id)));
+ const tris=parts.flatMap(c=>c.trianglesIndices),paintable=new Set(parts.filter(eligible).flatMap(c=>c.trianglesIndices));
+ for(const t of tris){const pts=[0,1,2].map(k=>{const i=idx[t*3+k];return point(a[i*3],a[i*3+1],a[i*3+2]).map(Math.fround)}),nn=new T.Vector3(...pts[1]).sub(new T.Vector3(...pts[0])).cross(new T.Vector3(...pts[2]).sub(new T.Vector3(...pts[0]))).normalize(),center=pts.reduce((s,p)=>s.map((v,i)=>v+p[i]/3),[0,0,0]);
+ if(nn.lengthSq()<.5)continue;
+ const oldU=([0,1,2].reduce((s,k)=>s+uv[idx[t*3+k]*2],0)/3),oldV=([0,1,2].reduce((s,k)=>s+uv[idx[t*3+k]*2+1],0)/3),px=Math.max(0,Math.min(baseSample.info.width-1,Math.floor(((tile?.[0]||0)+oldU*(tile?.[2]||0))/768*baseSample.info.width))),py=Math.max(0,Math.min(baseSample.info.height-1,Math.floor(((tile?.[1]||0)+oldV*(tile?.[3]||0))/768*baseSample.info.height))),pixel=Array.from(baseSample.data.subarray((py*baseSample.info.width+px)*3,(py*baseSample.info.width+px)*3+3)),darkTrim=mi!==3&&!(mi===4&&parts.some(c=>c.id===60&&c.trianglesIndices.includes(t)))&&Math.max(...pixel)<45;let chart=null;if(neko&&paintable.has(t)&&!darkTrim&&!([4,5].includes(mi)&&oldV<.415&&!(mi===4&&parts.some(c=>c.id===60&&c.trianglesIndices.includes(t))))){if(mi===3)chart='hood';else if(mi===4&&parts.some(c=>c.id===60&&c.trianglesIndices.includes(t)))chart='roof';else if(mi===4&&parts.some(c=>c.id===58&&c.trianglesIndices.includes(t)))chart='side';else if(mi===5&&center[1]>1.0)chart='side';else if(center[2]>1.05&&center[1]<.83)chart='front';else if(center[2]<-1.3&&center[1]<.83)chart='back';else if(Math.abs(nn.x)>.38&&Math.abs(nn.x)>.85*Math.abs(nn.z))chart='side';else if(Math.abs(nn.z)>.5)chart=center[2]>0?'front':'back';else chart=center[1]>1.1?'roof':'hood';}
+ for(let k=0;k<3;k++){const i=idx[t*3+k],p=pts[k];dst[target].p.push(...p);dst[target].n.push(...normal(n[i*3],n[i*3+1],n[i*3+2]));let out=tile?[(tile[0]+uv[i*2]*tile[2])/768,(tile[1]+uv[i*2+1]*tile[3])/768]:[0,0];if(neko)out=out.map(v=>v*.5);
+ if(chart==='side'){const sign=Math.sign(center[0]),u=sign>0?(1.8-p[2])/3.6:(p[2]+1.8)/3.6;out=[(sign>0?0:.5)+u*.5,.5+(1.25-p[1])/1.25*.25];}
+ else if(chart==='hood'||chart==='roof')out=[(chart==='hood'?.5:.75)+(p[0]+1)/2*.25,(1.8-p[2])/3.6*.25];
+ else if(chart==='front'||chart==='back')out=[(chart==='front'?.5:.75)+(p[0]+1)/2*.25,.25+(1.25-p[1])/1.25*.25];
+ dst[target].uv.push(...out);}}
+ audit.push({sourceMesh:mi,componentIds:ids,target,triangles:tris.length});
+}
+const bodyTile=[0,0,512,512],hoodTile=[512,0,256,256],lightTile=[512,256,256,256];
+append(5,[0,1,13,14,15,16,19,27,28,29,30,31,32,33],'body',bodyTile);
+append(4,[15,36,37,60,64],'body',bodyTile);append(4,[16,17,20,21],'lights',bodyTile);
+append(3,[0],'body',hoodTile);append(5,[20,21],'mirrors',bodyTile);
+// Retain the source cowl, seals, mirror sail panels, inner body and underfloor.
+append(4,[58],'body',bodyTile);append(4,[2,3,12,32,33,34,35],'trim',bodyTile);
+append(5,[2,3,4,5,6,7,8,9,10,11,12,17,18,24,25,26],'trim',bodyTile);
+// Opaque wheel-well backs and returns stop views through the hollow body.
+// They stay behind the source fender lips and share the existing dark trim draw.
+let linerTriangles=0;
+const linerTri=(a,b,c)=>{const n=new T.Vector3(...b).sub(new T.Vector3(...a)).cross(new T.Vector3(...c).sub(new T.Vector3(...a))).normalize();for(const p of[a,b,c]){dst.trim.p.push(...p);dst.trim.n.push(...n.toArray());dst.trim.uv.push(0,0);}linerTriangles++;};
+for(const side of[-1,1])for(const rawZ of[fy,by]){
+ const z=(rawZ-cz)*factor,inside=side*.46,outside=side*(wx+half-.012),radius=rad+.10,steps=20;
+ const ring=(x,a,r=radius)=>[x,rad+Math.sin(a)*r,z+Math.cos(a)*r];
+ for(let i=0;i<steps;i++){const a=-.3+i*(Math.PI+.6)/steps,b=-.3+(i+1)*(Math.PI+.6)/steps;linerTri([inside,rad,z],ring(inside,a),ring(inside,b));}
+ linerTri([inside,rad,z],ring(inside,Math.PI+.3),ring(inside,-.3));
+ for(let i=0;i<steps/2;i++){const a=i*Math.PI/(steps/2),b=(i+1)*Math.PI/(steps/2),A=ring(inside,a),B=ring(inside,b),C=ring(outside,b,rad+.04),D=ring(outside,a,rad+.04);linerTri(A,B,C);linerTri(A,C,D);}
+}
+append(0,[4,5,6,7,8,9],'glass');
+// Mirror lenses are separate source components, not part of the exterior casing.
+const glassColours=[];for(let i=0;i<dst.glass.p.length/3;i++)glassColours.push(.032,.047,.057);
+const beforeMirrors=dst.glass.p.length;append(5,[22,23],'glass');for(let i=beforeMirrors/3;i<dst.glass.p.length/3;i++)glassColours.push(.25,.34,.4);
+// Rubber window mouldings follow the exact source pane boundaries.
+const paneSource=meshSrc[0].listPrimitives()[0],pa=paneSource.getAttribute('POSITION').getArray(),pi=paneSource.getIndices().getArray();
+for(const component of comps[0].components.filter(c=>[5,6,7,8].includes(c.id))){
+ const verts=[],ids=new Map(),edges=new Map(),get=i=>{const p=point(pa[i*3],pa[i*3+1],pa[i*3+2]),key=p.map(v=>Math.round(v*1e5)).join(',');if(!ids.has(key)){ids.set(key,verts.length);verts.push(p)}return ids.get(key)};
+ for(const t of component.trianglesIndices){const q=[0,1,2].map(j=>get(pi[t*3+j]));for(let j=0;j<3;j++){const a=q[j],b=q[(j+1)%3],k=[Math.min(a,b),Math.max(a,b)].join(',');if(!edges.has(k))edges.set(k,{a,b,count:0});edges.get(k).count++}}
+ const centre=verts.reduce((s,p)=>s.map((v,i)=>v+p[i]/verts.length),[0,0,0]),side=Math.sign(centre[0]),outer=p=>[p[0]+side*.003,p[1],p[2]],inner=p=>{const v=new T.Vector3(...centre).sub(new T.Vector3(...p));v.multiplyScalar(Math.min(.075,.018/v.length()));return[p[0]+v.x+side*.004,p[1]+v.y,p[2]+v.z]};
+ for(const e of edges.values())if(e.count===1){const a=outer(verts[e.a]),b=outer(verts[e.b]),c=inner(verts[e.b]),d=inner(verts[e.a]);for(const q of[[a,b,c],[a,c,d]])for(const p of q){dst.glass.p.push(...p);dst.glass.n.push(side,0,0);dst.glass.uv.push(0,0);glassColours.push(.009,.011,.013);}}
+}
+dst.glass.c=glassColours;
+// Actual lens surfaces retained from the source; source UVs map to the lamp atlas.
+// Removed transparent lens covers; retain the authored interior lamp surfaces below.
+append(6,[2,3,4,5,6,7,20,21,22],'lights',lightTile);
+const texture=doc.createTexture('Yaris UV atlas').setImage(fs.readFileSync(new URL(neko?'textures/yaris-neko-atlas.jpg':'textures/yaris-base-atlas.png',ROOT))).setMimeType(neko?'image/jpeg':'image/png');
+const em=doc.createTexture('DRL and rear lamps').setImage(fs.readFileSync(new URL(neko?'textures/yaris-neko-emissive.png':'textures/yaris-base-emissive.png',ROOT))).setMimeType('image/png');
+const paint=doc.createMaterial('Body').setBaseColorTexture(texture).setRoughnessFactor(CAR_STYLE.roughness).setMetallicFactor(0).setDoubleSided(true);
+const mirrorMat=paint.clone().setName('Mirror shells').setDoubleSided(true);
+const trimMat=paint.clone().setName('Inner body and seals').setDoubleSided(true);
+const glass=doc.createMaterial('Glass').setBaseColorFactor([1,1,1,1]).setMetallicFactor(0).setRoughnessFactor(.62).setDoubleSided(true);
+const lights=doc.createMaterial('Lights').setBaseColorTexture(texture).setEmissiveTexture(em).setEmissiveFactor([1,1,1]).setMetallicFactor(0).setRoughnessFactor(.6).setDoubleSided(true);
+const rubber=doc.createMaterial('Wheels').setRoughnessFactor(.8).setMetallicFactor(0);
+const scene=doc.createScene('GR Yaris review'),bodyNode=doc.createNode('body');scene.addChild(bodyNode);
+function geometry(data){const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(data.p,3));g.setAttribute('normal',new T.Float32BufferAttribute(data.n,3));g.setAttribute('uv',new T.Float32BufferAttribute(data.uv,2));if(data.c)g.setAttribute('color',new T.Float32BufferAttribute(data.c,3));return mergeVertices(g,1e-5)}
+function primitive(g,mat){const p=doc.createPrimitive().setMaterial(mat);for(const [key,type]of[['position','VEC3'],['normal','VEC3'],['uv','VEC2'],['color','VEC3']])if(g.getAttribute(key)){const a=g.getAttribute(key);p.setAttribute(({position:'POSITION',normal:'NORMAL',uv:'TEXCOORD_0',color:'COLOR_0'})[key],doc.createAccessor().setType(type).setArray(new Float32Array(a.array)).setBuffer(buffer));}p.setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint16Array(g.index.array)).setBuffer(buffer));return p}
+function borderEdges(positions,indices){const keys=Array.from({length:positions.length/3},(_,i)=>[positions[i*3],positions[i*3+1],positions[i*3+2]].map(x=>Math.round(x*1e4)).join(',')),edges=new Map();for(let t=0;t<indices.length;t+=3)for(let j=0;j<3;j++){const a=keys[indices[t+j]],b=keys[indices[t+(j+1)%3]];if(a===b)continue;const key=[a,b].sort().join('|');edges.set(key,(edges.get(key)||0)+1);}return new Set([...edges].filter(([,n])=>n===1).map(([key])=>key));}
+const protectedPositions=new Set();{const p=meshSrc[4].listPrimitives()[0],a=p.getAttribute('POSITION').getArray(),ix=p.getIndices().getArray();for(const c of comps[4].components.filter(c=>[36,37].includes(c.id)))for(const t of c.trianglesIndices)for(let j=0;j<3;j++){const k=ix[t*3+j]*3;protectedPositions.add(point(a[k],a[k+1],a[k+2]).map(v=>Math.round(v*1e5)).join(','));}}{const p=meshSrc[5].listPrimitives()[0],a=p.getAttribute('POSITION').getArray(),ix=p.getIndices().getArray();for(const c of comps[5].components.filter(c=>[20,21].includes(c.id)))for(const t of c.trianglesIndices)for(let j=0;j<3;j++){const k=ix[t*3+j]*3;protectedPositions.add(point(a[k],a[k+1],a[k+2]).map(v=>Math.round(v*1e5)).join(','));}}const reductions=[];
+// Upper part of the original body atlas holds badges, lamps and mechanical trim.
+{const p=meshSrc[5].listPrimitives()[0],a=p.getAttribute('POSITION').getArray(),uv=p.getAttribute('TEXCOORD_0').getArray();for(let i=0;i<a.length/3;i++)if(uv[i*2+1]<.415)protectedPositions.add(point(a[i*3],a[i*3+1],a[i*3+2]).map(v=>Math.round(v*1e5)).join(','));}
+// Preserve authored details and every open seam; only broad panel interiors reduce.
+for(const entry of audit){const p=meshSrc[entry.sourceMesh].listPrimitives()[0],a=p.getAttribute('POSITION').getArray(),ix=p.getIndices().getArray();for(const c of comps[entry.sourceMesh].components.filter(c=>entry.componentIds.includes(c.id)&&c.triangles<800&&!(entry.sourceMesh===3&&c.id===0)))for(const t of c.trianglesIndices)for(let k=0;k<3;k++){const i=ix[t*3+k]*3;protectedPositions.add(point(a[i],a[i+1],a[i+2]).map(v=>Math.round(v*1e5)).join(','));}}
+for(const [name,target,mat]of[['body',4500,paint],['glass',100,glass],['lights',1478,lights],['mirrors',566,mirrorMat],['trim',1000,trimMat]]){
+ let g=geometry(dst[name]);const pos=g.attributes.position.array,n=g.attributes.normal.array,uv=g.attributes.uv.array,attrs=new Float32Array(pos.length/3*5);for(let i=0;i<pos.length/3;i++)attrs.set([n[i*3],n[i*3+1],n[i*3+2],uv[i*2],uv[i*2+1]],i*5);
+ const locks=new Uint8Array(pos.length/3),positions=new Map();for(let i=0;i<pos.length/3;i++){const key=[pos[i*3],pos[i*3+1],pos[i*3+2]].map(v=>Math.round(v*1e5)).join(',');if(!positions.has(key))positions.set(key,[]);positions.get(key).push(i)}for(const group of positions.values()){const u=uv[group[0]*2],v=uv[group[0]*2+1];if(group.some(i=>Math.abs(uv[i*2]-u)+Math.abs(uv[i*2+1]-v)>.0001))for(const i of group)locks[i]=2;}if(['body','lights'].includes(name))for(let i=0;i<pos.length/3;i++)if(protectedPositions.has([pos[i*3],pos[i*3+1],pos[i*3+2]].map(v=>Math.round(v*1e5)).join(',')))locks[i]=1;const indices=new Uint32Array(g.index.array),beforeBorder=borderEdges(pos,indices);const [out,error]=['glass','mirrors','lights'].includes(name)?[indices,0]:MeshoptSimplifier.simplifyWithAttributes(indices,pos,3,attrs,5,[.2,.2,.2,2,2],locks,Math.min(target*3,indices.length),.0008,['LockBorder']);g.setIndex(new T.BufferAttribute(out,1));
+ // Keep the source normals, retaining its bevels and smooth transitions.
+ const used=[...new Set(out)],map=new Map(used.map((v,i)=>[v,i])),compact=new T.BufferGeometry();for(const k of(name==='glass'?['position','normal','uv','color']:['position','normal','uv'])){const a=g.attributes[k],arr=[];for(const v of used)for(let z=0;z<a.itemSize;z++)arr.push(a.array[v*a.itemSize+z]);compact.setAttribute(k,new T.Float32BufferAttribute(arr,a.itemSize));}compact.setIndex([...out].map(v=>map.get(v)));
+ // Orient every retained triangle consistently with the authored outward normals.
+ const cp=compact.attributes.position.array,cn=compact.attributes.normal.array,ci=compact.index.array;
+ for(let t=0;t<ci.length;t+=3){const a=ci[t]*3,b=ci[t+1]*3,c=ci[t+2]*3,u=new T.Vector3(cp[b]-cp[a],cp[b+1]-cp[a+1],cp[b+2]-cp[a+2]),v=new T.Vector3(cp[c]-cp[a],cp[c+1]-cp[a+1],cp[c+2]-cp[a+2]),n=new T.Vector3(cn[a]+cn[b]+cn[c],cn[a+1]+cn[b+1]+cn[c+1],cn[a+2]+cn[b+2]+cn[c+2]);if(u.cross(v).dot(n)<0)[ci[t+1],ci[t+2]]=[ci[t+2],ci[t+1]];}
+
+ const mesh=doc.createMesh(name).addPrimitive(primitive(compact,mat));if(name==='body')bodyNode.setMesh(mesh);else bodyNode.addChild(doc.createNode(name).setMesh(mesh));const afterBorder=borderEdges(pos,out);reductions.push({part:name,before:indices.length/3,after:out.length/3,errorRelative:error,borderEdges:beforeBorder.size,missingBorders:[...beforeBorder].filter(k=>!afterBorder.has(k)).length,newBorders:[...afterBorder].filter(k=>!beforeBorder.has(k)).length});
+}
+// Shared 12-sided wheels, with broad tyre shoulders and six solid spokes.
+const wheel={p:[],n:[],uv:[],c:[]};function tri(a,b,c,color){if(a[0]===b[0]&&b[0]===c[0]){const n=new T.Vector3(...b).sub(new T.Vector3(...a)).cross(new T.Vector3(...c).sub(new T.Vector3(...a)));if(n.x*a[0]<0)[b,c]=[c,b]}const aa=new T.Vector3(...a),nn=new T.Vector3(...b).sub(aa).cross(new T.Vector3(...c).sub(aa)).normalize();for(const p of[a,b,c]){wheel.p.push(...p);wheel.n.push(...nn.toArray());wheel.uv.push(0,0);wheel.c.push(...color)}}
+function quad(a,b,c,d,col){tri(a,b,c,col);tri(a,c,d,col)}
+const side=12,rr=[[-half,rad*.82],[-half*.75,rad],[half*.75,rad],[half,rad*.82]],tire=[.021,.024,.028],rim=[.12,.135,.15];
+for(let j=1;j<rr.length;j++)for(let i=0;i<side;i++){const a=i*2*Math.PI/side,b=(i+1)*2*Math.PI/side,P=(r,t)=>[rr[r][0],Math.sin(t)*rr[r][1],Math.cos(t)*rr[r][1]];quad(P(j-1,a),P(j,a),P(j,b),P(j-1,b),tire)}
+for(const sign of[-1,1])for(let i=0;i<side;i++){const a=i*2*Math.PI/side,b=(i+1)*2*Math.PI/side,x=sign*half;quad([x,Math.sin(a)*rad*.82,Math.cos(a)*rad*.82],[x,Math.sin(b)*rad*.82,Math.cos(b)*rad*.82],[x,Math.sin(b)*rad*.67,Math.cos(b)*rad*.67],[x,Math.sin(a)*rad*.67,Math.cos(a)*rad*.67],tire);tri([x,0,0],[x,Math.sin(a)*rad*.67,Math.cos(a)*rad*.67],[x,Math.sin(b)*rad*.67,Math.cos(b)*rad*.67],[.035,.039,.044]);}
+for(const sign of[-1,1])for(let i=0;i<6;i++){const a=i*2*Math.PI/6,x=sign*(half+.001),P=(r,t)=>[x,Math.sin(t)*r,Math.cos(t)*r];quad(P(rad*.17,a-.25),P(rad*.17,a+.25),P(rad*.66,a+.07),P(rad*.66,a-.07),rim)}
+let wg=geometry(wheel);const wm=doc.createMesh('shared wheel').addPrimitive(primitive(wg,rubber));
+for(const [name,x,z]of[['FL',wx,fy],['FR',-wx,fy],['BL',wx,by],['BR',-wx,by]])scene.addChild(doc.createNode(name).setTranslation([x,rad,(z-cz)*factor]).setMesh(wm));
+// Source credits stay with the derived asset.
+Object.assign(doc.getRoot().getAsset(),{version:'2.0',generator:'Racing Club 1sk4nd3r free-base adaptation',copyright:'2020 Toyota GR Yaris by DisneyCars, CC BY 4.0',extras:{source:'https://sketchfab.com/3d-models/2020-toyota-gr-yaris-44cb958908b94aa5aad0d856994f35a3',license:'CC-BY-4.0',changes:'Removed interior/details, simplified actual source body mesh, opaque windows, shared twelve-sided wheels, UV atlas and emissive mask.'}});
+await doc.transform(quantize({pattern:/^(NORMAL|COLOR_0)$/,quantizeNormal:10,quantizeColor:8}));doc.createExtension(KHRMeshQuantization).setRequired(true);
+// Recheck winding against the stored, quantized normals at tangent joins.
+for(const mesh of doc.getRoot().listMeshes())for(const p of mesh.listPrimitives()){const a=p.getAttribute('POSITION'),n=p.getAttribute('NORMAL'),i=p.getIndices().getArray();for(let t=0;t<i.length;t+=3){const q=[0,1,2].map(k=>new T.Vector3(...a.getElement(i[t+k],[]))),nn=[0,1,2].map(k=>new T.Vector3(...n.getElement(i[t+k],[]))).reduce((s,n)=>s.add(n),new T.Vector3());if(q[1].sub(q[0]).cross(q[2].sub(q[0])).dot(nn)<0)[i[t+1],i[t+2]]=[i[t+2],i[t+1]];}}
+
+const out=new URL('yaris-from-base.glb',ROOT).pathname;await io.write(out,doc);const triangles=reductions.reduce((a,x)=>a+x.after,0)+wg.index.count/3*4;const stats={sourceTriangles:26418,totalTriangles:triangles,drawCalls:9,bytes:fs.statSync(out).size,reductions,wheelTriangles:wg.index.count/3,wheelWellTriangles:linerTriangles,sourceComponents:audit};fs.writeFileSync(new URL('base-model-stats.json',ROOT),JSON.stringify(stats,null,2));console.log(JSON.stringify({...stats,sourceComponents:undefined},null,2));

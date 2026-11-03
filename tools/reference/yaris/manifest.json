@@ -1,0 +1,19 @@
+{
+  "sha256": "786ce2fb7bc5a4b07cced7cbdd75dfef9562c85efeb1756c6f269eaf19b36dc3",
+  "approved": "2026-11-03",
+  "source": "https://sketchfab.com/3d-models/2020-toyota-gr-yaris-44cb958908b94aa5aad0d856994f35a3",
+  "author": "DisneyCars (@supercarmodels)",
+  "license": "CC BY 4.0",
+  "reviewedBudget": {
+    "maxTriangles": 15000,
+    "maxDrawCalls": 9,
+    "maxModelBytes": 650000
+  },
+  "reference": "Toyota GR Yaris XP210 2020",
+  "referenceScale": 0.86,
+  "dimensionsMetres": [
+    1.805,
+    1.455,
+    3.995
+  ]
+}

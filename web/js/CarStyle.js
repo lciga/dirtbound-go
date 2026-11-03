@@ -8,4 +8,6 @@ export const CAR_STYLE = Object.freeze({
  maxTriangles: 5000,
  maxDrawCalls: 9,
  maxModelBytes: 300000,
+ // Explicit exception for the source-based GR Yaris approved on 2026-11-03.
+ reviewedYaris: Object.freeze({ maxTriangles: 15000, maxDrawCalls: 9, maxModelBytes: 650000 }),
 });

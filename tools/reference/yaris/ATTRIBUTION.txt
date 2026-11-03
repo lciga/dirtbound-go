@@ -1,0 +1,10 @@
+Original asset: 2020 Toyota GR Yaris
+Author: DisneyCars (@supercarmodels)
+Source: https://sketchfab.com/3d-models/2020-toyota-gr-yaris-44cb958908b94aa5aad0d856994f35a3
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Adaptation for Racing Club 1sk4nd3r (user-approved game model, 2026-11-03):
+Retained and simplified the actual source body geometry; removed interior and minor details; made windows opaque; packed and simplified the original UV textures; added a selective emissive lamp mask; replaced wheels with shared twelve-sided geometry; normalized orientation and scale. Adaptation does not imply endorsement by the original author.
+
+2026-11-03 revision: restored mirror components and two-sided thin surfaces, window mouldings following source pane boundaries, fully baked original anime catgirl livery on sides/hood/roof/bumpers. Original artwork generated with built-in imagegen; full prompt saved at tools/reference/yaris/neko-art-prompt.txt.

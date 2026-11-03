@@ -1,12 +1,12 @@
 # Racing Club 1sk4nd3r
 
-Приватная версия [DirtBound](https://dirtbound.fr/index.html): Go-сервер, PostgreSQL, управление автомобилем на Go → WebAssembly и исходный 3D-клиент. Снимок клиента — 31 октября 2026 года. Репозиторий: `lciga/dirtbound-go`.
+Версия [DirtBound](https://dirtbound.fr/index.html): Go-сервер, PostgreSQL, управление автомобилем на Go → WebAssembly и исходный 3D-клиент. Снимок клиента — 31 октября 2026 года. Репозиторий: `lciga/dirtbound-go`.
 
 ## Скриншоты
 
 | Главное меню | Гараж — Toyota GR Yaris |
 | --- | --- |
-| ![Главное меню с полным списком режимов](docs/screenshots/main-menu.jpg) | ![GR Yaris в обычном гараже](docs/screenshots/yaris-mode.jpg) |
+| ![Главное меню с полным списком режимов](docs/screenshots/main-menu.jpg) | ![GR Yaris в обычном гараже](docs/screenshots/yaris-garage.png) |
 | **Кольцевая гонка — изометрия** | **Музыка в меню паузы** |
 | ![Летняя трасса с изометрической камерой](docs/screenshots/race.jpg) | ![Плеер и регулировка громкости во время паузы](docs/screenshots/race-player.jpg) |
 
@@ -14,7 +14,7 @@
 
 ![Бета-заезд с картой трассы и спидометром](docs/screenshots/beta-race.jpg)
 
-![Проекции GR Yaris и сравнение с раллийным набором](docs/screenshots/yaris-projections.jpg)
+![Одобренный GR Yaris в Yaris Mode](docs/screenshots/yaris-mode-race.png)
 
 ## Запуск Docker Compose
 

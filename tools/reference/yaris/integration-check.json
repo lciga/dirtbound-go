@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-03",
+  "modelSha256": "786ce2fb7bc5a4b07cced7cbdd75dfef9562c85efeb1756c6f269eaf19b36dc3",
+  "browser": "Local Docker Compose on port 18081; existing camera_test account",
+  "passed": [
+    "Garage: all five texture variants decode and render; primary wrap matches approved model.",
+    "Normal race: loaded Yaris, drove from start, checked chase and isometric cameras.",
+    "Yaris Mode: loaded same model and verified Niko B track in pause player.",
+    "Node: 8 Yaris tests, 1 real-model shared geometry/material test, 5 beta/collision tests.",
+    "Asset check: 330 relative module imports.",
+    "Go/WASM parity: 36000 steps, 504000 checks, max error 1.6552803572267294e-10.",
+    "Docker image built; application and existing PostgreSQL healthy."
+  ],
+  "limits": [
+    "Image decoding in Node is stubbed; actual image decoding checked in browser.",
+    "Online loading and ghost behavior checked through existing unit integrations; no live multi-client race was run.",
+    "An initial race navigation after rebuild returned a transient database timeout; reload and subsequent race/menu requests succeeded."
+  ],
+  "screenshots": [
+    "docs/screenshots/yaris-garage.png",
+    "docs/screenshots/yaris-race-chase.png",
+    "docs/screenshots/yaris-race-iso.png",
+    "docs/screenshots/yaris-mode-race.png"
+  ]
+}

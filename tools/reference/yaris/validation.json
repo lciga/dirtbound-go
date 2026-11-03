@@ -1,0 +1,18 @@
+{
+  "gltfErrors": 0,
+  "gltfWarnings": 0,
+  "totalTriangles": 14512,
+  "drawCalls": 9,
+  "bytes": 640612,
+  "allFinite": true,
+  "minTriangleArea": 7.242546089058452e-9,
+  "maxNormalLengthError": 0.0014773176669797827,
+  "opposedFaceNormals": 0,
+  "bodyVerticesFromSource": 11488,
+  "bodyVertices": 11488,
+  "sharedWheels": true,
+  "unchangedRoofFaces": 484,
+  "unchangedPanelBorders": true,
+  "closedWheelWells": 4,
+  "minHeight": 9.609866069570927e-9
+}

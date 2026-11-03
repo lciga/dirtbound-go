@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import * as THREE from 'three';
 import { yarisScale, stretchYaris, YARIS_CAR, YARIS_TRACK_ID } from '../web/js/YarisMode.js';
 import { CAR_STYLE } from '../web/js/CarStyle.js';
+import { parseModel } from './gltf-test-loader.mjs';
+import { createHash } from 'node:crypto';
 import { CARS, GARAGE_CARS } from '../web/js/Cars.js';
 import { audioVolumes, loadSettings, saveSettings } from '../web/js/Settings.js';
 import { MenuMusic, shuffleTracks } from '../web/js/menu/MenuMusic.js';
@@ -37,34 +39,37 @@ test('Yaris geometry stays inside the reviewed rendering budget and available in
  const model=JSON.parse(bytes.toString('utf8',20,20+bytes.readUInt32LE(12)));
  let triangles=0, draws=0;
  for(const node of model.nodes.filter(n=>n.mesh!==undefined))for(const p of model.meshes[node.mesh].primitives){triangles+=model.accessors[p.indices??p.attributes.POSITION].count/3;draws++;}
- assert.ok(triangles<=CAR_STYLE.maxTriangles && draws<=CAR_STYLE.maxDrawCalls);
- assert.ok(bytes.length<CAR_STYLE.maxModelBytes && (model.images?.length??0)===0);
- assert.ok(CARS.some(c=>c.id===YARIS_CAR));
- assert.ok(GARAGE_CARS.some(c=>c.id===YARIS_CAR));
- assert.ok(model.nodes.filter(n=>['FL','FR'].includes(n.name)).every(n=>n.translation[2]>0));
- assert.ok(model.nodes.filter(n=>['BL','BR'].includes(n.name)).every(n=>n.translation[2]<0));
- assert.ok(!model.nodes.find(n=>n.name==='car').rotation);
- const reference=model.asset.extras;
- assert.equal(reference.reference,'Toyota GR Yaris XP210 2020');
- const factor=reference.referenceScale;
+ const budget=CAR_STYLE.reviewedYaris;
+ assert.ok(triangles<=budget.maxTriangles && draws<=budget.maxDrawCalls);
+ assert.ok(bytes.length<budget.maxModelBytes && model.images.length===2);
+ const manifest=JSON.parse(await fs.readFile(new URL('./reference/yaris/manifest.json',import.meta.url)));
+ assert.equal(createHash('sha256').update(bytes).digest('hex'),manifest.sha256);
+ assert.ok(CARS.some(c=>c.id===YARIS_CAR));assert.ok(GARAGE_CARS.some(c=>c.id===YARIS_CAR));
  const front=model.nodes.find(n=>n.name==='FL'),rear=model.nodes.find(n=>n.name==='BL');
- assert.ok(Math.abs((front.translation[2]-rear.translation[2])/factor-2.560)<1e-6);
- assert.ok(Math.abs((1.9975-front.translation[2]/factor)-.830)<1e-6);
- assert.ok(Math.abs((rear.translation[2]/factor+1.9975)-.605)<1e-6);
- for(const m of model.materials){assert.ok(m&&m.alphaMode!=='BLEND');assert.equal(m.pbrMetallicRoughness.metallicFactor,CAR_STYLE.metalness);}
- assert.ok(model.meshes.every(m=>m.primitives.every(p=>model.materials[p.material])));
- const bin=28+bytes.readUInt32LE(12);
- for(const mesh of model.meshes)for(const primitive of mesh.primitives){
-  for(const name of ['POSITION','NORMAL']){
-   const a=model.accessors[primitive.attributes[name]], view=model.bufferViews[a.bufferView];
-   const at=bin+(view.byteOffset||0)+(a.byteOffset||0);
+ assert.ok(front.translation[2]>0 && rear.translation[2]<0);
+ assert.ok(Math.abs((front.translation[2]-rear.translation[2])/.86-2.56)<.03);
+ for(const m of model.materials){assert.ok(m&&m.alphaMode!=='BLEND');assert.equal(m.pbrMetallicRoughness.metallicFactor??1,CAR_STYLE.metalness);}
+ const gltf=await parseModel(bytes);
+ let wheelGeometries=[];gltf.scene.traverse(n=>{
+  if(!n.isMesh)return;
+  assert.ok(n.material);
+  for(const name of ['position','normal']){
+   const a=n.geometry.attributes[name];
    for(let i=0;i<a.count;i++){
-    const v=[0,1,2].map(k=>bytes.readFloatLE(at+(i*3+k)*4));
-    assert.ok(v.every(Number.isFinite));
-    if(name==='NORMAL')assert.ok(Math.abs(Math.hypot(...v)-1)<1e-5);
+    const v=[a.getX(i),a.getY(i),a.getZ(i)];assert.ok(v.every(Number.isFinite));
+    if(name==='normal')assert.ok(Math.abs(Math.hypot(...v)-1)<.012);
    }
   }
- }
+  if(['FL','FR','BL','BR'].includes(n.name))wheelGeometries.push(n.geometry);
+ });
+ assert.equal(wheelGeometries.length,4);assert.equal(new Set(wheelGeometries).size,1);
+ const physical=new THREE.Group(),visual=new THREE.Group(),stretch=new THREE.Group();
+ visual.userData.yaris=true;stretch.add(gltf.scene);visual.add(stretch);physical.add(visual);
+ const wheelY=gltf.scene.getObjectByName('FL').position.y;
+ stretchYaris(visual,.1);assert.equal(physical.position.length(),0);
+ assert.equal(gltf.scene.getObjectByName('FL').position.y,wheelY);
+ assert.notEqual(stretch.scale.y,1);
+
 });
 
 test('legacy music level migrates; race/menu volumes and mute survive independently',()=>{

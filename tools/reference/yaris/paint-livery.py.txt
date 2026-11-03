@@ -1,0 +1,36 @@
+from pathlib import Path
+import json
+import numpy as np
+from PIL import Image,ImageDraw,ImageFont
+r=Path(__file__).resolve().parent.parent
+art=np.array(Image.open(r/'textures/neko-racing-art.png').convert('RGBA'))
+brand=Image.new('RGBA',(1200,128));ImageDraw.Draw(brand).text((10,5),'RACING CLUB 1sk4nd3r',font=ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial Bold.ttf',82),fill=(245,248,255,255));brand=np.array(brand)
+number=Image.new('RGBA',(240,240),(245,248,255,255));ImageDraw.Draw(number).text((21,12),'17',font=ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial Bold.ttf',170),fill=(24,20,43,255));number=np.array(number)
+navy=[26,23,47];pink=[235,72,150];cyan=[46,205,224];purple=[109,78,185];white=[239,241,246]
+def overlay(col,img,u,v,extra=True):
+ valid=(u>=0)&(u<1)&(v>=0)&(v<1)&extra;sample=img[(np.clip(v,0,.999)*(img.shape[0]-1)).astype(int),(np.clip(u,0,.999)*(img.shape[1]-1)).astype(int)];a=sample[...,3:]/255;return np.where(valid[...,None],(sample[...,:3]*a+col*(1-a)).astype(np.uint8),col)
+def design(x,y,z,kind,sign=1):
+ col=np.empty(x.shape+(3,),np.uint8);col[:]=white
+ if kind=='side':
+  k=y-(.44-.13*z);col[k<.03]=navy;col[(k>=.03)&(k<.105)]=purple;col[(k>=.105)&(k<.14)]=cyan;col[(k>=.14)&(k<.165)]=pink;col[(z<-.65)&(y<.64)&(y>.24)]=pink;col[(z>.95)&(y<.55)]=cyan if sign>0 else pink
+  col=overlay(col,art,(.67-sign*z)/1.36,(.98-y)/1.36,(y>.25)&(y<.88));col[y<.26]=navy;col=overlay(col,brand,(.77-sign*z)/1.5,(.255-y)/.13)
+  col=overlay(col,number,((1.4-z) if sign>0 else (z-1.12))/.28,(.81-y)/.28)
+ elif kind in ['hood','roof']:
+  if kind=='roof':col[:]=navy
+  k=x-.28*z;col[(k>-.32)&(k<-.02)]=pink;col[(k>=-.02)&(k<.055)]=navy;col[(k>=.055)&(k<.22)]=cyan;col[(k>=.22)&(k<.25)]=purple
+  col=overlay(col,number,(x+.19)/.38,(z-.92)/.38)
+ else:
+  col[y<.43]=navy;col[x>.22]=cyan;col[x<-.22]=pink;col[(y>.5)&(y<.56)]=purple
+ return col
+atlas=Image.new('RGB',(1024,1024),tuple(navy));atlas.paste(Image.open(r/'textures/yaris-base-atlas.png').convert('RGB').resize((512,512),Image.Resampling.LANCZOS),(0,0))
+for sign,left in [(1,0),(-1,512)]:
+ U,V=np.meshgrid((np.arange(1024)+.5)/1024,(np.arange(512)+.5)/512);z=(1.8-U*3.6)*sign;y=1.25*(1-V);x=np.full_like(z,sign*.8);atlas.paste(Image.fromarray(design(x,y,z,'side',sign)).resize((512,256),Image.Resampling.LANCZOS),(left,512))
+for kind,left,top in [('hood',512,0),('roof',768,0),('front',512,256),('back',768,256)]:
+ U,V=np.meshgrid((np.arange(256)+.5)/256,(np.arange(256)+.5)/256);x=(U-.5)*2;y=np.full_like(x,1.2);z=1.8-V*3.6
+ if kind in ['front','back']:y=(1-V)*1.25;z=np.full_like(x,1.8 if kind=='front' else -1.8)
+ atlas.paste(Image.fromarray(design(x,y,z,kind)),(left,top))
+atlas.save(r/'textures/yaris-neko-atlas.jpg',quality=83,subsampling=2,optimize=True)
+em=Image.new('RGB',(1024,1024));em.paste(Image.open(r/'textures/yaris-base-emissive.png').convert('RGB').resize((512,512),Image.Resampling.NEAREST),(0,0));em.save(r/'textures/yaris-neko-emissive.png',optimize=True)
+(r/'source/neko-livery-spec.json').write_text(json.dumps({'method':'Dedicated continuous UV charts for full left/right sides, hood, roof, front and rear; original UV detail retained for trim and lights','art':'textures/neko-racing-art.png','atlas':'textures/yaris-neko-atlas.jpg','size':[1024,1024],'palette':['navy','pink','cyan','purple','white'],'number':17},indent=2)+'\n')
+whiteAtlas=Image.new('RGB',(1024,1024),tuple(white));whiteAtlas.paste(Image.open(r/'textures/yaris-base-atlas.png').convert('RGB').resize((512,512),Image.Resampling.LANCZOS),(0,0));ImageDraw.Draw(whiteAtlas).rectangle((768,0,1023,255),fill=(30,32,36));whiteAtlas.save(r/'textures/yaris-white-atlas.jpg',quality=85,optimize=True)
+print('Full wrap atlas', (r/'textures/yaris-neko-atlas.jpg').stat().st_size,'bytes')

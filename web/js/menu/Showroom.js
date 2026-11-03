@@ -1095,7 +1095,7 @@ export class Showroom {
 				lit = true;
 				m = m.clone(); // the game's cars stay unlit
 				m.emissive = new THREE.Color( 0xffffff );
-				m.emissiveMap = m.map;
+				m.emissiveMap = m.emissiveMap || m.map;
 				m.emissiveIntensity = LIGHTS_GLOW;
 				return m;
 
