@@ -13,7 +13,10 @@ const TransmissionFinalDrive = 3.6
 const TransmissionReverseRatio = 3.1
 const TransmissionReverseSpeed = 10.0 // m/s, a separate low-speed reverse range
 const TransmissionShiftTime = .14
-const TransmissionLateralGrip = 32.0 // m/s², deliberately arcade rather than road-car tyres
+const TransmissionLateralGrip = 64.0 // m/s²; scaled arcade roads need a generous cornering budget
+const TransmissionMaxYaw = 3.2       // rad/s; keep full lock controllable at town speeds
+
+const TransmissionHandbrakeSteerGrip = 48.0 // retain the previous handbrake yaw envelope
 
 // Five forward gears for every beta car; -1 is the persistent reverse range.
 var GearRatios = [...]float64{3.2, 2.13, 1.52, 1.16, .86}
@@ -167,6 +170,29 @@ func BetaSteering(previous, worldSpeed, steer, dt float64, gripFactor ...float64
 	// full lock rotates the body 90° while its velocity still points straight.
 	angle := math.Min(.65, math.Atan(lateral*wheelbase/math.Max(1, worldSpeed*worldSpeed)))
 	target := worldSpeed * math.Tan(-Clamp(steer, -1, 1)*angle) / wheelbase
-	target = Clamp(target, -3.8, 3.8)
+	target = Clamp(target, -TransmissionMaxYaw, TransmissionMaxYaw)
 	return Lerp(previous, target, 1-math.Exp(-8*Clamp(dt, 0, .05)))
+}
+
+// BetaTyreVelocity turns road-plane momentum towards the car's rolling axis.
+// A lateral constraint provides centripetal force, not a brake: projecting out
+// sideways velocity each step otherwise throws away speed even below the grip
+// limit. Rotation keeps the existing kinetic energy and bounds the actual
+// velocity change by the tyre force budget. Drive, drag and braking run first.
+// The collision adapter separately preserves road-normal velocity.
+func BetaTyreVelocity(longitudinal, lateral, dt, gripFactor float64, handbrake bool) (float64, float64) {
+	speed := math.Hypot(longitudinal, lateral)
+	if speed < 1e-8 {
+		return longitudinal, lateral
+	}
+	dt = Clamp(dt, 0, .05)
+	grip := TransmissionLateralGrip
+	if handbrake {
+		grip = 3
+	}
+	grip *= Clamp(gripFactor, .15, 1.5) / WorldMetres
+	slip := math.Atan2(lateral, math.Abs(longitudinal))
+	turn := Clamp(slip*(1-math.Exp(-18*dt)), -grip*dt/speed, grip*dt/speed)
+	angle := slip - turn
+	return math.Copysign(speed*math.Cos(angle), longitudinal), speed * math.Sin(angle)
 }

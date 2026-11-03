@@ -110,3 +110,30 @@ func TestCornerShiftHysteresisAndClutchReturn(t *testing.T) {
 		t.Fatal("clutch did not progressively return traction", open, reconnect)
 	}
 }
+
+func TestBetaTyresRedirectMomentumWithinGripWithoutPower(t *testing.T) {
+	for _, v := range [][2]float64{{20, 3}, {-20, 3}, {20, -3}, {0, 8}, {0, 0}} {
+		for _, handbrake := range []bool{false, true} {
+			longitudinal, lateral := BetaTyreVelocity(v[0], v[1], Step, 1, handbrake)
+			if math.Abs(math.Hypot(longitudinal, lateral)-math.Hypot(v[0], v[1])) > 1e-10 {
+				t.Fatal("tyres changed road-plane kinetic energy", v, longitudinal, lateral)
+			}
+			grip := TransmissionLateralGrip
+			if handbrake {
+				grip = 3
+			}
+			if math.Hypot(longitudinal-v[0], lateral-v[1]) > grip/WorldMetres*Step+1e-10 {
+				t.Fatal("tyre force exceeded grip", v, longitudinal, lateral)
+			}
+			if math.Abs(lateral) > math.Abs(v[1])+1e-10 || longitudinal*v[0] < 0 {
+				t.Fatal("tyres reversed the rolling range or increased slip")
+			}
+		}
+	}
+	_, road := BetaTyreVelocity(20, 3, Step, 1, false)
+	_, loose := BetaTyreVelocity(20, 3, Step, .4, false)
+	_, slide := BetaTyreVelocity(20, 3, Step, 1, true)
+	if !(road < loose && loose < slide) {
+		t.Fatal("road, loose surface and handbrake need different grip", road, loose, slide)
+	}
+}

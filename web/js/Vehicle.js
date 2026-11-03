@@ -137,7 +137,7 @@ export class Vehicle {
 		if (!touch) {
 			if(this.beta && this.rigidBody){
 				const v=this.rigidBody.motionProperties.linearVelocity;
-				this.angularSpeed=physics.steering(previousAngular,v[0]*_forward.x+v[1]*_forward.y+v[2]*_forward.z,this.inputX,dt,this.speedFactor*(this.handbrake?1.5:1));
+				this.angularSpeed=physics.steering(previousAngular,v[0]*_forward.x+v[1]*_forward.y+v[2]*_forward.z,this.inputX,dt,this.speedFactor,this.handbrake);
 				this.container.rotateY(this.angularSpeed*dt);
 			} else this.container.rotateY(step[4]);
 		}
@@ -184,13 +184,13 @@ export class Vehicle {
      if(r[7]>0 && groundSpeed>1e-8){
       _groundVelocity.multiplyScalar(-Math.min(1,r[7]*dt/groundSpeed));
      } else _groundVelocity.copy(_forward).multiplyScalar(dv);
-     // Explicit arcade tyre grip, independent of the rolling ground sphere.
-     // Clamp lateral force, retain normal velocity and allow handbrake slides.
-     const lateral=(v[0]+_groundVelocity.x)*_right.x+(v[1]+_groundVelocity.y)*_right.y+(v[2]+_groundVelocity.z)*_right.z;
-     const grip=(this.handbrake?3:physics.lateralGrip)*Math.max(.15,this.speedFactor)/physics.worldMetres;
-     const side=Math.max(-grip*dt,Math.min(grip*dt,-lateral*(1-Math.exp(-18*dt))));
-     const vx=v[0]+_groundVelocity.x+_right.x*side,vy=v[1]+_groundVelocity.y+_right.y*side,vz=v[2]+_groundVelocity.z+_right.z*side;
-     const rolling=vx*_forward.x+vy*_forward.y+vz*_forward.z;
+     // Steering redirects road-plane momentum through bounded tyre force.
+     // Preserve the solver's normal response; drive and brakes were applied above.
+     const ux=v[0]+_groundVelocity.x,uy=v[1]+_groundVelocity.y,uz=v[2]+_groundVelocity.z;
+     const longitudinal=ux*_forward.x+uy*_forward.y+uz*_forward.z,lateral=ux*_right.x+uy*_right.y+uz*_right.z;
+     const tyre=physics.tyres(longitudinal,lateral,dt,this.speedFactor,this.handbrake);
+     const rolling=tyre[0],side=tyre[1],normal=ux*up.x+uy*up.y+uz*up.z;
+     const vx=_forward.x*rolling+_right.x*side+up.x*normal,vy=_forward.y*rolling+_right.y*side+up.y*normal,vz=_forward.z*rolling+_right.z*side+up.z*normal;
      rigidBody.setLinearVelocity(this.physicsWorld,this.rigidBody,[vx,vy,vz]);
      rigidBody.setAngularVelocity(this.physicsWorld,this.rigidBody,[_right.x*rolling/.5+up.x*spin,_right.y*rolling/.5+up.y*spin,_right.z*rolling/.5+up.z*spin]);
     }

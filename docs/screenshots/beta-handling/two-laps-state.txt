@@ -1,0 +1,49 @@
+Browser tab: 58, Title: "Racing Club 1sk4nd3r", URL: "http://127.0.0.1:18081/play.html?beta=1&car=Volkswagen%20Golf&color=1".
+1 AXWebArea Racing Club 1sk4nd3r, URL: 127.0.0.1:18081/play.html?beta=1&car=Volkswagen%20Golf&color=1
+	2 container lap-timer
+		3 container
+			4 text КРУГ  3
+		34 text 0:00.892
+		6 text ЛУЧШИЙ
+		32 text 0:14.900
+		8 text ПОСЛЕДНИЙ
+		33 text 0:17.092
+	10 container Спидометр
+		35 text 75
+		12 text км/ч
+		13 container
+			36 text 2  ·  4450  об/мин
+		15 level indicator Description: Обороты двигателя, Value: 4472.37939453125
+	16 image Карта трассы
+	17 button Камера: Изометрия
+	37 container
+		38 heading ПАУЗА, Value: 2
+			39 text ПАУЗА
+		40 button ПРОДОЛЖИТЬ
+		41 text Камера
+		42 container Камера
+			43 checkbox Изометрия, Value: 1
+			44 checkbox От третьего лица, Value: 0
+		45 button Режим производительности: выкл.
+		46 text Музыка в гонке Styles of Beyond — Nine Thou (Superstars Remix) Громкость плеера
+		47 container Громкость плеера 70
+			48 text 70 %
+		49 slider (settable, integer) Description: Громкость плеера, Value: 70
+		50 checkbox Включить музыку, Value: 0
+		51 button Заново
+		52 button Главное меню
+	18 container controls-hint
+		19 text УПРАВЛЕНИЕ
+		20 text W
+		21 text A
+		22 text S
+		23 text D
+		24 text езда
+		25 text Пробел
+		26 text ручник
+		27 text C
+		28 text вид
+		29 text Esc
+		30 text пауза
+
+The focused UI element is 40 button ПРОДОЛЖИТЬ

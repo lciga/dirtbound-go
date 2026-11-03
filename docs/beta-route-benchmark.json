@@ -5,51 +5,51 @@
       "seed": 152428,
       "landscape": "low",
       "finished": true,
-      "timeSeconds": 202.84,
+      "timeSeconds": 201.64,
       "distanceMetres": 9999,
-      "meanKmh": 177.5,
+      "meanKmh": 178.5,
       "maxKmh": 227.1,
-      "maxLateralErrorMetres": 1.21,
+      "maxLateralErrorMetres": 0.76,
       "gears": {
         "1": 301,
         "2": 178,
-        "3": 671,
-        "4": 1021,
-        "5": 22170
+        "3": 673,
+        "4": 936,
+        "5": 22109
       }
     },
     {
       "seed": 19381,
       "landscape": "varied",
       "finished": true,
-      "timeSeconds": 229.55,
+      "timeSeconds": 226.91,
       "distanceMetres": 9999.5,
-      "meanKmh": 156.8,
+      "meanKmh": 158.6,
       "maxKmh": 229.2,
-      "maxLateralErrorMetres": 1.16,
+      "maxLateralErrorMetres": 0.74,
       "gears": {
         "1": 301,
         "2": 178,
-        "3": 693,
-        "4": 291,
-        "5": 26083
+        "3": 667,
+        "4": 292,
+        "5": 25791
       }
     },
     {
       "seed": 2026,
       "landscape": "high",
       "finished": true,
-      "timeSeconds": 228.48,
+      "timeSeconds": 226.68,
       "distanceMetres": 9999,
-      "meanKmh": 157.5,
-      "maxKmh": 223.8,
-      "maxLateralErrorMetres": 1.22,
+      "meanKmh": 158.8,
+      "maxKmh": 226.6,
+      "maxLateralErrorMetres": 0.75,
       "gears": {
         "1": 301,
         "2": 178,
-        "3": 888,
+        "3": 882,
         "4": 928,
-        "5": 25123
+        "5": 24913
       }
     }
   ]

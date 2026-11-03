@@ -13,7 +13,8 @@
     "test:localization": "node --test tools/localization.test.mjs",
     "test:beta-physics": "node --test tools/beta-physics.test.mjs",
     "bench:beta-route": "node tools/beta-route-benchmark.mjs",
-    "test:car-style": "node --test tools/car-style.test.mjs"
+    "test:car-style": "node --test tools/car-style.test.mjs",
+    "bench:beta-handling": "node tools/beta-handling-benchmark.mjs"
   },
   "devDependencies": {
     "three": "0.185.1"

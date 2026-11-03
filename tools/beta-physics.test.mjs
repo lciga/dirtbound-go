@@ -4,6 +4,7 @@ import * as crash from '../web/js/vendor/crashcat.js';
 import {drivingRig} from './beta-physics-fixture.mjs';
 import {BETA_METRES_PER_WORLD, speedKmh, worldLength} from '../web/js/RaceUnits.js';
 import {Gearbox} from '../web/js/Gearbox.js';
+import {measureTurn} from './beta-handling-benchmark.mjs';
 
 test('real collision solver launches on flat, 10%, 18% and 30% climbs', () => {
  for (const grade of [0,.10,.18,.30]) {
@@ -159,4 +160,31 @@ test('handbrake can still create a slide while ordinary steering stays within gr
  for(let i=0;i<120;i++){r.step({x:1,z:1,handbrake:true});peak=Math.max(peak,r.vehicle.slipAngle);}
  assert.ok(peak>.25);
  r.run(6,{z:1});assert.ok(r.vehicle.sphereVel.length()*7.2>90);
+});
+
+test('full-lock trajectory fits useful corner radii instead of merely retaining speed',()=>{
+ for(const [kmh,min,max] of [[30,2.8,4.5],[60,4,7],[100,10,18],[140,20,35],[180,35,56]]){
+  const turn=measureTurn(kmh);
+  assert.ok(Math.abs(turn.meanKmh-kmh)<3,JSON.stringify(turn));
+  assert.ok(turn.radiusMetres>min&&turn.radiusMetres<max,JSON.stringify(turn));
+ }
+ const left=measureTurn(100,{steer:-1}),right=measureTurn(100);
+ assert.ok(Math.abs(left.radiusMetres-right.radiusMetres)<.02);
+ const loose=measureTurn(100,{surface:.62});
+ assert.ok(loose.radiusMetres>right.radiusMetres*1.4);
+});
+
+test('countersteer changes the actual velocity heading promptly',()=>{
+ const r=drivingRig();while(r.vehicle.sphereVel.length()*7.2<100)r.step({z:1});
+ r.run(1,{x:1,z:.15});let delay=Infinity,previous=Math.atan2(r.vehicle.sphereVel.x,r.vehicle.sphereVel.z);
+ for(let i=0;i<60;i++){
+  r.step({x:-1,z:.15});const a=Math.atan2(r.vehicle.sphereVel.x,r.vehicle.sphereVel.z);
+  if(Math.atan2(Math.sin(a-previous),Math.cos(a-previous))>1e-4){delay=i*r.dt;break;}previous=a;
+ }
+ assert.ok(delay<.3,`countersteer delay ${delay}`);
+});
+
+test('real turn radius converges across 60, 120 and 240 physics steps',()=>{
+ const radii=[1/60,1/120,1/240].map(dt=>measureTurn(100,{dt}).radiusMetres);
+ assert.ok(Math.max(...radii)-Math.min(...radii)<.7,JSON.stringify(radii));
 });

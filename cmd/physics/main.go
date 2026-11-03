@@ -48,10 +48,20 @@ func main() {
 		if len(a) > 4 {
 			factor = a[4].Float()
 		}
+		if len(a) > 5 && a[5].Bool() {
+			factor *= vehicle.TransmissionHandbrakeSteerGrip / vehicle.TransmissionLateralGrip
+		}
 		return vehicle.BetaSteering(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float(), factor)
 	})
 	js.Global().Get("DirtboundGo").Set("worldMetres", vehicle.WorldMetres)
 	js.Global().Get("DirtboundGo").Set("lateralGrip", vehicle.TransmissionLateralGrip)
+	tyres := js.Global().Get("Float64Array").New(2)
+	export("tyres", func(a []js.Value) any {
+		longitudinal, lateral := vehicle.BetaTyreVelocity(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float(), a[4].Bool())
+		tyres.SetIndex(0, longitudinal)
+		tyres.SetIndex(1, lateral)
+		return tyres
+	})
 	drift := js.Global().Get("Float64Array").New(2)
 	export("drift", func(a []js.Value) any {
 		r := vehicle.Drift(a[0].Float(), a[1].Float(), a[2].Float(), a[3].Float(), a[4].Float(), a[5].Float(), a[6].Bool())

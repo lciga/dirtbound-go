@@ -1,0 +1,46 @@
+Browser tab: 59, Title: "Racing Club 1sk4nd3r", URL: "http://127.0.0.1:18081/play.html?beta=1&rally=2026&landscape=high&length=10000&car=Volkswagen+Golf&color=1".
+0 AXWebArea Racing Club 1sk4nd3r, URL: 127.0.0.1:18081/play.html?beta=1&rally=2026&landscape=high&length=10000&car=Volkswagen+Golf&color=1
+	2 container rally-hud
+		3 text СПЕЦУЧАСТОК #2026
+		29 text 0:14.983
+		5 text ДИСТАНЦИЯ
+		28 text 0.23 / 10 km
+	7 container Спидометр
+		30 text 99
+		9 text км/ч
+		10 container
+			31 text 2  ·  6500  об/мин
+		12 level indicator Description: Обороты двигателя, Value: 6513.76025390625
+	1 image Карта трассы
+	13 button Камера: Изометрия
+	32 container
+		33 heading ПАУЗА, Value: 2
+			34 text ПАУЗА
+		35 button ПРОДОЛЖИТЬ
+		36 text Камера
+		37 container Камера
+			38 checkbox Изометрия, Value: 1
+			39 checkbox От третьего лица, Value: 0
+		40 button Режим производительности: выкл.
+		41 text Музыка в гонке Dave Rodgers — Déjà Vu Громкость плеера
+		42 container Громкость плеера 70
+			43 text 70 %
+		44 slider (settable, integer) Description: Громкость плеера, Value: 70
+		45 checkbox Включить музыку, Value: 0
+		46 button Заново
+		47 button Главное меню
+	14 container controls-hint
+		15 text УПРАВЛЕНИЕ
+		16 text W
+		17 text A
+		18 text S
+		19 text D
+		20 text езда
+		21 text Пробел
+		22 text ручник
+		23 text C
+		24 text вид
+		25 text Esc
+		26 text пауза
+
+The focused UI element is 35 button ПРОДОЛЖИТЬ

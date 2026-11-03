@@ -1,0 +1,107 @@
+{
+  "date": "2026-11-03",
+  "scope": "Real Go/WASM + Vehicle + Crashcat on a flat surface, no walls or renderer. Speed maintained by pedals, one second settling and five seconds sampling. Radius uses velocity heading and distance, not body orientation. Not a human lap or FPS test.",
+  "baselineCommit": "b629f92c74f2497baac679f856c295dd6d139e5d",
+  "baselineNote": "Measured with the same real-trajectory fixture before the physics change; baseline values rounded to six decimals.",
+  "before": [
+    {
+      "entryKmh": 30,
+      "meanKmh": 29.05966,
+      "radiusMetres": 3.392947,
+      "secondsFor90": 0.66025,
+      "maxSlip": 0.122116
+    },
+    {
+      "entryKmh": 60,
+      "meanKmh": 59.048,
+      "radiusMetres": 9.854027,
+      "secondsFor90": 0.943693,
+      "maxSlip": 0.085511
+    },
+    {
+      "entryKmh": 80,
+      "meanKmh": 79.02333,
+      "radiusMetres": 17.67674,
+      "secondsFor90": 1.264938,
+      "maxSlip": 0.063835
+    },
+    {
+      "entryKmh": 100,
+      "meanKmh": 99.0052,
+      "radiusMetres": 27.76599,
+      "secondsFor90": 1.585907,
+      "maxSlip": 0.050965
+    },
+    {
+      "entryKmh": 140,
+      "meanKmh": 138.98664,
+      "radiusMetres": 54.75355,
+      "secondsFor90": 2.227725,
+      "maxSlip": 0.036297
+    },
+    {
+      "entryKmh": 180,
+      "meanKmh": 178.97858,
+      "radiusMetres": 90.8253,
+      "secondsFor90": 2.869645,
+      "maxSlip": 0.028159
+    }
+  ],
+  "after": [
+    {
+      "entryKmh": 30,
+      "meanKmh": 31.006944302802857,
+      "radiusMetres": 3.396804609331114,
+      "secondsFor90": 0.6194895357586688,
+      "maxSlip": 0.1305908204804275
+    },
+    {
+      "entryKmh": 60,
+      "meanKmh": 60.99532462479054,
+      "radiusMetres": 5.294828831701232,
+      "secondsFor90": 0.4908827329245679,
+      "maxSlip": 0.16470209635856747
+    },
+    {
+      "entryKmh": 80,
+      "meanKmh": 80.96857687453617,
+      "radiusMetres": 9.222910162265823,
+      "secondsFor90": 0.6441304796514119,
+      "maxSlip": 0.12601666419080917
+    },
+    {
+      "entryKmh": 100,
+      "meanKmh": 99.07805930886643,
+      "radiusMetres": 13.852117648490418,
+      "secondsFor90": 0.7906077331399288,
+      "maxSlip": 0.10230393512001651
+    },
+    {
+      "entryKmh": 140,
+      "meanKmh": 139.01827806779747,
+      "radiusMetres": 27.33623884429843,
+      "secondsFor90": 1.111960175183977,
+      "maxSlip": 0.07269746375937752
+    },
+    {
+      "entryKmh": 180,
+      "meanKmh": 179.00574939459204,
+      "radiusMetres": 45.372394738724836,
+      "secondsFor90": 1.4333329987683008,
+      "maxSlip": 0.056396152490535825
+    }
+  ],
+  "browser": {
+    "track": "Трасса клуба",
+    "car": "Volkswagen Golf",
+    "beta": true,
+    "musicEnabled": false,
+    "completedLapsSeconds": [
+      14.9,
+      17.092
+    ],
+    "method": "Keyboard inputs in the real Docker browser game, with pauses between segments for inspection; no respawn during the two laps. Wall contacts and a reverse/forward recovery occurred. These are functional laps, not uninterrupted performance measurements.",
+    "mountain": "Seed 2026, high landscape: launch to third/124 km/h, handbrake to zero, R/26 km/h, then forward to second/100 km/h. Only the initial 0.23 km was driven in the browser; the full 10 km was measured separately by the automated fixture.",
+    "consoleErrors": 0
+  }
+}
